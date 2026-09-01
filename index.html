@@ -39,6 +39,7 @@
     <button class="tab-btn active" data-tab="wo" onclick="window.switchTab('wo')"><i data-lucide="clipboard-list" style="width:16px;"></i> Work Orders</button>
     <button class="tab-btn" data-tab="assets" onclick="window.switchTab('assets')"><i data-lucide="server" style="width:16px;"></i> Assets</button>
     <button class="tab-btn" data-tab="schedules" onclick="window.switchTab('schedules')"><i data-lucide="calendar-clock" style="width:16px;"></i> PMs</button>
+    <button class="tab-btn" data-tab="manage" onclick="window.switchTab('manage')"><i data-lucide="settings" style="width:16px;"></i> Manage</button>
   </div>
 
   <main class="wrap">
@@ -96,6 +97,38 @@
         </div>
       </div>
       <div id="schedule-list"></div>
+    </section>
+
+    <!-- MANAGE TAB -->
+    <section id="tab-manage" class="hidden">
+      <div id="manage-list-view">
+        <div class="eyebrow" style="margin:16px 0 8px;">Asset Management</div>
+        <div class="card-meta" style="margin-bottom:12px;">Pick an asset to edit its category and nameplate specs.</div>
+        <div id="manage-asset-list"></div>
+      </div>
+
+      <div id="manage-detail-view" class="hidden">
+        <button class="ghost" style="margin:16px 0 8px; padding:6px 10px;" onclick="window.backToManageList()">
+          <i data-lucide="arrow-left" style="width:14px;"></i> Back
+        </button>
+        <div class="card-title" id="manage-asset-title" style="margin-bottom:12px;"></div>
+
+        <div class="panel">
+          <label class="field-label">Category</label>
+          <select id="manage-category-select" onchange="window.saveManageCategory()" style="width:100%;"></select>
+        </div>
+
+        <div class="panel">
+          <label class="field-label">Specs</label>
+          <div id="manage-specs-list" style="margin-top:10px;"></div>
+          <div id="manage-add-spec-row" class="row" style="margin-top:10px; align-items:center;">
+            <input id="manage-new-spec-label" placeholder="Label (e.g. Max pressure)" style="flex:1;">
+            <input id="manage-new-spec-value" placeholder="value" style="width:80px;">
+            <input id="manage-new-spec-unit" placeholder="unit" style="width:64px;">
+            <button class="ghost" style="border:1px solid var(--border);" onclick="window.addManageSpec()"><i data-lucide="plus" style="width:14px;"></i></button>
+          </div>
+        </div>
+      </div>
     </section>
   </main>
 </div>
