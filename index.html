@@ -1,167 +1,134 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
 <title>MDPL CMMS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root {
-    --bg: #17181A;
-    --panel: #202226;
-    --panel-2: #2A2D32;
-    --line: #383B41;
-    --text: #EDEEF0;
-    --muted: #9AA0A8;
-    --amber: #F2B705;
-    --amber-dim: #8C6D06;
-    --red: #E5484D;
-    --green: #4CAF6D;
-    --blue: #5B9BD5;
-    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    --bg: #1B1E21; --panel: #24282C; --panel-raised: #2A2F34; --border: #383E44;
+    --text: #E8EAED; --text-muted: #8B9198; --amber: #FFB020; --amber-dim: #6B4A16;
+    --green: #3ECF8E; --green-bg: rgba(62, 207, 142, 0.14); --red: #E5484D; --radius: 8px;
   }
   * { box-sizing: border-box; }
-  body {
-    margin: 0; background: var(--bg); color: var(--text);
-    font-family: var(--font); font-size: 15px; line-height: 1.4;
+  body { background: var(--bg); color: var(--text); font-family: 'Inter', -apple-system, sans-serif; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  .wrap { max-width: 640px; margin: 0 auto; padding: 16px 14px 40px; }
+  .eyebrow { font-family: 'Oswald', sans-serif; font-size: 11px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-muted); }
+  h1 { font-family: 'Oswald', sans-serif; font-size: 24px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; margin: 2px 0 0; color: var(--text); }
+  h1 span { color: var(--amber); }
+  header.appbar { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-bottom: 1px solid var(--border); background: var(--panel); }
+  select, input[type=number], input[type=date], input[type=text], input[type=email], input[type=password], textarea {
+    background: var(--panel); border: 1px solid var(--border); color: var(--text); border-radius: var(--radius);
+    padding: 9px 10px; font-family: 'JetBrains Mono', monospace; font-size: 14px;
   }
-  header {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 14px 18px; background: var(--panel); border-bottom: 2px solid var(--amber);
-  }
-  header .brand { display: flex; align-items: baseline; gap: 8px; }
-  header .brand b { font-size: 17px; letter-spacing: 0.3px; }
-  header .brand span { color: var(--muted); font-size: 12px; font-family: var(--mono); }
-  header .who { font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 10px; }
-  header button.link { background: none; border: none; color: var(--amber); cursor: pointer; font-size: 13px; padding: 0; }
-
-  nav { display: flex; gap: 2px; background: var(--panel); padding: 0 18px; border-bottom: 1px solid var(--line); }
-  nav button {
-    background: none; border: none; color: var(--muted); padding: 10px 14px;
-    font-size: 14px; cursor: pointer; border-bottom: 2px solid transparent;
-  }
-  nav button.active { color: var(--text); border-bottom-color: var(--amber); }
-
-  main { padding: 18px; max-width: 900px; margin: 0 auto; }
+  textarea { width: 100%; min-height: 60px; resize: vertical; font-family: 'Inter', sans-serif; }
+  label.field-label { font-family: 'Oswald', sans-serif; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); display: block; margin-bottom: 6px; }
+  .field { margin-bottom: 12px; }
+  button { font-family: 'Oswald', sans-serif; font-size: 12px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; padding: 10px 16px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--panel-raised); color: var(--text); cursor: pointer; }
+  button:active { transform: translateY(1px); }
+  button:disabled { opacity: 0.5; cursor: default; }
+  button.primary { background: rgba(255,176,32,0.12); border-color: var(--amber-dim); color: var(--amber); }
+  button.ghost { background: none; }
+  button.big { width: 100%; padding: 16px; font-size: 15px; }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 12px; }
   .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 14px; }
-  .card {
-    background: var(--panel); border: 1px solid var(--line); border-radius: 4px;
-    padding: 14px; margin-bottom: 10px;
-  }
-  .card-title { font-weight: 600; font-size: 15px; margin: 0 0 2px; }
-  .card-meta { color: var(--muted); font-size: 12.5px; font-family: var(--mono); }
-  .badge {
-    display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 11px;
-    font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.4px;
-  }
-  .badge.open { background: #3A2E00; color: var(--amber); }
-  .badge.in_progress { background: #14304A; color: var(--blue); }
-  .badge.closed { background: #16321F; color: var(--green); }
+  .card-title { font-family: 'Oswald', sans-serif; font-weight: 600; font-size: 15px; letter-spacing: 0.02em; margin: 0 0 4px; }
+  .card-meta { color: var(--text-muted); font-size: 12px; font-family: 'JetBrains Mono', monospace; }
+  .badge { display: inline-block; padding: 3px 9px; border-radius: 4px; font-family: 'Oswald', sans-serif; font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
+  .badge.open { background: rgba(255,176,32,0.14); color: var(--amber); }
+  .badge.in_progress { background: rgba(77,163,255,0.14); color: #4DA3FF; }
+  .badge.closed { background: var(--green-bg); color: var(--green); }
   .badge.pm { border: 1px solid var(--amber-dim); color: var(--amber); background: none; }
   .badge.breakdown { border: 1px solid var(--red); color: var(--red); background: none; }
-
-  input, select, textarea, button.btn {
-    background: var(--panel-2); border: 1px solid var(--line); color: var(--text);
-    padding: 9px 10px; border-radius: 4px; font-size: 14px; font-family: var(--font);
-  }
-  textarea { width: 100%; min-height: 60px; resize: vertical; }
-  label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
-  .field { margin-bottom: 10px; }
-  button.btn { cursor: pointer; }
-  button.btn.primary { background: var(--amber); color: #1C1C1C; border-color: var(--amber); font-weight: 600; }
-  button.btn.danger { background: none; border-color: var(--red); color: var(--red); }
-  button.btn.ghost { background: none; }
-  button.btn:disabled { opacity: 0.5; cursor: default; }
-
-  .empty { color: var(--muted); padding: 30px 0; text-align: center; font-size: 14px; }
-  .checklist-item { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+  .readout-empty { font-size: 13px; color: var(--text-muted); padding: 24px 0; text-align: center; }
+  .checklist-item { display: flex; align-items: center; gap: 8px; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 14px; font-family: 'Inter', sans-serif; }
   .checklist-item:last-child { border-bottom: none; }
-  .checklist-item.done { color: var(--muted); text-decoration: line-through; }
-
-  #login-screen { max-width: 340px; margin: 80px auto; padding: 24px; }
-  #login-screen h1 { font-size: 18px; margin-bottom: 4px; }
-  #login-screen p.sub { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
-  #login-screen .field input { width: 100%; }
-  #login-error { color: var(--red); font-size: 13px; margin-top: 8px; min-height: 18px; }
-
+  .checklist-item.done { color: var(--text-muted); text-decoration: line-through; }
+  .tab-nav { display: flex; gap: 4px; border-bottom: 1px solid var(--border); padding: 0 14px; background: var(--panel); }
+  .tab-btn { flex: none; background: transparent; border: none; border-radius: 0; padding: 10px 14px; color: var(--text-muted); border-bottom: 2px solid transparent; font-family: 'Oswald', sans-serif; font-size: 13px; letter-spacing: 0.04em; text-transform: uppercase; cursor: pointer; }
+  .tab-btn.active { color: var(--amber); border-bottom-color: var(--amber); }
   .hidden { display: none !important; }
-  .toast {
-    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-    background: var(--panel-2); border: 1px solid var(--line); padding: 10px 16px;
-    border-radius: 4px; font-size: 13px; z-index: 100;
-  }
-  .toast.error { border-color: var(--red); color: var(--red); }
+  .toast-container { position: fixed; bottom: 20px; left: 0; right: 0; display: flex; flex-direction: column; align-items: center; gap: 8px; z-index: 200; pointer-events: none; }
+  .toast { animation: slideUp .25s ease-out, fadeOut .3s ease-in 2.2s forwards; pointer-events: auto; padding: 10px 16px; border-radius: var(--radius); font-family: 'Oswald', sans-serif; font-size: 12px; letter-spacing: .04em; color: #1B1E21; background: var(--green); box-shadow: 0 4px 16px rgba(0,0,0,.3); }
+  .toast.err { background: var(--red); color: #fff; }
+  @keyframes slideUp { from { transform: translateY(20px); opacity: 0 } to { transform: translateY(0); opacity: 1 } }
+  @keyframes fadeOut { to { opacity: 0 } }
 </style>
 </head>
 <body>
 
-<!-- ===================== LOGIN ===================== -->
-<div id="login-screen" class="card">
-  <h1>MDPL CMMS</h1>
-  <p class="sub">Sign in to log and track maintenance work.</p>
-  <div class="field"><label>Email</label><input id="login-email" type="email"></div>
-  <div class="field"><label>Password</label><input id="login-password" type="password"></div>
-  <button class="btn primary" onclick="signIn()" style="width:100%">Sign in</button>
-  <div id="login-error"></div>
+<!-- ============ LOGIN ============ -->
+<div id="login-screen" class="wrap" style="min-height:100vh; display:flex; flex-direction:column; justify-content:center; max-width:340px;">
+  <div class="eyebrow" style="text-align:center;">MDPL &middot; Maintenance</div>
+  <h1 style="text-align:center; margin-bottom:6px;">CM<span>MS</span></h1>
+  <p class="readout-empty" style="padding:0 0 20px;">Sign in to log and track maintenance work.</p>
+  <div class="field"><label class="field-label">Email</label><input id="login-email" type="email" style="width:100%;"></div>
+  <div class="field"><label class="field-label">Password</label><input id="login-password" type="password" style="width:100%;"></div>
+  <button class="primary big" onclick="signIn()">Sign In</button>
+  <p id="login-error" style="color:var(--red); font-size:13px; text-align:center; margin-top:14px; min-height:18px;"></p>
 </div>
 
-<!-- ===================== APP ===================== -->
+<!-- ============ APP ============ -->
 <div id="app" class="hidden">
-  <header>
-    <div class="brand"><b>MDPL CMMS</b><span>maintenance</span></div>
-    <div class="who">
-      <span id="who-name"></span>
-      <button class="link" onclick="signOut()">Sign out</button>
+  <header class="appbar">
+    <div>
+      <p style="font-family:'Oswald',sans-serif; font-weight:600; margin:0; letter-spacing:0.02em;">MDPL <span style="color:var(--amber);">CMMS</span></p>
+      <p class="readout-empty" style="margin:0; padding:0; font-size:11px; text-align:left;" id="who-name"></p>
     </div>
+    <button id="logout-btn" style="padding:6px 10px; font-size:11px;" onclick="signOut()">Exit</button>
   </header>
 
-  <nav>
-    <button class="active" data-tab="wo" onclick="switchTab('wo')">Work Orders</button>
-    <button data-tab="assets" onclick="switchTab('assets')">Assets</button>
-    <button data-tab="schedules" onclick="switchTab('schedules')">PM Schedules</button>
-  </nav>
+  <div class="tab-nav">
+    <button class="tab-btn active" data-tab="wo" onclick="switchTab('wo')">Work Orders</button>
+    <button class="tab-btn" data-tab="assets" onclick="switchTab('assets')">Assets</button>
+    <button class="tab-btn" data-tab="schedules" onclick="switchTab('schedules')">PM Schedules</button>
+  </div>
 
-  <main>
+  <main class="wrap">
 
     <!-- ---- WORK ORDERS TAB ---- -->
     <section id="tab-wo">
-      <div class="row">
+      <div class="row" style="margin-top:16px;">
         <select id="wo-filter" onchange="loadWorkOrders()">
           <option value="open,in_progress">Open</option>
           <option value="closed">Closed</option>
           <option value="open,in_progress,closed">All</option>
         </select>
-        <button class="btn primary" onclick="openNewWoForm()" id="btn-new-wo">+ New Work Order</button>
+        <button class="primary" onclick="openNewWoForm()" id="btn-new-wo">+ New Work Order</button>
       </div>
 
-      <div id="new-wo-form" class="card hidden">
-        <div class="card-title">New work order</div>
+      <div id="new-wo-form" class="panel hidden">
+        <div class="eyebrow" style="margin-bottom:10px;">New Work Order</div>
         <div class="field">
-          <label>Asset</label>
-          <select id="wo-asset"></select>
+          <label class="field-label">Asset</label>
+          <select id="wo-asset" style="width:100%;"></select>
         </div>
         <div class="field">
-          <label>Type</label>
-          <select id="wo-type">
-            <option value="breakdown">Breakdown / fix</option>
+          <label class="field-label">Type</label>
+          <select id="wo-type" style="width:100%;">
+            <option value="breakdown">Breakdown / Fix</option>
             <option value="pm">PM (linked to a schedule)</option>
           </select>
         </div>
         <div id="wo-schedule-field" class="field hidden">
-          <label>Schedule</label>
-          <select id="wo-schedule"></select>
+          <label class="field-label">Schedule</label>
+          <select id="wo-schedule" style="width:100%;"></select>
         </div>
         <div class="field">
-          <label>Description</label>
+          <label class="field-label">Description</label>
           <textarea id="wo-description" placeholder="What needs to be done / was done"></textarea>
         </div>
-        <div class="field">
-          <label><input type="checkbox" id="wo-close-now" style="width:auto"> Already done — create and close now</label>
+        <div class="field" style="font-family:'Inter',sans-serif; font-size:13px; color:var(--text-muted);">
+          <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+            <input type="checkbox" id="wo-close-now" style="width:auto;"> Already done — create and close now
+          </label>
         </div>
         <div class="row">
-          <button class="btn primary" onclick="createWorkOrder()">Create</button>
-          <button class="btn ghost" onclick="closeNewWoForm()">Cancel</button>
+          <button class="primary" onclick="createWorkOrder()">Create</button>
+          <button class="ghost" onclick="closeNewWoForm()">Cancel</button>
         </div>
       </div>
 
@@ -170,23 +137,23 @@
 
     <!-- ---- ASSETS TAB ---- -->
     <section id="tab-assets" class="hidden">
-      <div class="row">
-        <button class="btn primary" onclick="openNewAssetForm()" id="btn-new-asset">+ New Asset</button>
+      <div class="row" style="margin-top:16px;">
+        <button class="primary" onclick="openNewAssetForm()" id="btn-new-asset">+ New Asset</button>
       </div>
-      <div id="new-asset-form" class="card hidden">
-        <div class="card-title">New asset</div>
-        <div class="field"><label>Name</label><input id="asset-name"></div>
-        <div class="field"><label>Location</label><input id="asset-location"></div>
+      <div id="new-asset-form" class="panel hidden">
+        <div class="eyebrow" style="margin-bottom:10px;">New Asset</div>
+        <div class="field"><label class="field-label">Name</label><input id="asset-name" style="width:100%;"></div>
+        <div class="field"><label class="field-label">Location</label><input id="asset-location" style="width:100%;"></div>
         <div class="field">
-          <label>Criticality</label>
-          <select id="asset-criticality">
+          <label class="field-label">Criticality</label>
+          <select id="asset-criticality" style="width:100%;">
             <option value="">—</option>
             <option>P1</option><option>P2</option><option>P3</option><option>P4</option>
           </select>
         </div>
         <div class="row">
-          <button class="btn primary" onclick="createAsset()">Create</button>
-          <button class="btn ghost" onclick="closeNewAssetForm()">Cancel</button>
+          <button class="primary" onclick="createAsset()">Create</button>
+          <button class="ghost" onclick="closeNewAssetForm()">Cancel</button>
         </div>
       </div>
       <div id="asset-list"></div>
@@ -194,22 +161,22 @@
 
     <!-- ---- SCHEDULES TAB ---- -->
     <section id="tab-schedules" class="hidden">
-      <div class="row">
-        <button class="btn primary" onclick="openNewScheduleForm()" id="btn-new-schedule">+ New PM Schedule</button>
+      <div class="row" style="margin-top:16px;">
+        <button class="primary" onclick="openNewScheduleForm()" id="btn-new-schedule">+ New PM Schedule</button>
       </div>
-      <div id="new-schedule-form" class="card hidden">
-        <div class="card-title">New recurring PM schedule</div>
+      <div id="new-schedule-form" class="panel hidden">
+        <div class="eyebrow" style="margin-bottom:10px;">New Recurring PM Schedule</div>
         <div class="field">
-          <label>Asset</label>
-          <select id="sched-asset"></select>
+          <label class="field-label">Asset</label>
+          <select id="sched-asset" style="width:100%;"></select>
         </div>
-        <div class="field"><label>Title</label><input id="sched-title" placeholder="e.g. 6-Month General PM"></div>
-        <div class="field"><label>Interval (days)</label><input id="sched-interval" type="number" value="180"></div>
-        <div class="field"><label>First due date</label><input id="sched-due" type="date"></div>
-        <div class="field"><label>Reminder — days before due (optional)</label><input id="sched-reminder" type="number"></div>
+        <div class="field"><label class="field-label">Title</label><input id="sched-title" placeholder="e.g. 6-Month General PM" style="width:100%; font-family:'Inter',sans-serif;"></div>
+        <div class="field"><label class="field-label">Interval (days)</label><input id="sched-interval" type="number" value="180" style="width:100%;"></div>
+        <div class="field"><label class="field-label">First due date</label><input id="sched-due" type="date" style="width:100%;"></div>
+        <div class="field"><label class="field-label">Reminder — days before due (optional)</label><input id="sched-reminder" type="number" style="width:100%;"></div>
         <div class="row">
-          <button class="btn primary" onclick="createSchedule()">Create</button>
-          <button class="btn ghost" onclick="closeNewScheduleForm()">Cancel</button>
+          <button class="primary" onclick="createSchedule()">Create</button>
+          <button class="ghost" onclick="closeNewScheduleForm()">Cancel</button>
         </div>
       </div>
       <div id="schedule-list"></div>
@@ -218,15 +185,15 @@
   </main>
 </div>
 
-<div id="toast" class="toast hidden"></div>
+<div id="toast-container" class="toast-container"></div>
 
 <script>
 // ============================================================
 // CONFIG — fill in your Supabase project details
 // ============================================================
-const SUPABASE_URL = "https://eizyetgfrqlrlhvrxjsq.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVpenlldGdmcnFscmxodnJ4anNxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgyMzMwMDUsImV4cCI6MjEwMzgwOTAwNX0.xYjQ5IF2SKYpiXQtxSvSLmT7dPwaHv8w9Z1kpNGdH_g";
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+"const SUPABASE_URL = ""https://eizyetgfrqlrlhvrxjsq.supabase.co"";
+const SUPABASE_ANON_KEY = ""eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVpenlldGdmcnFscmxodnJ4anNxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgyMzMwMDUsImV4cCI6MjEwMzgwOTAwNX0.xYjQ5IF2SKYpiXQtxSvSLmT7dPwaHv8w9Z1kpNGdH_g"";
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);"
 
 let currentUser = null;
 let currentRole = null;
@@ -234,11 +201,12 @@ let assetsCache = [];
 let schedulesCache = [];
 
 // ---------- toast ----------
-function toast(msg, isError) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.className = 'toast' + (isError ? ' error' : '');
-  setTimeout(() => t.classList.add('hidden'), 3000);
+function toast(msg, kind) {
+  const el = document.createElement('div');
+  el.className = 'toast' + (kind === 'err' ? ' err' : '');
+  el.textContent = msg;
+  document.getElementById('toast-container').appendChild(el);
+  setTimeout(() => el.remove(), 2600);
 }
 
 // ---------- auth ----------
@@ -263,11 +231,11 @@ async function onSignedIn(user) {
   currentUser = user;
   const { data: roleRow, error } = await sb.from('user_roles').select('role, full_name').eq('user_id', user.id).single();
   if (error || !roleRow) {
-    toast('No role assigned yet — ask an admin to add you to user_roles.', true);
+    toast('No role assigned yet — ask an admin to add you to user_roles.', 'err');
     return;
   }
   currentRole = roleRow.role;
-  document.getElementById('who-name').textContent = (roleRow.full_name || user.email) + ' · ' + currentRole;
+  document.getElementById('who-name').textContent = (roleRow.full_name || user.email) + ' \u00b7 ' + currentRole;
   document.getElementById('login-screen').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
 
@@ -280,7 +248,6 @@ async function onSignedIn(user) {
   await loadWorkOrders();
 }
 
-// restore session on load
 sb.auth.getSession().then(({ data }) => {
   if (data.session) onSignedIn(data.session.user);
 });
@@ -290,7 +257,7 @@ function switchTab(tab) {
   ['wo','assets','schedules'].forEach(t => {
     document.getElementById('tab-' + t).classList.toggle('hidden', t !== tab);
   });
-  document.querySelectorAll('nav button').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
   if (tab === 'assets') loadAssets(true);
   if (tab === 'schedules') loadSchedules();
 }
@@ -316,7 +283,7 @@ async function createWorkOrder() {
   const description = document.getElementById('wo-description').value.trim();
   const closeNow = document.getElementById('wo-close-now').checked;
 
-  if (!asset_id) { toast('Pick an asset', true); return; }
+  if (!asset_id) { toast('Pick an asset', 'err'); return; }
 
   const payload = {
     asset_id, type, description,
@@ -327,9 +294,8 @@ async function createWorkOrder() {
   };
 
   const { data: wo, error } = await sb.from('work_orders').insert(payload).select().single();
-  if (error) { toast(error.message, true); return; }
+  if (error) { toast(error.message, 'err'); return; }
 
-  // if PM linked to a schedule, seed checklist results for all active items
   if (type === 'pm' && schedule_id) {
     const { data: items } = await sb.from('checklist_items').select('id').eq('schedule_id', schedule_id).eq('active', true);
     if (items && items.length) {
@@ -355,13 +321,13 @@ async function loadWorkOrders() {
     .limit(50);
 
   const list = document.getElementById('wo-list');
-  if (error) { list.innerHTML = '<div class="empty">' + error.message + '</div>'; return; }
-  if (!data || !data.length) { list.innerHTML = '<div class="empty">No work orders here.</div>'; return; }
+  if (error) { list.innerHTML = '<div class="readout-empty">' + error.message + '</div>'; return; }
+  if (!data || !data.length) { list.innerHTML = '<div class="readout-empty">No work orders here.</div>'; return; }
 
   list.innerHTML = '';
   for (const wo of data) {
     const card = document.createElement('div');
-    card.className = 'card';
+    card.className = 'panel';
     card.innerHTML = `
       <div class="row" style="margin-bottom:6px;justify-content:space-between">
         <div>
@@ -371,13 +337,13 @@ async function loadWorkOrders() {
         <span class="card-meta">#${wo.id}</span>
       </div>
       <div class="card-title">${wo.assets?.name || 'Unknown asset'}</div>
-      <div style="margin:6px 0">${wo.description ? escapeHtml(wo.description) : '<span class="card-meta">No description</span>'}</div>
-      <div class="card-meta">opened ${formatDate(wo.opened_at)}${wo.closed_at ? ' · closed ' + formatDate(wo.closed_at) : ''}</div>
+      <div style="margin:6px 0; font-family:'Inter',sans-serif; font-size:14px;">${wo.description ? escapeHtml(wo.description) : '<span class="card-meta">No description</span>'}</div>
+      <div class="card-meta">opened ${formatDate(wo.opened_at)}${wo.closed_at ? ' \u00b7 closed ' + formatDate(wo.closed_at) : ''}</div>
       <div id="checklist-${wo.id}"></div>
       <div class="row" style="margin-top:10px">
         ${wo.status !== 'closed' && (currentRole === 'admin' || currentRole === 'technician') ? `
-          ${wo.status === 'open' ? `<button class="btn" onclick="updateWoStatus(${wo.id},'in_progress')">Start</button>` : ''}
-          <button class="btn primary" onclick="updateWoStatus(${wo.id},'closed')">Close</button>
+          ${wo.status === 'open' ? `<button onclick="updateWoStatus(${wo.id},'in_progress')">Start</button>` : ''}
+          <button class="primary" onclick="updateWoStatus(${wo.id},'closed')">Close</button>
         ` : ''}
       </div>
     `;
@@ -390,7 +356,7 @@ async function updateWoStatus(id, status) {
   const payload = { status };
   if (status === 'closed') payload.closed_at = new Date().toISOString();
   const { error } = await sb.from('work_orders').update(payload).eq('id', id);
-  if (error) { toast(error.message, true); return; }
+  if (error) { toast(error.message, 'err'); return; }
   toast('Updated');
   loadWorkOrders();
 }
@@ -426,9 +392,9 @@ async function createAsset() {
   const name = document.getElementById('asset-name').value.trim();
   const location = document.getElementById('asset-location').value.trim();
   const criticality = document.getElementById('asset-criticality').value || null;
-  if (!name) { toast('Name required', true); return; }
+  if (!name) { toast('Name required', 'err'); return; }
   const { error } = await sb.from('assets').insert({ name, location, criticality });
-  if (error) { toast(error.message, true); return; }
+  if (error) { toast(error.message, 'err'); return; }
   toast('Asset created');
   closeNewAssetForm();
   document.getElementById('asset-name').value = '';
@@ -441,12 +407,12 @@ async function loadAssets(render) {
   if (!error) assetsCache = data || [];
   if (render) {
     const list = document.getElementById('asset-list');
-    if (error) { list.innerHTML = '<div class="empty">' + error.message + '</div>'; return; }
-    if (!assetsCache.length) { list.innerHTML = '<div class="empty">No assets yet.</div>'; return; }
+    if (error) { list.innerHTML = '<div class="readout-empty">' + error.message + '</div>'; return; }
+    if (!assetsCache.length) { list.innerHTML = '<div class="readout-empty">No assets yet.</div>'; return; }
     list.innerHTML = assetsCache.map(a => `
-      <div class="card">
+      <div class="panel">
         <div class="card-title">${escapeHtml(a.name)} ${a.criticality ? '<span class="badge open">' + a.criticality + '</span>' : ''}</div>
-        <div class="card-meta">${a.location || '—'} · ${a.status}</div>
+        <div class="card-meta">${a.location || '\u2014'} \u00b7 ${a.status}</div>
       </div>
     `).join('');
   }
@@ -473,12 +439,12 @@ async function createSchedule() {
   const next_due_at = document.getElementById('sched-due').value;
   const reminder_days_before = document.getElementById('sched-reminder').value || null;
 
-  if (!asset_id || !title || !interval_days || !next_due_at) { toast('Fill all required fields', true); return; }
+  if (!asset_id || !title || !interval_days || !next_due_at) { toast('Fill all required fields', 'err'); return; }
 
   const { error } = await sb.from('recurring_schedules').insert({
     asset_id, title, interval_days, next_due_at, reminder_days_before
   });
-  if (error) { toast(error.message, true); return; }
+  if (error) { toast(error.message, 'err'); return; }
   toast('Schedule created');
   closeNewScheduleForm();
   document.getElementById('sched-title').value = '';
@@ -492,21 +458,21 @@ async function loadSchedules() {
     .order('next_due_at');
   schedulesCache = data || [];
   const list = document.getElementById('schedule-list');
-  if (error) { list.innerHTML = '<div class="empty">' + error.message + '</div>'; return; }
-  if (!schedulesCache.length) { list.innerHTML = '<div class="empty">No PM schedules yet.</div>'; return; }
+  if (error) { list.innerHTML = '<div class="readout-empty">' + error.message + '</div>'; return; }
+  if (!schedulesCache.length) { list.innerHTML = '<div class="readout-empty">No PM schedules yet.</div>'; return; }
 
   list.innerHTML = '';
   for (const s of schedulesCache) {
     const card = document.createElement('div');
-    card.className = 'card';
+    card.className = 'panel';
     card.innerHTML = `
       <div class="card-title">${escapeHtml(s.title)}</div>
-      <div class="card-meta">${s.assets?.name || ''} · every ${s.interval_days}d · next due ${s.next_due_at}</div>
+      <div class="card-meta">${s.assets?.name || ''} \u00b7 every ${s.interval_days}d \u00b7 next due ${s.next_due_at}</div>
       <div id="items-${s.id}" style="margin-top:8px"></div>
       ${currentRole !== 'viewer' ? `
         <div class="row" style="margin-top:8px">
-          <input id="new-item-${s.id}" placeholder="Add checklist item...">
-          <button class="btn" onclick="addChecklistItem(${s.id})">Add</button>
+          <input id="new-item-${s.id}" placeholder="Add checklist item..." style="flex:1; font-family:'Inter',sans-serif;">
+          <button onclick="addChecklistItem(${s.id})">Add</button>
         </div>` : ''}
     `;
     list.appendChild(card);
@@ -527,7 +493,7 @@ async function addChecklistItem(scheduleId) {
   const description = input.value.trim();
   if (!description) return;
   const { error } = await sb.from('checklist_items').insert({ schedule_id: scheduleId, description });
-  if (error) { toast(error.message, true); return; }
+  if (error) { toast(error.message, 'err'); return; }
   input.value = '';
   loadChecklistItems(scheduleId);
 }
@@ -535,7 +501,6 @@ async function addChecklistItem(scheduleId) {
 function populateScheduleSelect(id) {
   const assetId = document.getElementById('wo-asset').value;
   const sel = document.getElementById(id);
-  const relevant = schedulesCache.length ? schedulesCache : [];
   sb.from('recurring_schedules').select('id, title').eq('asset_id', assetId).eq('active', true).then(({ data }) => {
     sel.innerHTML = (data || []).map(s => `<option value="${s.id}">${escapeHtml(s.title)}</option>`).join('');
   });
