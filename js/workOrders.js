@@ -93,6 +93,7 @@ function renderWorkOrders() {
         ${wo.closed_at ? `<br><i data-lucide="check-circle-2" style="width:12px;display:inline-block;margin-right:2px;vertical-align:middle;margin-top:4px;"></i> Closed ${formatDate(wo.closed_at)}` : ''}
       </div>
       <div id="checklist-${wo.id}"></div>
+      <div id="visits-${wo.id}"></div>
       <div class="row" style="margin-top:14px; border-top: 1px solid var(--border); padding-top: 14px;">
         ${wo.status !== 'closed' && (state.currentRole === 'admin' || state.currentRole === 'technician') ? `
           <button class="primary" onclick="window.triggerUpdateFlow(${wo.id})"><i data-lucide="edit" style="width:14px;"></i> Update Ticket</button>
@@ -102,7 +103,29 @@ function renderWorkOrders() {
   `).join('');
   
   lucide.createIcons();
-  state.activeWorkOrders.forEach(wo => { if (wo.type === 'pm' && wo.schedule_id) loadChecklistForWo(wo.id); });
+  state.activeWorkOrders.forEach(wo => {
+    if (wo.type === 'pm' && wo.schedule_id) loadChecklistForWo(wo.id);
+    loadVisitsForWo(wo.id);
+  });
+}
+
+async function loadVisitsForWo(woId) {
+  const { data } = await sb.from('wo_visits')
+    .select('visit_type, action_taken, parts_used, technician, visited_at')
+    .eq('wo_id', woId)
+    .order('visited_at', { ascending: false });
+  const box = document.getElementById('visits-' + woId);
+  if (!box || !data || !data.length) return;
+  box.innerHTML = `<div style="margin-top:10px;">` + data.map(v => `
+    <div class="activity-entry">
+      <span class="activity-date">${formatDate(v.visited_at).split(',')[0]}</span>
+      <div class="activity-body">
+        <p class="activity-title">${v.visit_type.replace('_',' ')}${v.technician ? ' \u00b7 ' + escapeHtml(v.technician) : ''}</p>
+        ${v.action_taken ? `<p class="activity-meta">${escapeHtml(v.action_taken)}</p>` : ''}
+        ${v.parts_used ? `<p class="activity-meta">Parts: ${escapeHtml(v.parts_used)}</p>` : ''}
+      </div>
+    </div>
+  `).join('') + `</div>`;
 }
 
 export function filterWorkOrders() {
@@ -117,9 +140,11 @@ export function triggerUpdateFlow(id) {
   if (!state.woToUpdate) return;
   
   document.getElementById('modal-wo-title').innerText = `WO #${state.woToUpdate.id} - ${state.woToUpdate.assets?.name}`;
-  document.getElementById('modal-wo-original-desc').innerText = state.woToUpdate.description || "No description provided.";
+  document.getElementById('modal-wo-original-desc').innerText = state.woToUpdate.description || "No initial description provided.";
   
   document.getElementById('modal-wo-notes').value = '';
+  document.getElementById('modal-wo-parts').value = '';
+  document.getElementById('modal-wo-technician').value = '';
   document.getElementById('toggle-spare').checked = false;
   document.getElementById('toggle-close').checked = false;
   
@@ -137,6 +162,8 @@ export function closeUpdateModal() {
 
 export function reviewUpdateWo() {
   const note = document.getElementById('modal-wo-notes').value.trim();
+  const parts = document.getElementById('modal-wo-parts').value.trim();
+  const technician = document.getElementById('modal-wo-technician').value.trim();
   const isClosed = document.getElementById('toggle-close').checked;
   const isWaiting = document.getElementById('toggle-spare').checked;
   
@@ -147,16 +174,22 @@ export function reviewUpdateWo() {
   }
 
   let newStatus = state.woToUpdate.status;
-  if (isClosed) newStatus = 'closed';
-  else if (isWaiting) newStatus = 'waiting_parts';
-  else if (note) newStatus = 'in_progress';
+  let visitType = 'update';
+  if (isClosed) { newStatus = 'closed'; visitType = 'closed'; }
+  else if (isWaiting) { newStatus = 'waiting_parts'; visitType = 'awaiting_spares'; }
+  else if (note) { newStatus = 'in_progress'; }
 
   document.getElementById('confirm-status-badge').innerText = newStatus.replace('_', ' ').toUpperCase();
-  document.getElementById('confirm-note-preview').innerText = note ? `[${formatDate(new Date().toISOString())}]\n${note}` : "No additional notes provided.";
+  document.getElementById('confirm-note-preview').innerText =
+    (note || parts || technician)
+      ? [note, parts && `Parts: ${parts}`, technician && `Technician: ${technician}`].filter(Boolean).join('\n')
+      : "No visit details provided.";
 
-  // Store for next step
   state.woToUpdate.pendingStatus = newStatus;
+  state.woToUpdate.pendingVisitType = visitType;
   state.woToUpdate.pendingNote = note;
+  state.woToUpdate.pendingParts = parts;
+  state.woToUpdate.pendingTechnician = technician;
 
   document.getElementById('update-step-input').classList.add('hidden');
   document.getElementById('update-step-confirm').classList.remove('hidden');
@@ -170,25 +203,25 @@ export function backToEditWo() {
 
 export async function confirmSaveWo() {
   setButtonLoading('btn-confirm-save', true);
-  const newStatus = state.woToUpdate.pendingStatus;
-  const note = state.woToUpdate.pendingNote;
+  const wo = state.woToUpdate;
+  const newStatus = wo.pendingStatus;
 
   const payload = { status: newStatus };
   if (newStatus === 'closed') payload.closed_at = new Date().toISOString();
 
-  const { error } = await sb.from('work_orders').update(payload).eq('id', state.woToUpdate.id);
-
+  const { error } = await sb.from('work_orders').update(payload).eq('id', wo.id);
   if (error) { toast(error.message, 'err'); setButtonLoading('btn-confirm-save', false); return; }
 
-  // Attach the note to the status-history row the trigger just created,
-  // instead of appending it onto work_orders.description.
-  if (note) {
-    const { data: histRows } = await sb.from('wo_status_history')
-      .select('id').eq('wo_id', state.woToUpdate.id)
-      .order('changed_at', { ascending: false }).limit(1);
-    if (histRows && histRows[0]) {
-      await sb.from('wo_status_history').update({ note }).eq('id', histRows[0].id);
-    }
+  if (wo.pendingNote || wo.pendingParts || wo.pendingTechnician) {
+    const { error: visitErr } = await sb.from('wo_visits').insert({
+      wo_id: wo.id,
+      visit_type: wo.pendingVisitType,
+      action_taken: wo.pendingNote || null,
+      parts_used: wo.pendingParts || null,
+      technician: wo.pendingTechnician || null,
+      logged_by: state.currentUser.id,
+    });
+    if (visitErr) toast('Status saved, but visit record failed: ' + visitErr.message, 'err');
   }
 
   toast('Work order updated successfully');

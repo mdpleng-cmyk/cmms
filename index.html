@@ -256,8 +256,18 @@
       <div style="font-size:13px; color:var(--text-muted); background:var(--bg); padding:10px; border-radius:6px; margin-bottom:16px; border:1px solid var(--border);" id="modal-wo-original-desc"></div>
       
       <div class="field">
-        <label class="field-label">Add New Note / Update <span style="color:var(--red); display:none;" id="notes-req-star">*</span></label>
-        <textarea id="modal-wo-notes" placeholder="Describe the work done or parts needed..."></textarea>
+        <label class="field-label">Action Taken <span style="color:var(--red); display:none;" id="notes-req-star">*</span></label>
+        <textarea id="modal-wo-notes" placeholder="What was done on this visit..."></textarea>
+      </div>
+      <div class="row" style="gap:10px; margin-bottom:12px;">
+        <div class="field" style="flex:1; margin-bottom:0;">
+          <label class="field-label">Parts Used</label>
+          <input id="modal-wo-parts" placeholder="Optional" style="width:100%;">
+        </div>
+        <div class="field" style="flex:1; margin-bottom:0;">
+          <label class="field-label">Technician</label>
+          <input id="modal-wo-technician" placeholder="Optional" style="width:100%;">
+        </div>
       </div>
       
       <div class="row" style="margin-bottom:20px; gap:16px;">
@@ -285,7 +295,7 @@
       </div>
       
       <div class="field" style="margin-top:16px;">
-        <label class="field-label">Note to Append</label>
+        <label class="field-label">Visit Record</label>
         <div style="font-size:13px; color:var(--text-muted); font-family:'JetBrains Mono', monospace; background:var(--bg); padding:10px; border-radius:6px; border:1px dashed var(--border);" id="confirm-note-preview"></div>
       </div>
 
