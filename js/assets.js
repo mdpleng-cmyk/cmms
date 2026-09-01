@@ -1,5 +1,8 @@
 import { sb, state, toast, setButtonLoading, getLoaderHtml, escapeHtml, formatDate } from './store.js';
 import { populateScheduleSelect, loadSchedules } from './schedules.js';
+import { getAssetStatus, getAllWatchItemsForAsset } from './assetDetailHelpers.js';
+import { getAssetSpecs } from './assetSpecs.js';
+import { renderAssetGlyph } from './assetGlyphs.js';
 
 export function openNewAssetForm() { document.getElementById('new-asset-form').classList.remove('hidden'); }
 export function closeNewAssetForm() { document.getElementById('new-asset-form').classList.add('hidden'); }
@@ -60,11 +63,14 @@ export async function openAssetHistoryModal(assetId, assetName) {
   const schedContainer = document.getElementById('history-schedules-container');
   const historyContainer = document.getElementById('history-list-container');
 
+  const overviewContainer = document.getElementById('history-overview-container');
+
   titleEl.textContent = assetName;
+  overviewContainer.innerHTML = getLoaderHtml('Loading...');
   openContainer.innerHTML = getLoaderHtml('Loading...');
   schedContainer.innerHTML = getLoaderHtml('Loading...');
   historyContainer.innerHTML = getLoaderHtml('Loading...');
-  switchAssetModalTab('open');
+  switchAssetModalTab('overview');
   modal.classList.remove('hidden');
 
   const [woRes, schedRes] = await Promise.all([
@@ -113,6 +119,40 @@ export async function openAssetHistoryModal(assetId, assetName) {
       </div>
     `).join('') : '<div class="card-meta">No closed work orders yet.</div>';
   }
+
+  // Overview: category glyph, derived status, specs, watch items —
+  // all read-only here; editing lives only in the Manage tab.
+  (async () => {
+    const cached = state.assetsCache?.find(a => a.id === assetId);
+    const category = cached?.category || null;
+    const [statusRes, specs] = await Promise.all([
+      getAssetStatus(assetId).catch(() => ({ label: 'Unknown', tone: 'amber' })),
+      getAssetSpecs(assetId).catch(() => []),
+    ]);
+    const scheduleIds = (schedRes.data || []).map(s => s.id);
+    const watchItems = scheduleIds.length ? await getAllWatchItemsForAsset(assetId, scheduleIds).catch(() => []) : [];
+
+    const watchHtml = watchItems.length ? `
+      <div class="watch-banner">
+        <b>Watch items from last inspection</b>
+        ${watchItems.map(w => `${escapeHtml(w.description)}: ${escapeHtml(w.note)} <span class="card-meta">(${w.date})</span>`).join('<br>')}
+      </div>` : '';
+
+    const specsHtml = specs.length ? specs.map(s => `
+      <div class="row" style="justify-content:space-between; margin-bottom:6px;">
+        <span class="card-meta">${escapeHtml(s.label)}</span>
+        <span style="font-size:13px;">${escapeHtml(s.value ?? '\u2014')}${s.unit ? ' ' + escapeHtml(s.unit) : ''}</span>
+      </div>
+    `).join('') : '<div class="card-meta">No specs added yet. Add them in the Manage tab.</div>';
+
+    overviewContainer.innerHTML = `
+      <div style="text-align:center; margin-bottom:12px;">${renderAssetGlyph(category)}</div>
+      <div class="status-pill ${statusRes.tone}">${statusRes.label}</div>
+      ${watchHtml}
+      <div class="eyebrow" style="margin-bottom:8px;">Specs</div>
+      ${specsHtml}
+    `;
+  })();
 
   if (schedRes.error) {
     schedContainer.innerHTML = `<div class="card-meta" style="color:var(--red);">${schedRes.error.message}</div>`;

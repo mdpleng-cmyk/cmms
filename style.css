@@ -61,6 +61,13 @@ button.big { width: 100%; padding: 14px; font-size: 15px; }
 .activity-title { font-size: 13px; font-weight: 500; margin: 0 0 2px; color: var(--text); }
 .activity-meta { font-size: 11px; color: var(--text-muted); }
 
+.status-pill { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; margin-bottom: 14px; }
+.status-pill.red { background: rgba(229,72,77,0.14); color: var(--red); }
+.status-pill.amber { background: rgba(255,176,32,0.14); color: var(--amber); }
+.status-pill.green { background: var(--green-bg); color: var(--green); }
+.watch-banner { background: rgba(255,176,32,0.1); border: 1px solid var(--amber-dim); border-radius: 6px; padding: 10px 12px; font-size: 12.5px; margin-bottom: 14px; }
+.watch-banner b { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--amber); margin-bottom: 3px; }
+
 .hidden { display: none !important; }
 @keyframes spin { 100% { transform: rotate(360deg); } }
 .spin { animation: spin 1s linear infinite; }

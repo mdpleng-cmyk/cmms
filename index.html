@@ -219,12 +219,16 @@
     <div class="card-title" id="history-asset-title" style="margin-bottom:16px; color:var(--amber);">Asset Name</div>
 
     <div class="modal-tabs">
-      <button class="modal-tab-btn active" data-modal-tab="open" onclick="window.switchAssetModalTab('open')">Open Work Orders</button>
+      <button class="modal-tab-btn active" data-modal-tab="overview" onclick="window.switchAssetModalTab('overview')">Overview</button>
+      <button class="modal-tab-btn" data-modal-tab="open" onclick="window.switchAssetModalTab('open')">Open Work Orders</button>
       <button class="modal-tab-btn" data-modal-tab="pm" onclick="window.switchAssetModalTab('pm')">PM Schedules</button>
       <button class="modal-tab-btn" data-modal-tab="history" onclick="window.switchAssetModalTab('history')">History</button>
     </div>
     <div style="max-height: 420px; overflow-y: auto; padding-right: 4px;">
-      <div data-modal-panel="open">
+      <div data-modal-panel="overview">
+        <div id="history-overview-container"></div>
+      </div>
+      <div data-modal-panel="open" class="hidden">
         <div id="history-open-container"></div>
       </div>
       <div data-modal-panel="pm" class="hidden">
