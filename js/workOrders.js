@@ -84,7 +84,9 @@ function renderWorkOrders() {
         </div>
         <span class="card-meta">#${wo.id}</span>
       </div>
-      <div class="card-title">${wo.assets?.name || 'Unknown asset'}</div>
+      <div class="card-title" style="cursor:pointer; display:inline-flex; align-items:center; gap:6px; transition: opacity 0.2s;" onmouseover="this.style.opacity=0.8" onmouseout="this.style.opacity=1" onclick="window.openAssetHistoryModal(${wo.asset_id}, '${escapeHtml(wo.assets?.name || 'Unknown asset').replace(/'/g, "\\'")}')">
+        ${escapeHtml(wo.assets?.name || 'Unknown asset')} <i data-lucide="external-link" style="width:14px; color:var(--text-muted);"></i>
+      </div>
       <div style="margin:8px 0; font-size:14px; line-height:1.5;">${wo.description ? escapeHtml(wo.description) : '<span class="card-meta">No description provided</span>'}</div>
       <div class="card-meta" style="margin-bottom:12px;">
         <i data-lucide="clock" style="width:12px;display:inline-block;margin-right:2px;vertical-align:middle;"></i> Opened ${formatDate(wo.opened_at)}

@@ -36,45 +36,55 @@ export async function loadAssets(render) {
     list.innerHTML = state.assetsCache.map(a => `
       <div class="panel">
         <div class="row" style="justify-content:space-between; margin-bottom:4px;">
-          <div class="card-title" style="margin:0;">${escapeHtml(a.name)}</div>
+          <div class="card-title" style="margin:0; cursor:pointer; transition: opacity 0.2s;" onmouseover="this.style.opacity=0.8" onmouseout="this.style.opacity=1" onclick="window.openAssetHistoryModal(${a.id}, '${escapeHtml(a.name).replace(/'/g, "\\'")}')">
+            ${escapeHtml(a.name)} <i data-lucide="external-link" style="width:14px; margin-left:4px; color:var(--text-muted);"></i>
+          </div>
           ${a.criticality ? `<span class="badge open"><i data-lucide="alert-triangle" style="width:10px;"></i> ${a.criticality}</span>` : ''}
         </div>
         <div class="card-meta"><i data-lucide="map-pin" style="width:12px; display:inline-block; vertical-align:-2px;"></i> ${a.location || 'No location set'}</div>
-        <button class="ghost" style="padding:6px 0; margin-top:8px; font-size:12px; color:var(--text-muted);" onclick="window.toggleAssetHistory(${a.id}, this)">
-          <i data-lucide="history" style="width:14px;"></i> View Maintenance History
-        </button>
-        <div id="asset-hist-${a.id}" class="hidden" style="margin-top:8px; padding-top:8px; border-top:1px solid var(--border);"></div>
       </div>
     `).join('');
     lucide.createIcons();
   }
 }
 
-export async function toggleAssetHistory(assetId, btnEl) {
-  const histDiv = document.getElementById(`asset-hist-${assetId}`);
-  if (!histDiv.classList.contains('hidden')) {
-    histDiv.classList.add('hidden');
-    btnEl.innerHTML = `<i data-lucide="history" style="width:14px;"></i> View Maintenance History`;
-    lucide.createIcons({ root: btnEl });
+export async function openAssetHistoryModal(assetId, assetName) {
+  const modal = document.getElementById('modal-asset-history');
+  const titleEl = document.getElementById('history-asset-title');
+  const listContainer = document.getElementById('history-list-container');
+
+  titleEl.textContent = assetName;
+  listContainer.innerHTML = getLoaderHtml('Fetching history...');
+  modal.classList.remove('hidden');
+
+  const { data, error } = await sb.from('work_orders')
+    .select('id, type, status, closed_at')
+    .eq('asset_id', assetId)
+    .eq('status', 'closed')
+    .order('closed_at', { ascending: false })
+    .limit(20);
+  
+  if (error) {
+    listContainer.innerHTML = `<div class="card-meta" style="color:var(--red);">${error.message}</div>`;
     return;
   }
-  histDiv.classList.remove('hidden');
-  btnEl.innerHTML = `<i data-lucide="chevron-up" style="width:14px;"></i> Hide History`;
-  lucide.createIcons({ root: btnEl });
-  histDiv.innerHTML = getLoaderHtml('Fetching history...');
-  
-  const { data } = await sb.from('work_orders').select('id, type, status, closed_at').eq('asset_id', assetId).eq('status', 'closed').order('closed_at', { ascending: false }).limit(5);
   
   if (!data || !data.length) {
-    histDiv.innerHTML = '<div class="card-meta">No completed work orders found.</div>';
+    listContainer.innerHTML = '<div class="readout-empty"><i data-lucide="history" style="width:24px;height:24px;"></i> No completed work orders found.</div>';
+    lucide.createIcons({ root: listContainer });
     return;
   }
-  histDiv.innerHTML = data.map(wo => `
-    <div style="font-size:12px; display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.05);">
+  
+  listContainer.innerHTML = data.map(wo => `
+    <div style="font-size:13px; display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid var(--border);">
       <span><span style="color:var(--text-muted)">#${wo.id}</span> &middot; ${wo.type}</span>
       <span style="color:var(--text-muted)">${formatDate(wo.closed_at)}</span>
     </div>
   `).join('');
+}
+
+export function closeAssetHistoryModal() {
+  document.getElementById('modal-asset-history').classList.add('hidden');
 }
 
 // Custom Searchable Dropdown Logic

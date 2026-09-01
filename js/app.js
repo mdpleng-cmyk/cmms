@@ -1,6 +1,6 @@
 import { sb } from './store.js';
 import { signIn, signOut, onSignedIn } from './auth.js';
-import { openNewAssetForm, closeNewAssetForm, createAsset, loadAssets, toggleAssetHistory, renderAssetDropdown, selectAsset } from './assets.js';
+import { openNewAssetForm, closeNewAssetForm, createAsset, loadAssets, openAssetHistoryModal, closeAssetHistoryModal, renderAssetDropdown, selectAsset } from './assets.js';
 import { openNewScheduleForm, closeNewScheduleForm, createSchedule, loadSchedules, addChecklistItem } from './schedules.js';
 import { openNewWoForm, closeNewWoForm, createWorkOrder, loadWorkOrders, filterWorkOrders, updateWoStatus, triggerCloseFlow, confirmCloseWo, closeModal, toggleChecklistItem } from './workOrders.js';
 
@@ -11,7 +11,8 @@ window.signOut = signOut;
 window.openNewAssetForm = openNewAssetForm;
 window.closeNewAssetForm = closeNewAssetForm;
 window.createAsset = createAsset;
-window.toggleAssetHistory = toggleAssetHistory;
+window.openAssetHistoryModal = openAssetHistoryModal;
+window.closeAssetHistoryModal = closeAssetHistoryModal;
 window.selectAsset = selectAsset;
 
 window.openNewScheduleForm = openNewScheduleForm;
