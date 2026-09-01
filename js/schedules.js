@@ -47,6 +47,11 @@ export async function loadSchedules() {
       ${state.currentRole !== 'viewer' ? `
         <div class="row" style="margin-top:12px">
           <input id="new-item-${s.id}" placeholder="Add checklist item..." style="flex:1;">
+          <select id="new-item-type-${s.id}" style="width:auto;" onchange="window.toggleNewItemUnit(${s.id})">
+            <option value="check">Check</option>
+            <option value="reading">Reading</option>
+          </select>
+          <input id="new-item-unit-${s.id}" placeholder="unit" style="width:64px; display:none;">
           <button class="ghost" onclick="window.addChecklistItem(${s.id})" style="border:1px solid var(--border);"><i data-lucide="plus" style="width:14px;"></i></button>
         </div>` : ''}
     </div>
@@ -56,21 +61,31 @@ export async function loadSchedules() {
 }
 
 export async function loadChecklistItems(scheduleId) {
-  const { data } = await sb.from('checklist_items').select('id, description').eq('schedule_id', scheduleId).eq('active', true).order('added_at');
+  const { data } = await sb.from('checklist_items').select('id, description, item_type, unit').eq('schedule_id', scheduleId).eq('active', true).order('added_at');
   const box = document.getElementById('items-' + scheduleId);
   if (!box) return;
   if (!data || !data.length) { box.innerHTML = '<div class="card-meta">No checklist tasks defined.</div>'; return; }
-  box.innerHTML = data.map(i => `<div class="checklist-item"><i data-lucide="minus" style="width:12px; color:var(--text-muted); margin-top:2px;"></i> ${escapeHtml(i.description)}</div>`).join('');
+  box.innerHTML = data.map(i => `<div class="checklist-item"><i data-lucide="${i.item_type === 'reading' ? 'gauge' : 'minus'}" style="width:12px; color:var(--text-muted); margin-top:2px;"></i> ${escapeHtml(i.description)}${i.item_type === 'reading' ? ` <span class="card-meta">(${escapeHtml(i.unit)})</span>` : ''}</div>`).join('');
   lucide.createIcons({ root: box });
+}
+
+export function toggleNewItemUnit(scheduleId) {
+  const isReading = document.getElementById('new-item-type-' + scheduleId).value === 'reading';
+  document.getElementById('new-item-unit-' + scheduleId).style.display = isReading ? '' : 'none';
 }
 
 export async function addChecklistItem(scheduleId) {
   const input = document.getElementById('new-item-' + scheduleId);
   const description = input.value.trim();
   if (!description) return;
-  const { error } = await sb.from('checklist_items').insert({ schedule_id: scheduleId, description });
+  const item_type = document.getElementById('new-item-type-' + scheduleId).value;
+  const unitInput = document.getElementById('new-item-unit-' + scheduleId);
+  const unit = item_type === 'reading' ? unitInput.value.trim() : null;
+  if (item_type === 'reading' && !unit) { toast('Enter a unit for readings (e.g. bar, °C)', 'err'); return; }
+  const { error } = await sb.from('checklist_items').insert({ schedule_id: scheduleId, description, item_type, unit });
   if (error) { toast(error.message, 'err'); return; }
   input.value = '';
+  unitInput.value = '';
   loadChecklistItems(scheduleId);
 }
 

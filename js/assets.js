@@ -58,10 +58,9 @@ export async function openAssetHistoryModal(assetId, assetName) {
   modal.classList.remove('hidden');
 
   const { data, error } = await sb.from('work_orders')
-    .select('id, type, status, closed_at')
+    .select('id, type, status, opened_at, closed_at')
     .eq('asset_id', assetId)
-    .eq('status', 'closed')
-    .order('closed_at', { ascending: false })
+    .order('opened_at', { ascending: false })
     .limit(20);
   
   if (error) {
@@ -70,15 +69,15 @@ export async function openAssetHistoryModal(assetId, assetName) {
   }
   
   if (!data || !data.length) {
-    listContainer.innerHTML = '<div class="readout-empty"><i data-lucide="history" style="width:24px;height:24px;"></i> No completed work orders found.</div>';
+    listContainer.innerHTML = '<div class="readout-empty"><i data-lucide="history" style="width:24px;height:24px;"></i> No work orders found.</div>';
     lucide.createIcons({ root: listContainer });
     return;
   }
   
   listContainer.innerHTML = data.map(wo => `
     <div style="font-size:13px; display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid var(--border);">
-      <span><span style="color:var(--text-muted)">#${wo.id}</span> &middot; ${wo.type}</span>
-      <span style="color:var(--text-muted)">${formatDate(wo.closed_at)}</span>
+      <span><span style="color:var(--text-muted)">#${wo.id}</span> &middot; ${wo.type} &middot; <span class="badge ${wo.status}" style="font-size:9px;">${wo.status.replace('_',' ')}</span></span>
+      <span style="color:var(--text-muted)">${formatDate(wo.closed_at || wo.opened_at)}</span>
     </div>
   `).join('');
 }

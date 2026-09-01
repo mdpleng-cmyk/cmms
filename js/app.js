@@ -1,8 +1,8 @@
 import { sb } from './store.js';
 import { signIn, signOut, onSignedIn } from './auth.js';
 import { openNewAssetForm, closeNewAssetForm, createAsset, loadAssets, openAssetHistoryModal, closeAssetHistoryModal, renderAssetDropdown, selectAsset } from './assets.js';
-import { openNewScheduleForm, closeNewScheduleForm, createSchedule, loadSchedules, addChecklistItem } from './schedules.js';
-import { openNewWoForm, closeNewWoForm, createWorkOrder, loadWorkOrders, filterWorkOrders, triggerUpdateFlow, closeUpdateModal, reviewUpdateWo, backToEditWo, confirmSaveWo, toggleChecklistItem } from './workOrders.js';
+import { openNewScheduleForm, closeNewScheduleForm, createSchedule, loadSchedules, addChecklistItem, toggleNewItemUnit } from './schedules.js';
+import { openNewWoForm, closeNewWoForm, createWorkOrder, loadWorkOrders, filterWorkOrders, triggerUpdateFlow, closeUpdateModal, reviewUpdateWo, backToEditWo, confirmSaveWo, toggleChecklistItem, saveReadingValue } from './workOrders.js';
 
 // Bind to Window so HTML onclicks work
 window.signIn = signIn;
@@ -19,6 +19,7 @@ window.openNewScheduleForm = openNewScheduleForm;
 window.closeNewScheduleForm = closeNewScheduleForm;
 window.createSchedule = createSchedule;
 window.addChecklistItem = addChecklistItem;
+window.toggleNewItemUnit = toggleNewItemUnit;
 
 window.openNewWoForm = openNewWoForm;
 window.closeNewWoForm = closeNewWoForm;
@@ -31,6 +32,7 @@ window.reviewUpdateWo = reviewUpdateWo;
 window.backToEditWo = backToEditWo;
 window.confirmSaveWo = confirmSaveWo;
 window.toggleChecklistItem = toggleChecklistItem;
+window.saveReadingValue = saveReadingValue;
 
 // Tab Logic
 window.switchTab = function(tab) {

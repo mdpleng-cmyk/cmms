@@ -198,20 +198,40 @@ export async function confirmSaveWo() {
 }
 
 async function loadChecklistForWo(woId) {
-  const { data } = await sb.from('wo_checklist_results').select('id, done, checklist_items(description)').eq('wo_id', woId);
+  const { data } = await sb.from('wo_checklist_results')
+    .select('id, done, result_value, checklist_items(description, item_type, unit)')
+    .eq('wo_id', woId);
   const box = document.getElementById('checklist-' + woId);
   if (!box || !data || !data.length) return;
-  box.innerHTML = `<div style="background:var(--bg); border:1px solid var(--border); border-radius:6px; padding:0 12px; margin-top:12px;">` + 
-    data.map(r => `
-    <label class="checklist-item ${r.done ? 'done' : ''}" style="cursor:pointer;">
-      <input type="checkbox" ${r.done ? 'checked' : ''} ${state.currentRole === 'viewer' ? 'disabled' : ''} onchange="window.toggleChecklistItem(${r.id}, this)">
-      <span>${escapeHtml(r.checklist_items.description)}</span>
-    </label>
-  `).join('') + `</div>`;
+  const readOnly = state.currentRole === 'viewer';
+  box.innerHTML = `<div style="background:var(--bg); border:1px solid var(--border); border-radius:6px; padding:0 12px; margin-top:12px;">` +
+    data.map(r => {
+      const item = r.checklist_items;
+      if (item.item_type === 'reading') {
+        return `
+        <div class="checklist-item">
+          <span style="flex:1;">${escapeHtml(item.description)}</span>
+          <input type="number" step="any" value="${r.result_value ?? ''}" placeholder="value" style="width:80px;"
+            ${readOnly ? 'disabled' : ''} onchange="window.saveReadingValue(${r.id}, this)">
+          <span class="card-meta" style="margin-left:4px;">${escapeHtml(item.unit || '')}</span>
+        </div>`;
+      }
+      return `
+      <label class="checklist-item ${r.done ? 'done' : ''}" style="cursor:pointer;">
+        <input type="checkbox" ${r.done ? 'checked' : ''} ${readOnly ? 'disabled' : ''} onchange="window.toggleChecklistItem(${r.id}, this)">
+        <span>${escapeHtml(item.description)}</span>
+      </label>`;
+    }).join('') + `</div>`;
 }
 
 export async function toggleChecklistItem(resultId, checkboxEl) {
   const done = checkboxEl.checked;
   checkboxEl.closest('label').classList.toggle('done', done);
-  await sb.from('wo_checklist_results').update({ done, done_at: done ? new Date().toISOString() : null }).eq('id', resultId);
+  await sb.from('wo_checklist_results').update({ done, result_check: done, done_at: done ? new Date().toISOString() : null }).eq('id', resultId);
+}
+
+export async function saveReadingValue(resultId, inputEl) {
+  const raw = inputEl.value.trim();
+  const value = raw === '' ? null : parseFloat(raw);
+  await sb.from('wo_checklist_results').update({ result_value: value, done: value !== null, done_at: value !== null ? new Date().toISOString() : null }).eq('id', resultId);
 }
