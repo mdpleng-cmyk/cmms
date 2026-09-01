@@ -15,6 +15,7 @@ window.openAssetHistoryModal = openAssetHistoryModal;
 window.closeAssetHistoryModal = closeAssetHistoryModal;
 window.selectAsset = selectAsset;
 window.goToSchedule = goToSchedule;
+window.toggleScheduleItems = toggleScheduleItems;
 
 window.openNewScheduleForm = openNewScheduleForm;
 window.closeNewScheduleForm = closeNewScheduleForm;
