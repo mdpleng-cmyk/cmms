@@ -69,16 +69,14 @@ Manages equipment records and historical context.
 * **`selectAsset(id, name)`**: Handles the user clicking an item in the custom dropdown and populates the hidden input values.
 
 ### `js/workOrders.js`
-
 Manages the core maintenance ticketing workflow and closure constraints.
-
-* **`createWorkOrder()` / `openNewWoForm()` / `closeNewWoForm()**`: Handles form submission, linking PM schedules if applicable, and inserting initial checklist records.
+*   **`createWorkOrder()` / `openNewWoForm()` / `closeNewWoForm()`**: Handles form submission, linking PM schedules if applicable, and inserting initial checklist records.
 *   **`loadWorkOrders()` / `renderWorkOrders()`**: Fetches tickets based on the active filter (Open/Closed) and builds the DOM cards. Asset names on the cards act as interactive links that trigger `openAssetHistoryModal()`.
-* **`filterWorkOrders()`**: Client-side search function that hides/shows DOM cards based on text input.
-* **`updateWoStatus(id, status)`**: Instantly updates a ticket's status (e.g., setting it to "in_progress").
-* **`triggerCloseFlow(id)` / `closeModal()**`: Opens the closure speed-bump modal and dynamically sets "Resolution Notes" as mandatory for breakdown tickets.
-* **`confirmCloseWo()`**: Validates the closure notes, appends them to the description, and finalizes the ticket in Supabase.
-* **`loadChecklistForWo(woId)` / `toggleChecklistItem(resultId, checkboxEl)**`: Fetches and toggles the completion status of individual PM tasks attached to a specific ticket.
+*   **`filterWorkOrders()`**: Client-side search function that hides/shows DOM cards based on text input.
+*   **`triggerUpdateFlow(id)` / `closeUpdateModal()`**: Opens the unified update modal for a specific ticket, loading its original description.
+*   **`reviewUpdateWo()` / `backToEditWo()`**: Transitions the modal to the confirmation step. Dynamically calculates the new ticket status (`closed`, `waiting_parts`, `in_progress`) based on checkbox states and text input. Validates that breakdown closures include resolution notes.
+*   **`confirmSaveWo()`**: Appends the new timestamped note and status change to the ticket's description and finalizes the write to Supabase.
+*   **`loadChecklistForWo(woId)` / `toggleChecklistItem(resultId, checkboxEl)`**: Fetches and toggles the completion status of individual PM tasks attached to a specific ticket.
 
 ### `js/schedules.js`
 
