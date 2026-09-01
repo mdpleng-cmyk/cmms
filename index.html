@@ -207,40 +207,40 @@
   </div>
 </div>
 
-<!-- Asset History Modal -->
-<div id="modal-asset-history" class="modal-overlay hidden">
-  <div class="modal-box" style="max-width:480px;">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-      <div class="eyebrow">Asset Profile</div>
-      <button class="ghost" style="padding:4px; margin:-4px;" onclick="window.closeAssetHistoryModal()">
-        <i data-lucide="x" style="width:16px; color:var(--text-muted);"></i>
-      </button>
-    </div>
-    <div class="card-title" id="history-asset-title" style="margin-bottom:16px; color:var(--amber);">Asset Name</div>
+<!-- Asset Detail Page (full-screen takeover) -->
+<div id="asset-page" class="hidden">
+  <div class="asset-topbar">
+    <button class="ghost" onclick="window.closeAssetHistoryModal()"><i data-lucide="arrow-left" style="width:16px;"></i> Back</button>
+    <div class="card-title" id="history-asset-title" style="margin:0; color:var(--amber);">Asset Name</div>
+    <span style="width:70px;"></span>
+  </div>
 
-    <div class="modal-tabs">
-      <button class="modal-tab-btn active" data-modal-tab="overview" onclick="window.switchAssetModalTab('overview')">Overview</button>
-      <button class="modal-tab-btn" data-modal-tab="open" onclick="window.switchAssetModalTab('open')">Open Work Orders</button>
-      <button class="modal-tab-btn" data-modal-tab="pm" onclick="window.switchAssetModalTab('pm')">PM Schedules</button>
-      <button class="modal-tab-btn" data-modal-tab="history" onclick="window.switchAssetModalTab('history')">History</button>
-    </div>
-    <div style="max-height: 420px; overflow-y: auto; padding-right: 4px;">
-      <div data-modal-panel="overview">
-        <div id="history-overview-container"></div>
-      </div>
-      <div data-modal-panel="open" class="hidden">
-        <div id="history-open-container"></div>
-      </div>
-      <div data-modal-panel="pm" class="hidden">
-        <div id="history-schedules-container"></div>
-      </div>
-      <div data-modal-panel="history" class="hidden">
-        <div id="history-list-container"></div>
-      </div>
+  <div class="asset-layout">
+    <div class="panel">
+      <div id="asset-page-glyph" style="display:flex; justify-content:center; margin-bottom:14px;"></div>
+      <div id="asset-page-status"></div>
+      <div class="eyebrow" style="margin:14px 0 8px;">Specs</div>
+      <div id="asset-page-specs"></div>
+      <div id="asset-page-watch"></div>
     </div>
 
-    <div class="row" style="margin-top:20px; justify-content:flex-end;">
-      <button class="primary" onclick="window.closeAssetHistoryModal()">Close</button>
+    <div class="panel" style="padding:0; overflow:hidden;">
+      <div class="modal-tabs" style="padding:0 18px; margin:0;">
+        <button class="modal-tab-btn active" data-modal-tab="open" onclick="window.switchAssetModalTab('open')">Open Work Orders</button>
+        <button class="modal-tab-btn" data-modal-tab="pm" onclick="window.switchAssetModalTab('pm')">PM Schedules</button>
+        <button class="modal-tab-btn" data-modal-tab="history" onclick="window.switchAssetModalTab('history')">History</button>
+      </div>
+      <div style="padding:18px; max-height:70vh; overflow-y:auto;">
+        <div data-modal-panel="open">
+          <div id="history-open-container"></div>
+        </div>
+        <div data-modal-panel="pm" class="hidden">
+          <div id="history-schedules-container"></div>
+        </div>
+        <div data-modal-panel="history" class="hidden">
+          <div id="history-list-container"></div>
+        </div>
+      </div>
     </div>
   </div>
 </div>

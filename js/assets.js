@@ -57,21 +57,27 @@ export function switchAssetModalTab(tab) {
 }
 
 export async function openAssetHistoryModal(assetId, assetName) {
-  const modal = document.getElementById('modal-asset-history');
+  document.getElementById('asset-page').classList.remove('hidden');
+  window.scrollTo(0, 0);
+
   const titleEl = document.getElementById('history-asset-title');
+  const glyphEl = document.getElementById('asset-page-glyph');
+  const statusEl = document.getElementById('asset-page-status');
+  const specsEl = document.getElementById('asset-page-specs');
+  const watchEl = document.getElementById('asset-page-watch');
   const openContainer = document.getElementById('history-open-container');
   const schedContainer = document.getElementById('history-schedules-container');
   const historyContainer = document.getElementById('history-list-container');
 
-  const overviewContainer = document.getElementById('history-overview-container');
-
   titleEl.textContent = assetName;
-  overviewContainer.innerHTML = getLoaderHtml('Loading...');
+  glyphEl.innerHTML = '';
+  statusEl.innerHTML = getLoaderHtml('Loading...');
+  specsEl.innerHTML = '';
+  watchEl.innerHTML = '';
   openContainer.innerHTML = getLoaderHtml('Loading...');
   schedContainer.innerHTML = getLoaderHtml('Loading...');
   historyContainer.innerHTML = getLoaderHtml('Loading...');
-  switchAssetModalTab('overview');
-  modal.classList.remove('hidden');
+  switchAssetModalTab('open');
 
   const [woRes, schedRes] = await Promise.all([
     sb.from('work_orders')
@@ -120,38 +126,32 @@ export async function openAssetHistoryModal(assetId, assetName) {
     `).join('') : '<div class="card-meta">No closed work orders yet.</div>';
   }
 
-  // Overview: category glyph, derived status, specs, watch items —
-  // all read-only here; editing lives only in the Manage tab.
+  // Rail: glyph, derived status, specs, watch items — read-only; editing lives only in the Manage tab.
   (async () => {
     const cached = state.assetsCache?.find(a => a.id === assetId);
     const category = cached?.category || null;
+    glyphEl.innerHTML = renderAssetGlyph(category);
+
     const [statusRes, specs] = await Promise.all([
       getAssetStatus(assetId).catch(() => ({ label: 'Unknown', tone: 'amber' })),
       getAssetSpecs(assetId).catch(() => []),
     ]);
-    const scheduleIds = (schedRes.data || []).map(s => s.id);
-    const watchItems = scheduleIds.length ? await getAllWatchItemsForAsset(assetId, scheduleIds).catch(() => []) : [];
+    statusEl.innerHTML = `<div class="status-pill ${statusRes.tone}">${statusRes.label}</div>`;
 
-    const watchHtml = watchItems.length ? `
-      <div class="watch-banner">
-        <b>Watch items from last inspection</b>
-        ${watchItems.map(w => `${escapeHtml(w.description)}: ${escapeHtml(w.note)} <span class="card-meta">(${w.date})</span>`).join('<br>')}
-      </div>` : '';
-
-    const specsHtml = specs.length ? specs.map(s => `
+    specsEl.innerHTML = specs.length ? specs.map(s => `
       <div class="row" style="justify-content:space-between; margin-bottom:6px;">
         <span class="card-meta">${escapeHtml(s.label)}</span>
         <span style="font-size:13px;">${escapeHtml(s.value ?? '\u2014')}${s.unit ? ' ' + escapeHtml(s.unit) : ''}</span>
       </div>
     `).join('') : '<div class="card-meta">No specs added yet. Add them in the Manage tab.</div>';
 
-    overviewContainer.innerHTML = `
-      <div style="text-align:center; margin-bottom:12px;">${renderAssetGlyph(category)}</div>
-      <div class="status-pill ${statusRes.tone}">${statusRes.label}</div>
-      ${watchHtml}
-      <div class="eyebrow" style="margin-bottom:8px;">Specs</div>
-      ${specsHtml}
-    `;
+    const scheduleIds = (schedRes.data || []).map(s => s.id);
+    const watchItems = scheduleIds.length ? await getAllWatchItemsForAsset(assetId, scheduleIds).catch(() => []) : [];
+    watchEl.innerHTML = watchItems.length ? `
+      <div class="watch-banner">
+        <b>Watch items from last inspection</b>
+        ${watchItems.map(w => `${escapeHtml(w.description)}: ${escapeHtml(w.note)} <span class="card-meta">(${w.date})</span>`).join('<br>')}
+      </div>` : '';
   })();
 
   if (schedRes.error) {
@@ -192,8 +192,12 @@ export async function openAssetHistoryModal(assetId, assetName) {
         <div id="sched-items-${s.id}" class="hidden" style="margin-top:8px; padding-left:4px;">${itemsHtml}</div>
       </div>`;
     }).join('');
-    lucide.createIcons({ root: schedContainer });
   }
+  lucide.createIcons({ root: document.getElementById('asset-page') });
+}
+
+export function closeAssetHistoryModal() {
+  document.getElementById('asset-page').classList.add('hidden');
 }
 
 export function toggleScheduleItems(scheduleId) {
