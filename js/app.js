@@ -2,7 +2,7 @@ import { sb } from './store.js';
 import { signIn, signOut, onSignedIn } from './auth.js';
 import { openNewAssetForm, closeNewAssetForm, createAsset, loadAssets, openAssetHistoryModal, closeAssetHistoryModal, renderAssetDropdown, selectAsset } from './assets.js';
 import { openNewScheduleForm, closeNewScheduleForm, createSchedule, loadSchedules, addChecklistItem } from './schedules.js';
-import { openNewWoForm, closeNewWoForm, createWorkOrder, loadWorkOrders, filterWorkOrders, updateWoStatus, triggerCloseFlow, confirmCloseWo, closeModal, toggleChecklistItem } from './workOrders.js';
+import { openNewWoForm, closeNewWoForm, createWorkOrder, loadWorkOrders, filterWorkOrders, triggerUpdateFlow, closeUpdateModal, reviewUpdateWo, backToEditWo, confirmSaveWo, toggleChecklistItem } from './workOrders.js';
 
 // Bind to Window so HTML onclicks work
 window.signIn = signIn;
@@ -25,10 +25,11 @@ window.closeNewWoForm = closeNewWoForm;
 window.createWorkOrder = createWorkOrder;
 window.loadWorkOrders = loadWorkOrders;
 window.filterWorkOrders = filterWorkOrders;
-window.updateWoStatus = updateWoStatus;
-window.triggerCloseFlow = triggerCloseFlow;
-window.confirmCloseWo = confirmCloseWo;
-window.closeModal = closeModal;
+window.triggerUpdateFlow = triggerUpdateFlow;
+window.closeUpdateModal = closeUpdateModal;
+window.reviewUpdateWo = reviewUpdateWo;
+window.backToEditWo = backToEditWo;
+window.confirmSaveWo = confirmSaveWo;
 window.toggleChecklistItem = toggleChecklistItem;
 
 // Tab Logic

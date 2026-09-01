@@ -168,20 +168,57 @@
   </div>
 </div>
 
-<!-- Close Work Order Modal -->
-<div id="modal-close-wo" class="modal-overlay hidden">
+<!-- Update Work Order Modal -->
+<div id="modal-update-wo" class="modal-overlay hidden">
   <div class="modal-box">
-    <div class="eyebrow" style="margin-bottom:8px;">Close Work Order</div>
-    <div class="card-title" id="modal-wo-title" style="margin-bottom:16px;">WO #</div>
-    <div class="field" id="modal-notes-field">
-      <label class="field-label">Resolution Notes <span style="color:var(--red);" id="notes-req-star">*</span></label>
-      <textarea id="modal-wo-notes" placeholder="What was the root cause and fix?"></textarea>
-      <p style="font-size:11px; color:var(--text-muted); margin-top:6px;">Required for breakdowns to maintain audit trail.</p>
+    
+    <!-- Step 1: Input -->
+    <div id="update-step-input">
+      <div class="eyebrow" style="margin-bottom:8px;">Update Work Order</div>
+      <div class="card-title" id="modal-wo-title" style="margin-bottom:8px;">WO #</div>
+      <div style="font-size:13px; color:var(--text-muted); background:var(--bg); padding:10px; border-radius:6px; margin-bottom:16px; border:1px solid var(--border);" id="modal-wo-original-desc"></div>
+      
+      <div class="field">
+        <label class="field-label">Add New Note / Update <span style="color:var(--red); display:none;" id="notes-req-star">*</span></label>
+        <textarea id="modal-wo-notes" placeholder="Describe the work done or parts needed..."></textarea>
+      </div>
+      
+      <div class="row" style="margin-bottom:20px; gap:16px;">
+        <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:13px;">
+          <input type="checkbox" id="toggle-spare" onchange="if(this.checked) document.getElementById('toggle-close').checked = false;"> Awaiting Spare
+        </label>
+        <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:13px;">
+          <input type="checkbox" id="toggle-close" onchange="if(this.checked) document.getElementById('toggle-spare').checked = false;"> Work Completed
+        </label>
+      </div>
+      
+      <div class="row" style="justify-content:flex-end;">
+        <button class="ghost" onclick="window.closeUpdateModal()">Cancel</button>
+        <button class="primary" onclick="window.reviewUpdateWo()"><i data-lucide="arrow-right"></i> Review Update</button>
+      </div>
     </div>
-    <div class="row" style="margin-top:20px; justify-content:flex-end;">
-      <button class="ghost" onclick="window.closeModal()">Cancel</button>
-      <button class="primary" id="btn-confirm-close" onclick="window.confirmCloseWo()"><i data-lucide="check-circle"></i> Confirm Close</button>
+
+    <!-- Step 2: Confirmation -->
+    <div id="update-step-confirm" class="hidden">
+      <div class="eyebrow" style="margin-bottom:8px;">Confirm Update</div>
+      <div class="card-title" style="margin-bottom:12px;">Review before saving</div>
+      
+      <div class="field">
+        <label class="field-label">New Status Will Be</label>
+        <span class="badge" id="confirm-status-badge" style="font-size:13px; padding:6px 12px; background:var(--panel-raised); color:var(--text);"></span>
+      </div>
+      
+      <div class="field" style="margin-top:16px;">
+        <label class="field-label">Note to Append</label>
+        <div style="font-size:13px; color:var(--text-muted); font-family:'JetBrains Mono', monospace; background:var(--bg); padding:10px; border-radius:6px; border:1px dashed var(--border);" id="confirm-note-preview"></div>
+      </div>
+
+      <div class="row" style="margin-top:24px; justify-content:flex-end;">
+        <button class="ghost" onclick="window.backToEditWo()"><i data-lucide="arrow-left"></i> Back to Edit</button>
+        <button class="primary" id="btn-confirm-save" onclick="window.confirmSaveWo()"><i data-lucide="save"></i> Confirm & Save</button>
+      </div>
     </div>
+
   </div>
 </div>
 

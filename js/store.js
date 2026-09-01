@@ -10,7 +10,7 @@ export const state = {
   assetsCache: [],
   schedulesCache: [],
   activeWorkOrders: [],
-  woToClose: null
+  woToUpdate: null
 };
 
 // Global UI Utilities

@@ -95,8 +95,7 @@ function renderWorkOrders() {
       <div id="checklist-${wo.id}"></div>
       <div class="row" style="margin-top:14px; border-top: 1px solid var(--border); padding-top: 14px;">
         ${wo.status !== 'closed' && (state.currentRole === 'admin' || state.currentRole === 'technician') ? `
-          ${wo.status === 'open' ? `<button onclick="window.updateWoStatus(${wo.id},'in_progress')"><i data-lucide="play" style="width:14px;"></i> Start Work</button>` : ''}
-          <button class="primary" onclick="window.triggerCloseFlow(${wo.id})"><i data-lucide="check" style="width:14px;"></i> Mark Completed</button>
+          <button class="primary" onclick="window.triggerUpdateFlow(${wo.id})"><i data-lucide="edit" style="width:14px;"></i> Update Ticket</button>
         ` : ''}
       </div>
     </div>
@@ -113,45 +112,83 @@ export function filterWorkOrders() {
   });
 }
 
-export async function updateWoStatus(id, status) {
-  const { error } = await sb.from('work_orders').update({ status }).eq('id', id);
-  if (error) { toast(error.message, 'err'); return; }
-  toast('Status updated');
-  loadWorkOrders();
-}
-
-export function triggerCloseFlow(id) {
-  state.woToClose = state.activeWorkOrders.find(w => w.id === id);
-  if (!state.woToClose) return;
-  document.getElementById('modal-wo-title').innerText = `WO #${state.woToClose.id} - ${state.woToClose.assets?.name}`;
-  document.getElementById('modal-wo-notes').value = '';
-  document.getElementById('notes-req-star').style.display = (state.woToClose.type === 'breakdown') ? 'inline' : 'none';
-  document.getElementById('modal-close-wo').classList.remove('hidden');
-}
-
-export function closeModal() { 
-  document.getElementById('modal-close-wo').classList.add('hidden'); 
-  state.woToClose = null; 
-}
-
-export async function confirmCloseWo() {
-  if (!state.woToClose) return;
-  const notes = document.getElementById('modal-wo-notes').value.trim();
+export function triggerUpdateFlow(id) {
+  state.woToUpdate = state.activeWorkOrders.find(w => w.id === id);
+  if (!state.woToUpdate) return;
   
-  if (state.woToClose.type === 'breakdown' && !notes) {
-    toast('Resolution notes are required for breakdowns.', 'err');
+  document.getElementById('modal-wo-title').innerText = `WO #${state.woToUpdate.id} - ${state.woToUpdate.assets?.name}`;
+  document.getElementById('modal-wo-original-desc').innerText = state.woToUpdate.description || "No initial description provided.";
+  
+  document.getElementById('modal-wo-notes').value = '';
+  document.getElementById('toggle-spare').checked = false;
+  document.getElementById('toggle-close').checked = false;
+  
+  document.getElementById('notes-req-star').style.display = (state.woToUpdate.type === 'breakdown') ? 'inline' : 'none';
+  
+  document.getElementById('update-step-input').classList.remove('hidden');
+  document.getElementById('update-step-confirm').classList.add('hidden');
+  document.getElementById('modal-update-wo').classList.remove('hidden');
+}
+
+export function closeUpdateModal() {
+  document.getElementById('modal-update-wo').classList.add('hidden');
+  state.woToUpdate = null;
+}
+
+export function reviewUpdateWo() {
+  const note = document.getElementById('modal-wo-notes').value.trim();
+  const isClosed = document.getElementById('toggle-close').checked;
+  const isWaiting = document.getElementById('toggle-spare').checked;
+  
+  if (isClosed && state.woToUpdate.type === 'breakdown' && !note) {
+    toast('Resolution notes are required to close a breakdown.', 'err');
     document.getElementById('modal-wo-notes').focus();
     return;
   }
-  
-  setButtonLoading('btn-confirm-close', true);
-  const updatedDescription = notes ? `${state.woToClose.description || ''}\n\n[Resolution]: ${notes}` : state.woToClose.description;
-  const { error } = await sb.from('work_orders').update({ status: 'closed', closed_at: new Date().toISOString(), description: updatedDescription }).eq('id', state.woToClose.id);
 
-  if (error) { toast(error.message, 'err'); setButtonLoading('btn-confirm-close', false); return; }
-  toast('Work order closed successfully');
-  closeModal();
-  setButtonLoading('btn-confirm-close', false);
+  let newStatus = state.woToUpdate.status;
+  if (isClosed) newStatus = 'closed';
+  else if (isWaiting) newStatus = 'waiting_parts';
+  else if (note) newStatus = 'in_progress';
+
+  document.getElementById('confirm-status-badge').innerText = newStatus.replace('_', ' ').toUpperCase();
+  document.getElementById('confirm-note-preview').innerText = note ? `[${formatDate(new Date().toISOString())}]\n${note}` : "No additional notes provided.";
+
+  // Store for next step
+  state.woToUpdate.pendingStatus = newStatus;
+  state.woToUpdate.pendingNote = note;
+
+  document.getElementById('update-step-input').classList.add('hidden');
+  document.getElementById('update-step-confirm').classList.remove('hidden');
+  lucide.createIcons();
+}
+
+export function backToEditWo() {
+  document.getElementById('update-step-confirm').classList.add('hidden');
+  document.getElementById('update-step-input').classList.remove('hidden');
+}
+
+export async function confirmSaveWo() {
+  setButtonLoading('btn-confirm-save', true);
+  const newStatus = state.woToUpdate.pendingStatus;
+  const note = state.woToUpdate.pendingNote;
+  
+  let updatedDescription = state.woToUpdate.description || '';
+  if (note) {
+    const timeStamp = formatDate(new Date().toISOString());
+    updatedDescription += `\n\n[${timeStamp}] - Status: ${newStatus.replace('_',' ').toUpperCase()}\n${note}`;
+  }
+
+  const payload = { status: newStatus, description: updatedDescription };
+  if (newStatus === 'closed') payload.closed_at = new Date().toISOString();
+
+  const { error } = await sb.from('work_orders').update(payload).eq('id', state.woToUpdate.id);
+
+  if (error) { toast(error.message, 'err'); setButtonLoading('btn-confirm-save', false); return; }
+  
+  toast('Work order updated successfully');
+  closeUpdateModal();
+  setButtonLoading('btn-confirm-save', false);
   loadWorkOrders();
 }
 

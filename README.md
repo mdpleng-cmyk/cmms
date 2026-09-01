@@ -23,8 +23,7 @@ This document outlines the file structure, state management, and specific functi
 ## Core Architecture & State
 
 ### `index.html`
-
-The single-page application skeleton. Contains all static UI elements, forms, and hidden modals. Relies on inline event handlers (e.g., `onclick="window.signIn()"`) due to ES6 module scoping.
+The single-page application skeleton. Contains all static UI elements, forms, and hidden modals (New Work Order, Close Work Order, Asset History). Relies on inline event handlers (e.g., `onclick="window.signIn()"`) due to ES6 module scoping.
 
 ### `style.css`
 
@@ -65,7 +64,7 @@ Manages equipment records and historical context.
 
 * **`createAsset()` / `openNewAssetForm()` / `closeNewAssetForm()**`: Handles the UI and database insertion for new equipment.
 * **`loadAssets(render)`**: Fetches the asset list to update the global cache and optionally renders the DOM cards.
-* **`toggleAssetHistory(assetId, btnEl)`**: Fetches and displays a mini-timeline of the 5 most recent closed Work Orders for a specific asset card.
+*   **`openAssetHistoryModal(assetId, assetName)` / `closeAssetHistoryModal()`**: Triggers the global asset history modal from anywhere in the app, fetching and displaying a timeline of up to 20 recently closed Work Orders for the selected asset.
 * **`renderAssetDropdown(filter)`**: Updates the DOM of the custom select menu based on search input.
 * **`selectAsset(id, name)`**: Handles the user clicking an item in the custom dropdown and populates the hidden input values.
 
@@ -74,7 +73,7 @@ Manages equipment records and historical context.
 Manages the core maintenance ticketing workflow and closure constraints.
 
 * **`createWorkOrder()` / `openNewWoForm()` / `closeNewWoForm()**`: Handles form submission, linking PM schedules if applicable, and inserting initial checklist records.
-* **`loadWorkOrders()` / `renderWorkOrders()**`: Fetches tickets based on the active filter (Open/Closed) and builds the DOM cards.
+*   **`loadWorkOrders()` / `renderWorkOrders()`**: Fetches tickets based on the active filter (Open/Closed) and builds the DOM cards. Asset names on the cards act as interactive links that trigger `openAssetHistoryModal()`.
 * **`filterWorkOrders()`**: Client-side search function that hides/shows DOM cards based on text input.
 * **`updateWoStatus(id, status)`**: Instantly updates a ticket's status (e.g., setting it to "in_progress").
 * **`triggerCloseFlow(id)` / `closeModal()**`: Opens the closure speed-bump modal and dynamically sets "Resolution Notes" as mandatory for breakdown tickets.
