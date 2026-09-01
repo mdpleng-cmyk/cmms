@@ -15,6 +15,12 @@ window.createAsset = createAsset;
 window.openAssetHistoryModal = openAssetHistoryModal;
 window.closeAssetHistoryModal = closeAssetHistoryModal;
 window.selectAsset = selectAsset;
+window.openManageAsset = openManageAsset;
+window.backToManageList = backToManageList;
+window.saveManageCategory = saveManageCategory;
+window.saveManageSpecField = saveManageSpecField;
+window.deleteManageSpec = deleteManageSpec;
+window.addManageSpec = addManageSpec;
 window.goToSchedule = goToSchedule;
 window.toggleScheduleItems = toggleScheduleItems;
 window.switchAssetModalTab = switchAssetModalTab;
@@ -40,10 +46,11 @@ window.saveReadingValue = saveReadingValue;
 
 // Tab Logic
 window.switchTab = function(tab) {
-  ['wo','assets','schedules'].forEach(t => document.getElementById('tab-' + t).classList.toggle('hidden', t !== tab));
+  ['wo','assets','schedules','manage'].forEach(t => document.getElementById('tab-' + t).classList.toggle('hidden', t !== tab));
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
   if (tab === 'assets') loadAssets(true);
   if (tab === 'schedules') loadSchedules();
+  if (tab === 'manage') { document.getElementById('manage-detail-view').classList.add('hidden'); document.getElementById('manage-list-view').classList.remove('hidden'); loadManageAssetList(); }
 }
 
 // Global Event Listeners for the Searchable Dropdown
