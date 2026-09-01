@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MDPL CMMS</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --bg: #17181A;
+    --panel: #202226;
+    --panel-2: #2A2D32;
+    --line: #383B41;
+    --text: #EDEEF0;
+    --muted: #9AA0A8;
+    --amber: #F2B705;
+    --amber-dim: #8C6D06;
+    --red: #E5484D;
+    --green: #4CAF6D;
+    --blue: #5B9BD5;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: var(--font); font-size: 15px; line-height: 1.4;
+  }
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 18px; background: var(--panel); border-bottom: 2px solid var(--amber);
+  }
+  header .brand { display: flex; align-items: baseline; gap: 8px; }
+  header .brand b { font-size: 17px; letter-spacing: 0.3px; }
+  header .brand span { color: var(--muted); font-size: 12px; font-family: var(--mono); }
+  header .who { font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 10px; }
+  header button.link { background: none; border: none; color: var(--amber); cursor: pointer; font-size: 13px; padding: 0; }
+
+  nav { display: flex; gap: 2px; background: var(--panel); padding: 0 18px; border-bottom: 1px solid var(--line); }
+  nav button {
+    background: none; border: none; color: var(--muted); padding: 10px 14px;
+    font-size: 14px; cursor: pointer; border-bottom: 2px solid transparent;
+  }
+  nav button.active { color: var(--text); border-bottom-color: var(--amber); }
+
+  main { padding: 18px; max-width: 900px; margin: 0 auto; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 14px; }
+  .card {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 4px;
+    padding: 14px; margin-bottom: 10px;
+  }
+  .card-title { font-weight: 600; font-size: 15px; margin: 0 0 2px; }
+  .card-meta { color: var(--muted); font-size: 12.5px; font-family: var(--mono); }
+  .badge {
+    display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 11px;
+    font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.4px;
+  }
+  .badge.open { background: #3A2E00; color: var(--amber); }
+  .badge.in_progress { background: #14304A; color: var(--blue); }
+  .badge.closed { background: #16321F; color: var(--green); }
+  .badge.pm { border: 1px solid var(--amber-dim); color: var(--amber); background: none; }
+  .badge.breakdown { border: 1px solid var(--red); color: var(--red); background: none; }
+
+  input, select, textarea, button.btn {
+    background: var(--panel-2); border: 1px solid var(--line); color: var(--text);
+    padding: 9px 10px; border-radius: 4px; font-size: 14px; font-family: var(--font);
+  }
+  textarea { width: 100%; min-height: 60px; resize: vertical; }
+  label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+  .field { margin-bottom: 10px; }
+  button.btn { cursor: pointer; }
+  button.btn.primary { background: var(--amber); color: #1C1C1C; border-color: var(--amber); font-weight: 600; }
+  button.btn.danger { background: none; border-color: var(--red); color: var(--red); }
+  button.btn.ghost { background: none; }
+  button.btn:disabled { opacity: 0.5; cursor: default; }
+
+  .empty { color: var(--muted); padding: 30px 0; text-align: center; font-size: 14px; }
+  .checklist-item { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+  .checklist-item:last-child { border-bottom: none; }
+  .checklist-item.done { color: var(--muted); text-decoration: line-through; }
+
+  #login-screen { max-width: 340px; margin: 80px auto; padding: 24px; }
+  #login-screen h1 { font-size: 18px; margin-bottom: 4px; }
+  #login-screen p.sub { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
+  #login-screen .field input { width: 100%; }
+  #login-error { color: var(--red); font-size: 13px; margin-top: 8px; min-height: 18px; }
+
+  .hidden { display: none !important; }
+  .toast {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    background: var(--panel-2); border: 1px solid var(--line); padding: 10px 16px;
+    border-radius: 4px; font-size: 13px; z-index: 100;
+  }
+  .toast.error { border-color: var(--red); color: var(--red); }
+</style>
+</head>
+<body>
+
+<!-- ===================== LOGIN ===================== -->
+<div id="login-screen" class="card">
+  <h1>MDPL CMMS</h1>
+  <p class="sub">Sign in to log and track maintenance work.</p>
+  <div class="field"><label>Email</label><input id="login-email" type="email"></div>
+  <div class="field"><label>Password</label><input id="login-password" type="password"></div>
+  <button class="btn primary" onclick="signIn()" style="width:100%">Sign in</button>
+  <div id="login-error"></div>
+</div>
+
+<!-- ===================== APP ===================== -->
+<div id="app" class="hidden">
+  <header>
+    <div class="brand"><b>MDPL CMMS</b><span>maintenance</span></div>
+    <div class="who">
+      <span id="who-name"></span>
+      <button class="link" onclick="signOut()">Sign out</button>
+    </div>
+  </header>
+
+  <nav>
+    <button class="active" data-tab="wo" onclick="switchTab('wo')">Work Orders</button>
+    <button data-tab="assets" onclick="switchTab('assets')">Assets</button>
+    <button data-tab="schedules" onclick="switchTab('schedules')">PM Schedules</button>
+  </nav>
+
+  <main>
+
+    <!-- ---- WORK ORDERS TAB ---- -->
+    <section id="tab-wo">
+      <div class="row">
+        <select id="wo-filter" onchange="loadWorkOrders()">
+          <option value="open,in_progress">Open</option>
+          <option value="closed">Closed</option>
+          <option value="open,in_progress,closed">All</option>
+        </select>
+        <button class="btn primary" onclick="openNewWoForm()" id="btn-new-wo">+ New Work Order</button>
+      </div>
+
+      <div id="new-wo-form" class="card hidden">
+        <div class="card-title">New work order</div>
+        <div class="field">
+          <label>Asset</label>
+          <select id="wo-asset"></select>
+        </div>
+        <div class="field">
+          <label>Type</label>
+          <select id="wo-type">
+            <option value="breakdown">Breakdown / fix</option>
+            <option value="pm">PM (linked to a schedule)</option>
+          </select>
+        </div>
+        <div id="wo-schedule-field" class="field hidden">
+          <label>Schedule</label>
+          <select id="wo-schedule"></select>
+        </div>
+        <div class="field">
+          <label>Description</label>
+          <textarea id="wo-description" placeholder="What needs to be done / was done"></textarea>
+        </div>
+        <div class="field">
+          <label><input type="checkbox" id="wo-close-now" style="width:auto"> Already done — create and close now</label>
+        </div>
+        <div class="row">
+          <button class="btn primary" onclick="createWorkOrder()">Create</button>
+          <button class="btn ghost" onclick="closeNewWoForm()">Cancel</button>
+        </div>
+      </div>
+
+      <div id="wo-list"></div>
+    </section>
+
+    <!-- ---- ASSETS TAB ---- -->
+    <section id="tab-assets" class="hidden">
+      <div class="row">
+        <button class="btn primary" onclick="openNewAssetForm()" id="btn-new-asset">+ New Asset</button>
+      </div>
+      <div id="new-asset-form" class="card hidden">
+        <div class="card-title">New asset</div>
+        <div class="field"><label>Name</label><input id="asset-name"></div>
+        <div class="field"><label>Location</label><input id="asset-location"></div>
+        <div class="field">
+          <label>Criticality</label>
+          <select id="asset-criticality">
+            <option value="">—</option>
+            <option>P1</option><option>P2</option><option>P3</option><option>P4</option>
+          </select>
+        </div>
+        <div class="row">
+          <button class="btn primary" onclick="createAsset()">Create</button>
+          <button class="btn ghost" onclick="closeNewAssetForm()">Cancel</button>
+        </div>
+      </div>
+      <div id="asset-list"></div>
+    </section>
+
+    <!-- ---- SCHEDULES TAB ---- -->
+    <section id="tab-schedules" class="hidden">
+      <div class="row">
+        <button class="btn primary" onclick="openNewScheduleForm()" id="btn-new-schedule">+ New PM Schedule</button>
+      </div>
+      <div id="new-schedule-form" class="card hidden">
+        <div class="card-title">New recurring PM schedule</div>
+        <div class="field">
+          <label>Asset</label>
+          <select id="sched-asset"></select>
+        </div>
+        <div class="field"><label>Title</label><input id="sched-title" placeholder="e.g. 6-Month General PM"></div>
+        <div class="field"><label>Interval (days)</label><input id="sched-interval" type="number" value="180"></div>
+        <div class="field"><label>First due date</label><input id="sched-due" type="date"></div>
+        <div class="field"><label>Reminder — days before due (optional)</label><input id="sched-reminder" type="number"></div>
+        <div class="row">
+          <button class="btn primary" onclick="createSchedule()">Create</button>
+          <button class="btn ghost" onclick="closeNewScheduleForm()">Cancel</button>
+        </div>
+      </div>
+      <div id="schedule-list"></div>
+    </section>
+
+  </main>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+
+<script>
+// ============================================================
+// CONFIG — fill in your Supabase project details
+// ============================================================
+const SUPABASE_URL = "YOUR_SUPABASE_PROJECT_URL";
+const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY";
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let currentUser = null;
+let currentRole = null;
+let assetsCache = [];
+let schedulesCache = [];
+
+// ---------- toast ----------
+function toast(msg, isError) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast' + (isError ? ' error' : '');
+  setTimeout(() => t.classList.add('hidden'), 3000);
+}
+
+// ---------- auth ----------
+async function signIn() {
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  const errEl = document.getElementById('login-error');
+  errEl.textContent = '';
+  const { data, error } = await sb.auth.signInWithPassword({ email, password });
+  if (error) { errEl.textContent = error.message; return; }
+  await onSignedIn(data.user);
+}
+
+async function signOut() {
+  await sb.auth.signOut();
+  currentUser = null; currentRole = null;
+  document.getElementById('app').classList.add('hidden');
+  document.getElementById('login-screen').classList.remove('hidden');
+}
+
+async function onSignedIn(user) {
+  currentUser = user;
+  const { data: roleRow, error } = await sb.from('user_roles').select('role, full_name').eq('user_id', user.id).single();
+  if (error || !roleRow) {
+    toast('No role assigned yet — ask an admin to add you to user_roles.', true);
+    return;
+  }
+  currentRole = roleRow.role;
+  document.getElementById('who-name').textContent = (roleRow.full_name || user.email) + ' · ' + currentRole;
+  document.getElementById('login-screen').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+
+  const canWrite = currentRole === 'admin' || currentRole === 'technician';
+  document.getElementById('btn-new-wo').style.display = canWrite ? '' : 'none';
+  document.getElementById('btn-new-schedule').style.display = canWrite ? '' : 'none';
+  document.getElementById('btn-new-asset').style.display = currentRole === 'admin' ? '' : 'none';
+
+  await loadAssets();
+  await loadWorkOrders();
+}
+
+// restore session on load
+sb.auth.getSession().then(({ data }) => {
+  if (data.session) onSignedIn(data.session.user);
+});
+
+// ---------- tabs ----------
+function switchTab(tab) {
+  ['wo','assets','schedules'].forEach(t => {
+    document.getElementById('tab-' + t).classList.toggle('hidden', t !== tab);
+  });
+  document.querySelectorAll('nav button').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  if (tab === 'assets') loadAssets(true);
+  if (tab === 'schedules') loadSchedules();
+}
+
+// ============================================================
+// WORK ORDERS
+// ============================================================
+function openNewWoForm() {
+  document.getElementById('new-wo-form').classList.remove('hidden');
+  populateAssetSelect('wo-asset');
+  document.getElementById('wo-type').onchange = () => {
+    const isPm = document.getElementById('wo-type').value === 'pm';
+    document.getElementById('wo-schedule-field').classList.toggle('hidden', !isPm);
+    if (isPm) populateScheduleSelect('wo-schedule');
+  };
+}
+function closeNewWoForm() { document.getElementById('new-wo-form').classList.add('hidden'); }
+
+async function createWorkOrder() {
+  const asset_id = document.getElementById('wo-asset').value;
+  const type = document.getElementById('wo-type').value;
+  const schedule_id = type === 'pm' ? document.getElementById('wo-schedule').value : null;
+  const description = document.getElementById('wo-description').value.trim();
+  const closeNow = document.getElementById('wo-close-now').checked;
+
+  if (!asset_id) { toast('Pick an asset', true); return; }
+
+  const payload = {
+    asset_id, type, description,
+    schedule_id: schedule_id || null,
+    created_by: currentUser.id,
+    status: closeNow ? 'closed' : 'open',
+    closed_at: closeNow ? new Date().toISOString() : null
+  };
+
+  const { data: wo, error } = await sb.from('work_orders').insert(payload).select().single();
+  if (error) { toast(error.message, true); return; }
+
+  // if PM linked to a schedule, seed checklist results for all active items
+  if (type === 'pm' && schedule_id) {
+    const { data: items } = await sb.from('checklist_items').select('id').eq('schedule_id', schedule_id).eq('active', true);
+    if (items && items.length) {
+      const rows = items.map(i => ({ wo_id: wo.id, item_id: i.id, done: closeNow }));
+      await sb.from('wo_checklist_results').insert(rows);
+    }
+  }
+
+  toast('Work order created');
+  closeNewWoForm();
+  document.getElementById('wo-description').value = '';
+  document.getElementById('wo-close-now').checked = false;
+  loadWorkOrders();
+}
+
+async function loadWorkOrders() {
+  const statuses = document.getElementById('wo-filter').value.split(',');
+  const { data, error } = await sb
+    .from('work_orders')
+    .select('id, type, status, description, opened_at, closed_at, asset_id, schedule_id, assets(name)')
+    .in('status', statuses)
+    .order('opened_at', { ascending: false })
+    .limit(50);
+
+  const list = document.getElementById('wo-list');
+  if (error) { list.innerHTML = '<div class="empty">' + error.message + '</div>'; return; }
+  if (!data || !data.length) { list.innerHTML = '<div class="empty">No work orders here.</div>'; return; }
+
+  list.innerHTML = '';
+  for (const wo of data) {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `
+      <div class="row" style="margin-bottom:6px;justify-content:space-between">
+        <div>
+          <span class="badge ${wo.type}">${wo.type}</span>
+          <span class="badge ${wo.status}">${wo.status.replace('_',' ')}</span>
+        </div>
+        <span class="card-meta">#${wo.id}</span>
+      </div>
+      <div class="card-title">${wo.assets?.name || 'Unknown asset'}</div>
+      <div style="margin:6px 0">${wo.description ? escapeHtml(wo.description) : '<span class="card-meta">No description</span>'}</div>
+      <div class="card-meta">opened ${formatDate(wo.opened_at)}${wo.closed_at ? ' · closed ' + formatDate(wo.closed_at) : ''}</div>
+      <div id="checklist-${wo.id}"></div>
+      <div class="row" style="margin-top:10px">
+        ${wo.status !== 'closed' && (currentRole === 'admin' || currentRole === 'technician') ? `
+          ${wo.status === 'open' ? `<button class="btn" onclick="updateWoStatus(${wo.id},'in_progress')">Start</button>` : ''}
+          <button class="btn primary" onclick="updateWoStatus(${wo.id},'closed')">Close</button>
+        ` : ''}
+      </div>
+    `;
+    list.appendChild(card);
+    if (wo.type === 'pm' && wo.schedule_id) loadChecklistForWo(wo.id);
+  }
+}
+
+async function updateWoStatus(id, status) {
+  const payload = { status };
+  if (status === 'closed') payload.closed_at = new Date().toISOString();
+  const { error } = await sb.from('work_orders').update(payload).eq('id', id);
+  if (error) { toast(error.message, true); return; }
+  toast('Updated');
+  loadWorkOrders();
+}
+
+async function loadChecklistForWo(woId) {
+  const { data, error } = await sb
+    .from('wo_checklist_results')
+    .select('id, done, checklist_items(description)')
+    .eq('wo_id', woId);
+  const box = document.getElementById('checklist-' + woId);
+  if (!box || error || !data || !data.length) return;
+  box.innerHTML = data.map(r => `
+    <div class="checklist-item ${r.done ? 'done' : ''}">
+      <input type="checkbox" ${r.done ? 'checked' : ''}
+        ${currentRole === 'viewer' ? 'disabled' : ''}
+        onchange="toggleChecklistItem(${r.id}, this.checked)">
+      ${escapeHtml(r.checklist_items.description)}
+    </div>
+  `).join('');
+}
+
+async function toggleChecklistItem(resultId, done) {
+  await sb.from('wo_checklist_results').update({ done, done_at: done ? new Date().toISOString() : null }).eq('id', resultId);
+}
+
+// ============================================================
+// ASSETS
+// ============================================================
+function openNewAssetForm() { document.getElementById('new-asset-form').classList.remove('hidden'); }
+function closeNewAssetForm() { document.getElementById('new-asset-form').classList.add('hidden'); }
+
+async function createAsset() {
+  const name = document.getElementById('asset-name').value.trim();
+  const location = document.getElementById('asset-location').value.trim();
+  const criticality = document.getElementById('asset-criticality').value || null;
+  if (!name) { toast('Name required', true); return; }
+  const { error } = await sb.from('assets').insert({ name, location, criticality });
+  if (error) { toast(error.message, true); return; }
+  toast('Asset created');
+  closeNewAssetForm();
+  document.getElementById('asset-name').value = '';
+  document.getElementById('asset-location').value = '';
+  await loadAssets(true);
+}
+
+async function loadAssets(render) {
+  const { data, error } = await sb.from('assets').select('*').order('name');
+  if (!error) assetsCache = data || [];
+  if (render) {
+    const list = document.getElementById('asset-list');
+    if (error) { list.innerHTML = '<div class="empty">' + error.message + '</div>'; return; }
+    if (!assetsCache.length) { list.innerHTML = '<div class="empty">No assets yet.</div>'; return; }
+    list.innerHTML = assetsCache.map(a => `
+      <div class="card">
+        <div class="card-title">${escapeHtml(a.name)} ${a.criticality ? '<span class="badge open">' + a.criticality + '</span>' : ''}</div>
+        <div class="card-meta">${a.location || '—'} · ${a.status}</div>
+      </div>
+    `).join('');
+  }
+}
+
+function populateAssetSelect(id) {
+  const sel = document.getElementById(id);
+  sel.innerHTML = assetsCache.map(a => `<option value="${a.id}">${escapeHtml(a.name)}</option>`).join('');
+}
+
+// ============================================================
+// SCHEDULES
+// ============================================================
+function openNewScheduleForm() {
+  document.getElementById('new-schedule-form').classList.remove('hidden');
+  populateAssetSelect('sched-asset');
+}
+function closeNewScheduleForm() { document.getElementById('new-schedule-form').classList.add('hidden'); }
+
+async function createSchedule() {
+  const asset_id = document.getElementById('sched-asset').value;
+  const title = document.getElementById('sched-title').value.trim();
+  const interval_days = parseInt(document.getElementById('sched-interval').value, 10);
+  const next_due_at = document.getElementById('sched-due').value;
+  const reminder_days_before = document.getElementById('sched-reminder').value || null;
+
+  if (!asset_id || !title || !interval_days || !next_due_at) { toast('Fill all required fields', true); return; }
+
+  const { error } = await sb.from('recurring_schedules').insert({
+    asset_id, title, interval_days, next_due_at, reminder_days_before
+  });
+  if (error) { toast(error.message, true); return; }
+  toast('Schedule created');
+  closeNewScheduleForm();
+  document.getElementById('sched-title').value = '';
+  loadSchedules();
+}
+
+async function loadSchedules() {
+  const { data, error } = await sb
+    .from('recurring_schedules')
+    .select('id, title, interval_days, next_due_at, active, assets(name)')
+    .order('next_due_at');
+  schedulesCache = data || [];
+  const list = document.getElementById('schedule-list');
+  if (error) { list.innerHTML = '<div class="empty">' + error.message + '</div>'; return; }
+  if (!schedulesCache.length) { list.innerHTML = '<div class="empty">No PM schedules yet.</div>'; return; }
+
+  list.innerHTML = '';
+  for (const s of schedulesCache) {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `
+      <div class="card-title">${escapeHtml(s.title)}</div>
+      <div class="card-meta">${s.assets?.name || ''} · every ${s.interval_days}d · next due ${s.next_due_at}</div>
+      <div id="items-${s.id}" style="margin-top:8px"></div>
+      ${currentRole !== 'viewer' ? `
+        <div class="row" style="margin-top:8px">
+          <input id="new-item-${s.id}" placeholder="Add checklist item...">
+          <button class="btn" onclick="addChecklistItem(${s.id})">Add</button>
+        </div>` : ''}
+    `;
+    list.appendChild(card);
+    loadChecklistItems(s.id);
+  }
+}
+
+async function loadChecklistItems(scheduleId) {
+  const { data } = await sb.from('checklist_items').select('id, description').eq('schedule_id', scheduleId).eq('active', true).order('added_at');
+  const box = document.getElementById('items-' + scheduleId);
+  if (!box) return;
+  if (!data || !data.length) { box.innerHTML = '<div class="card-meta">No checklist items yet.</div>'; return; }
+  box.innerHTML = data.map(i => `<div class="checklist-item">${escapeHtml(i.description)}</div>`).join('');
+}
+
+async function addChecklistItem(scheduleId) {
+  const input = document.getElementById('new-item-' + scheduleId);
+  const description = input.value.trim();
+  if (!description) return;
+  const { error } = await sb.from('checklist_items').insert({ schedule_id: scheduleId, description });
+  if (error) { toast(error.message, true); return; }
+  input.value = '';
+  loadChecklistItems(scheduleId);
+}
+
+function populateScheduleSelect(id) {
+  const assetId = document.getElementById('wo-asset').value;
+  const sel = document.getElementById(id);
+  const relevant = schedulesCache.length ? schedulesCache : [];
+  sb.from('recurring_schedules').select('id, title').eq('asset_id', assetId).eq('active', true).then(({ data }) => {
+    sel.innerHTML = (data || []).map(s => `<option value="${s.id}">${escapeHtml(s.title)}</option>`).join('');
+  });
+}
+
+// ---------- utils ----------
+function formatDate(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+</script>
+</body>
+</html>
