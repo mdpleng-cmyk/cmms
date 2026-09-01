@@ -159,15 +159,21 @@
     </div>
     <div class="card-title" id="history-asset-title" style="margin-bottom:16px; color:var(--amber);">Asset Name</div>
 
-    <div style="max-height: 480px; overflow-y: auto; padding-right: 4px;">
-      <div class="eyebrow" style="margin-bottom:8px;">Open Work Orders</div>
-      <div id="history-open-container" style="margin-bottom:20px;"></div>
-
-      <div class="eyebrow" style="margin-bottom:8px;">PM Schedules</div>
-      <div id="history-schedules-container" style="margin-bottom:20px;"></div>
-
-      <div class="eyebrow" style="margin-bottom:8px;">History</div>
-      <div id="history-list-container"></div>
+    <div class="modal-tabs">
+      <button class="modal-tab-btn active" data-modal-tab="open" onclick="window.switchAssetModalTab('open')">Open Work Orders</button>
+      <button class="modal-tab-btn" data-modal-tab="pm" onclick="window.switchAssetModalTab('pm')">PM Schedules</button>
+      <button class="modal-tab-btn" data-modal-tab="history" onclick="window.switchAssetModalTab('history')">History</button>
+    </div>
+    <div style="max-height: 420px; overflow-y: auto; padding-right: 4px;">
+      <div data-modal-panel="open">
+        <div id="history-open-container"></div>
+      </div>
+      <div data-modal-panel="pm" class="hidden">
+        <div id="history-schedules-container"></div>
+      </div>
+      <div data-modal-panel="history" class="hidden">
+        <div id="history-list-container"></div>
+      </div>
     </div>
 
     <div class="row" style="margin-top:20px; justify-content:flex-end;">

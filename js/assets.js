@@ -48,6 +48,11 @@ export async function loadAssets(render) {
   }
 }
 
+export function switchAssetModalTab(tab) {
+  document.querySelectorAll('.modal-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.modalTab === tab));
+  document.querySelectorAll('[data-modal-panel]').forEach(p => p.classList.toggle('hidden', p.dataset.modalPanel !== tab));
+}
+
 export async function openAssetHistoryModal(assetId, assetName) {
   const modal = document.getElementById('modal-asset-history');
   const titleEl = document.getElementById('history-asset-title');
@@ -59,11 +64,12 @@ export async function openAssetHistoryModal(assetId, assetName) {
   openContainer.innerHTML = getLoaderHtml('Loading...');
   schedContainer.innerHTML = getLoaderHtml('Loading...');
   historyContainer.innerHTML = getLoaderHtml('Loading...');
+  switchAssetModalTab('open');
   modal.classList.remove('hidden');
 
   const [woRes, schedRes] = await Promise.all([
     sb.from('work_orders')
-      .select('id, type, status, opened_at, closed_at')
+      .select('id, type, status, opened_at, closed_at, schedule_id')
       .eq('asset_id', assetId)
       .order('opened_at', { ascending: false })
       .limit(50),
@@ -74,6 +80,8 @@ export async function openAssetHistoryModal(assetId, assetName) {
       .order('next_due_at'),
   ]);
 
+  let lastPmBySchedule = {};
+
   if (woRes.error) {
     openContainer.innerHTML = `<div class="card-meta" style="color:var(--red);">${woRes.error.message}</div>`;
     historyContainer.innerHTML = '';
@@ -82,17 +90,26 @@ export async function openAssetHistoryModal(assetId, assetName) {
     const open = all.filter(wo => wo.status !== 'closed');
     const closed = all.filter(wo => wo.status === 'closed').slice(0, 20);
 
+    all.filter(wo => wo.type === 'pm' && wo.status === 'closed' && wo.schedule_id).forEach(wo => {
+      const cur = lastPmBySchedule[wo.schedule_id];
+      if (!cur || new Date(wo.closed_at) > new Date(cur.closed_at)) lastPmBySchedule[wo.schedule_id] = wo;
+    });
+
     openContainer.innerHTML = open.length ? open.map(wo => `
-      <div style="font-size:13px; display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid var(--border);">
-        <span><span style="color:var(--text-muted)">#${wo.id}</span> &middot; ${wo.type} &middot; <span class="badge ${wo.status}" style="font-size:9px;">${wo.status.replace('_',' ')}</span></span>
-        <span style="color:var(--text-muted)">${formatDate(wo.opened_at)}</span>
+      <div class="activity-entry">
+        <span class="activity-date">${formatDate(wo.opened_at).split(',')[0]}</span>
+        <div class="activity-body">
+          <p class="activity-title">#${wo.id} &middot; ${wo.type} <span class="badge ${wo.status}" style="font-size:9px;">${wo.status.replace('_',' ')}</span></p>
+        </div>
       </div>
     `).join('') : '<div class="card-meta">No open work orders.</div>';
 
     historyContainer.innerHTML = closed.length ? closed.map(wo => `
-      <div style="font-size:13px; display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid var(--border);">
-        <span><span style="color:var(--text-muted)">#${wo.id}</span> &middot; ${wo.type}</span>
-        <span style="color:var(--text-muted)">${formatDate(wo.closed_at)}</span>
+      <div class="activity-entry">
+        <span class="activity-date">${formatDate(wo.closed_at).split(',')[0]}</span>
+        <div class="activity-body">
+          <p class="activity-title">#${wo.id} &middot; ${wo.type}</p>
+        </div>
       </div>
     `).join('') : '<div class="card-meta">No closed work orders yet.</div>';
   }
@@ -115,6 +132,7 @@ export async function openAssetHistoryModal(assetId, assetName) {
 
     schedContainer.innerHTML = schedRes.data.map(s => {
       const its = itemsBySchedule[s.id] || [];
+      const lastPm = lastPmBySchedule[s.id];
       const itemsHtml = its.length ? its.map(i => `
         <div class="checklist-item" style="padding:6px 0;">
           <i data-lucide="${i.item_type === 'reading' ? 'gauge' : 'minus'}" style="width:12px; color:var(--text-muted); margin-top:2px;"></i>
@@ -125,7 +143,7 @@ export async function openAssetHistoryModal(assetId, assetName) {
       return `
       <div style="padding:10px 0; border-bottom:1px solid var(--border);">
         <div style="display:flex; justify-content:space-between; align-items:center; cursor:pointer;" onclick="window.toggleScheduleItems(${s.id})">
-          <span style="font-size:13px;">${escapeHtml(s.title)} <span class="card-meta">&middot; every ${s.interval_days}d &middot; due ${s.next_due_at}</span></span>
+          <span style="font-size:13px;">${escapeHtml(s.title)} <span class="card-meta">&middot; every ${s.interval_days}d &middot; due ${s.next_due_at}${lastPm ? ` &middot; last PM ${formatDate(lastPm.closed_at).split(',')[0]}` : ''}</span></span>
           <div style="display:flex; align-items:center; gap:6px;">
             <i data-lucide="chevron-down" id="sched-chevron-${s.id}" style="width:14px; color:var(--text-muted); transition:transform 0.2s;"></i>
             <button class="ghost" style="padding:4px 8px; font-size:11px; border:1px solid var(--border);" onclick="event.stopPropagation(); window.goToSchedule(${s.id})">Edit &rarr;</button>

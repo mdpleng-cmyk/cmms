@@ -50,6 +50,17 @@ button.big { width: 100%; padding: 14px; font-size: 15px; }
 .tab-btn { flex: 1; background: transparent; border: none; border-radius: 0; padding: 14px 4px; color: var(--text-muted); border-bottom: 2px solid transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; }
 .tab-btn.active { color: var(--amber); border-bottom-color: var(--amber); }
 
+.modal-tabs { display: flex; gap: 18px; border-bottom: 1px solid var(--border); margin-bottom: 14px; }
+.modal-tab-btn { background: transparent; border: none; border-radius: 0; padding: 0 0 8px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); border-bottom: 2px solid transparent; cursor: pointer; }
+.modal-tab-btn.active { color: var(--amber); border-bottom-color: var(--amber); }
+
+.activity-entry { display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.activity-entry:last-child { border-bottom: none; }
+.activity-date { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-muted); width: 62px; flex-shrink: 0; padding-top: 2px; }
+.activity-body { flex: 1; }
+.activity-title { font-size: 13px; font-weight: 500; margin: 0 0 2px; color: var(--text); }
+.activity-meta { font-size: 11px; color: var(--text-muted); }
+
 .hidden { display: none !important; }
 @keyframes spin { 100% { transform: rotate(360deg); } }
 .spin { animation: spin 1s linear infinite; }
