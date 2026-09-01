@@ -6,96 +6,20 @@
 <title>MDPL CMMS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=JetBrains+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
 <script src="https://unpkg.com/lucide@latest"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<style>
-  :root {
-    --bg: #09090b; --panel: #18181b; --panel-raised: #27272a; --border: #3f3f46;
-    --text: #fafafa; --text-muted: #a1a1aa; --amber: #f59e0b; --amber-dim: #78350f;
-    --green: #10b981; --green-bg: rgba(16, 185, 129, 0.14); --red: #ef4444; --radius: 8px;
-  }
-  * { box-sizing: border-box; }
-  body { background: var(--bg); color: var(--text); font-family: 'Inter', -apple-system, sans-serif; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-  .wrap { max-width: 640px; margin: 0 auto; padding: 16px 14px 80px; }
-  
-  .eyebrow { font-family: 'Inter', sans-serif; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); }
-  h1 { font-family: 'Oswald', sans-serif; font-size: 24px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; margin: 2px 0 0; color: var(--text); }
-  h1 span { color: var(--amber); }
-  header.appbar { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-bottom: 1px solid var(--border); background: var(--panel); }
-  
-  select, input[type=number], input[type=date], input[type=text], input[type=email], input[type=password], textarea {
-    background: var(--panel); border: 1px solid var(--border); color: var(--text); border-radius: var(--radius);
-    padding: 9px 10px; font-family: 'Inter', sans-serif; font-size: 14px; width: 100%; transition: border-color 0.2s;
-  }
-  select:focus, input:focus, textarea:focus { outline: none; border-color: var(--amber); }
-  textarea { min-height: 70px; resize: vertical; }
-  
-  label.field-label { font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 500; color: var(--text-muted); display: block; margin-bottom: 6px; }
-  .field { margin-bottom: 14px; }
-  
-  button { font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; justify-content: center; padding: 10px 16px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--panel-raised); color: var(--text); cursor: pointer; transition: all 0.2s; }
-  button:active { transform: translateY(1px); }
-  button:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
-  button.primary { background: var(--amber); border-color: var(--amber); color: #000; font-weight: 600; }
-  button.ghost { background: transparent; border-color: transparent; }
-  button.big { width: 100%; padding: 14px; font-size: 15px; }
-  
-  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; }
-  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 14px; }
-  
-  .card-title { font-family: 'Oswald', sans-serif; font-weight: 600; font-size: 16px; letter-spacing: 0.02em; margin: 0 0 4px; display: flex; align-items: center; justify-content: space-between; }
-  .card-meta { color: var(--text-muted); font-size: 12px; font-family: 'JetBrains Mono', monospace; }
-  
-  .badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 4px; font-family: 'Inter', sans-serif; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
-  .badge.open { background: rgba(245,158,11,0.15); color: var(--amber); }
-  .badge.in_progress { background: rgba(59,130,246,0.15); color: #60a5fa; }
-  .badge.closed { background: var(--green-bg); color: var(--green); }
-  .badge.pm { border: 1px solid var(--border); color: var(--text-muted); background: var(--bg); }
-  .badge.breakdown { border: 1px solid rgba(239,68,68,0.3); color: var(--red); background: rgba(239,68,68,0.05); }
-  
-  .readout-empty { font-size: 14px; color: var(--text-muted); padding: 32px 0; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 12px; }
-  
-  .checklist-item { display: flex; align-items: flex-start; gap: 8px; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
-  .checklist-item:last-child { border-bottom: none; }
-  .checklist-item.done { color: var(--text-muted); text-decoration: line-through; }
-  
-  .tab-nav { display: flex; gap: 4px; border-bottom: 1px solid var(--border); padding: 0 14px; background: var(--panel); position: sticky; top: 0; z-index: 10; }
-  .tab-btn { flex: 1; background: transparent; border: none; border-radius: 0; padding: 14px 4px; color: var(--text-muted); border-bottom: 2px solid transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; }
-  .tab-btn.active { color: var(--amber); border-bottom-color: var(--amber); }
-  
-  .hidden { display: none !important; }
-  
-  @keyframes spin { 100% { transform: rotate(360deg); } }
-  .spin { animation: spin 1s linear infinite; }
-  
-  /* Modals */
-  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 200; padding: 16px; }
-  .modal-box { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); width: 100%; max-width: 400px; padding: 20px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5); max-height: 90vh; overflow-y: auto; }
-  
-  /* Custom Select Component */
-  .custom-select-wrapper { position: relative; }
-  .custom-select-dropdown { position: absolute; top: calc(100% + 4px); left: 0; right: 0; background: var(--panel-raised); border: 1px solid var(--border); border-radius: var(--radius); max-height: 200px; overflow-y: auto; z-index: 300; box-shadow: 0 10px 20px rgba(0,0,0,0.5); }
-  .custom-select-item { padding: 10px 12px; font-size: 14px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.05); }
-  .custom-select-item:last-child { border-bottom: none; }
-  .custom-select-item:hover { background: rgba(245,158,11,0.1); color: var(--amber); }
-
-  .toast-container { position: fixed; bottom: 20px; left: 0; right: 0; display: flex; flex-direction: column; align-items: center; gap: 8px; z-index: 400; pointer-events: none; }
-  .toast { animation: slideUp .25s ease-out, fadeOut .3s ease-in 2.2s forwards; padding: 12px 16px; border-radius: var(--radius); font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 500; color: #000; background: var(--green); box-shadow: 0 4px 16px rgba(0,0,0,.3); display: flex; align-items: center; gap: 8px; }
-  .toast.err { background: var(--red); color: #fff; }
-  @keyframes slideUp { from { transform: translateY(20px); opacity: 0 } to { transform: translateY(0); opacity: 1 } }
-  @keyframes fadeOut { to { opacity: 0 } }
-</style>
 </head>
 <body>
 
 <!-- LOGIN -->
-<div id="login-screen" class="wrap" style="min-height:100vh; display:flex; flex-direction:column; justify-content:center; max-width:340px;">
+<div id="login-screen" class="wrap login-wrap">
   <div class="eyebrow" style="text-align:center;">MDPL &middot; Maintenance</div>
   <h1 style="text-align:center; margin-bottom:6px;">CM<span>MS</span></h1>
   <p class="readout-empty" style="padding:0 0 24px;">Sign in to log and track work.</p>
   <div class="field"><label class="field-label">Email</label><input id="login-email" type="email"></div>
   <div class="field"><label class="field-label">Password</label><input id="login-password" type="password"></div>
-  <button id="btn-login" class="primary big" onclick="signIn()"><i data-lucide="log-in"></i> Sign In</button>
+  <button id="btn-login" class="primary big" onclick="window.signIn()"><i data-lucide="log-in"></i> Sign In</button>
   <p id="login-error" style="color:var(--red); font-size:13px; text-align:center; margin-top:14px; min-height:18px;"></p>
 </div>
 
@@ -106,15 +30,15 @@
       <p style="font-family:'Oswald',sans-serif; font-size:18px; font-weight:600; margin:0; letter-spacing:0.02em;">MDPL <span style="color:var(--amber);">CMMS</span></p>
       <p class="readout-empty" style="margin:0; padding:0; font-size:11px; text-align:left; flex-direction:row;" id="who-name"></p>
     </div>
-    <button class="ghost" style="padding:6px; color:var(--text-muted);" onclick="signOut()" title="Exit">
+    <button class="ghost" style="padding:6px; color:var(--text-muted);" onclick="window.signOut()" title="Exit">
       <i data-lucide="log-out" style="width:18px;height:18px;"></i>
     </button>
   </header>
 
   <div class="tab-nav">
-    <button class="tab-btn active" data-tab="wo" onclick="switchTab('wo')"><i data-lucide="clipboard-list" style="width:16px;"></i> Work Orders</button>
-    <button class="tab-btn" data-tab="assets" onclick="switchTab('assets')"><i data-lucide="server" style="width:16px;"></i> Assets</button>
-    <button class="tab-btn" data-tab="schedules" onclick="switchTab('schedules')"><i data-lucide="calendar-clock" style="width:16px;"></i> PMs</button>
+    <button class="tab-btn active" data-tab="wo" onclick="window.switchTab('wo')"><i data-lucide="clipboard-list" style="width:16px;"></i> Work Orders</button>
+    <button class="tab-btn" data-tab="assets" onclick="window.switchTab('assets')"><i data-lucide="server" style="width:16px;"></i> Assets</button>
+    <button class="tab-btn" data-tab="schedules" onclick="window.switchTab('schedules')"><i data-lucide="calendar-clock" style="width:16px;"></i> PMs</button>
   </div>
 
   <main class="wrap">
@@ -123,23 +47,22 @@
       <div class="row" style="margin-top:16px;">
         <div style="flex:1; position:relative;">
           <i data-lucide="search" style="position:absolute; left:10px; top:10px; width:16px; color:var(--text-muted);"></i>
-          <input type="text" id="wo-search" placeholder="Search ID or description..." style="padding-left:34px;" oninput="filterWorkOrders()">
+          <input type="text" id="wo-search" placeholder="Search ID or description..." style="padding-left:34px;" oninput="window.filterWorkOrders()">
         </div>
-        <select id="wo-filter" style="width:auto;" onchange="loadWorkOrders()">
+        <select id="wo-filter" style="width:auto;" onchange="window.loadWorkOrders()">
           <option value="open,in_progress">Active</option>
           <option value="closed">Closed</option>
           <option value="open,in_progress,closed">All</option>
         </select>
-        <button class="primary" onclick="openNewWoForm()" id="btn-new-wo"><i data-lucide="plus"></i> New</button>
+        <button class="primary" onclick="window.openNewWoForm()" id="btn-new-wo"><i data-lucide="plus"></i> New</button>
       </div>
-
       <div id="wo-list"></div>
     </section>
 
     <!-- ASSETS TAB -->
     <section id="tab-assets" class="hidden">
       <div class="row" style="margin-top:16px; justify-content:flex-end;">
-        <button class="primary" onclick="openNewAssetForm()" id="btn-new-asset"><i data-lucide="plus"></i> New Asset</button>
+        <button class="primary" onclick="window.openNewAssetForm()" id="btn-new-asset"><i data-lucide="plus"></i> New Asset</button>
       </div>
       <div id="new-asset-form" class="panel hidden">
         <div class="eyebrow" style="margin-bottom:12px;">New Asset</div>
@@ -149,8 +72,8 @@
           <select id="asset-criticality"><option value="">—</option><option>P1</option><option>P2</option><option>P3</option><option>P4</option></select>
         </div>
         <div class="row">
-          <button id="btn-create-asset" class="primary" onclick="createAsset()">Create</button>
-          <button class="ghost" onclick="closeNewAssetForm()">Cancel</button>
+          <button id="btn-create-asset" class="primary" onclick="window.createAsset()">Create</button>
+          <button class="ghost" onclick="window.closeNewAssetForm()">Cancel</button>
         </div>
       </div>
       <div id="asset-list"></div>
@@ -159,7 +82,7 @@
     <!-- SCHEDULES TAB -->
     <section id="tab-schedules" class="hidden">
       <div class="row" style="margin-top:16px; justify-content:flex-end;">
-        <button class="primary" onclick="openNewScheduleForm()" id="btn-new-schedule"><i data-lucide="plus"></i> New PM Schedule</button>
+        <button class="primary" onclick="window.openNewScheduleForm()" id="btn-new-schedule"><i data-lucide="plus"></i> New PM Schedule</button>
       </div>
       <div id="new-schedule-form" class="panel hidden">
         <div class="eyebrow" style="margin-bottom:12px;">New PM Schedule</div>
@@ -168,8 +91,8 @@
         <div class="field"><label class="field-label">Interval (days)</label><input id="sched-interval" type="number" value="180"></div>
         <div class="field"><label class="field-label">First due date</label><input id="sched-due" type="date"></div>
         <div class="row">
-          <button id="btn-create-schedule" class="primary" onclick="createSchedule()">Create</button>
-          <button class="ghost" onclick="closeNewScheduleForm()">Cancel</button>
+          <button id="btn-create-schedule" class="primary" onclick="window.createSchedule()">Create</button>
+          <button class="ghost" onclick="window.closeNewScheduleForm()">Cancel</button>
         </div>
       </div>
       <div id="schedule-list"></div>
@@ -178,13 +101,12 @@
 </div>
 
 <!-- MODALS -->
-
 <!-- New Work Order Modal -->
 <div id="modal-new-wo" class="modal-overlay hidden">
   <div class="modal-box">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
       <div class="eyebrow">New Work Order</div>
-      <button class="ghost" style="padding:4px; margin:-4px;" onclick="closeNewWoForm()"><i data-lucide="x" style="width:16px; color:var(--text-muted);"></i></button>
+      <button class="ghost" style="padding:4px; margin:-4px;" onclick="window.closeNewWoForm()"><i data-lucide="x" style="width:16px; color:var(--text-muted);"></i></button>
     </div>
     
     <div class="field custom-select-wrapper">
@@ -220,13 +142,13 @@
     </div>
     
     <div class="row" style="justify-content:flex-end;">
-      <button class="ghost" onclick="closeNewWoForm()">Cancel</button>
-      <button id="btn-create-wo" class="primary" onclick="createWorkOrder()">Create WO</button>
+      <button class="ghost" onclick="window.closeNewWoForm()">Cancel</button>
+      <button id="btn-create-wo" class="primary" onclick="window.createWorkOrder()">Create WO</button>
     </div>
   </div>
 </div>
 
-<!-- Close Work Order Confirmation Modal -->
+<!-- Close Work Order Modal -->
 <div id="modal-close-wo" class="modal-overlay hidden">
   <div class="modal-box">
     <div class="eyebrow" style="margin-bottom:8px;">Close Work Order</div>
@@ -237,505 +159,13 @@
       <p style="font-size:11px; color:var(--text-muted); margin-top:6px;">Required for breakdowns to maintain audit trail.</p>
     </div>
     <div class="row" style="margin-top:20px; justify-content:flex-end;">
-      <button class="ghost" onclick="closeModal()">Cancel</button>
-      <button class="primary" id="btn-confirm-close" onclick="confirmCloseWo()"><i data-lucide="check-circle"></i> Confirm Close</button>
+      <button class="ghost" onclick="window.closeModal()">Cancel</button>
+      <button class="primary" id="btn-confirm-close" onclick="window.confirmCloseWo()"><i data-lucide="check-circle"></i> Confirm Close</button>
     </div>
   </div>
 </div>
 
 <div id="toast-container" class="toast-container"></div>
-
-<script>
-// CONFIG
-const SUPABASE_URL = "https://eizyetgfrqlrlhvrxjsq.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVpenlldGdmcnFscmxodnJ4anNxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgyMzMwMDUsImV4cCI6MjEwMzgwOTAwNX0.xYjQ5IF2SKYpiXQtxSvSLmT7dPwaHv8w9Z1kpNGdH_g";
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-let currentUser = null;
-let currentRole = null;
-let assetsCache = [];
-let schedulesCache = [];
-let activeWorkOrders = [];
-let woToClose = null; 
-
-// UI Utils
-function toast(msg, kind) {
-  const el = document.createElement('div');
-  el.className = 'toast' + (kind === 'err' ? ' err' : '');
-  el.innerHTML = `<i data-lucide="${kind === 'err' ? 'alert-circle' : 'check-circle'}"></i> ${msg}`;
-  document.getElementById('toast-container').appendChild(el);
-  lucide.createIcons({ root: el });
-  setTimeout(() => el.remove(), 2600);
-}
-
-function setButtonLoading(btnId, isLoading, originalText = '') {
-  const btn = document.getElementById(btnId);
-  if (!btn) return;
-  btn.disabled = isLoading;
-  if (isLoading) {
-    btn.dataset.orig = btn.innerHTML;
-    btn.innerHTML = `<i data-lucide="loader-2" class="spin"></i> Saving...`;
-  } else {
-    btn.innerHTML = btn.dataset.orig || originalText;
-  }
-  lucide.createIcons({ root: btn });
-}
-
-function getLoaderHtml(text = 'Loading...') {
-  return `<div class="readout-empty"><i data-lucide="loader-2" class="spin" style="width:24px;height:24px;color:var(--amber);"></i> ${text}</div>`;
-}
-
-// Auth
-async function signIn() {
-  setButtonLoading('btn-login', true);
-  const email = document.getElementById('login-email').value.trim();
-  const password = document.getElementById('login-password').value;
-  const errEl = document.getElementById('login-error');
-  errEl.textContent = '';
-  const { data, error } = await sb.auth.signInWithPassword({ email, password });
-  if (error) { 
-    errEl.textContent = error.message; 
-    setButtonLoading('btn-login', false, '<i data-lucide="log-in"></i> Sign In');
-    return; 
-  }
-  await onSignedIn(data.user);
-  setButtonLoading('btn-login', false, '<i data-lucide="log-in"></i> Sign In');
-}
-
-async function signOut() {
-  await sb.auth.signOut();
-  currentUser = null; currentRole = null;
-  document.getElementById('app').classList.add('hidden');
-  document.getElementById('login-screen').classList.remove('hidden');
-}
-
-async function onSignedIn(user) {
-  currentUser = user;
-  const { data: roleRow, error } = await sb.from('user_roles').select('role, full_name').eq('user_id', user.id).single();
-  if (error || !roleRow) { toast('No role assigned yet.', 'err'); return; }
-  currentRole = roleRow.role;
-  document.getElementById('who-name').innerHTML = `${roleRow.full_name || user.email} &middot; ${currentRole}`;
-  document.getElementById('login-screen').classList.add('hidden');
-  document.getElementById('app').classList.remove('hidden');
-
-  const canWrite = currentRole === 'admin' || currentRole === 'technician';
-  document.getElementById('btn-new-wo').style.display = canWrite ? '' : 'none';
-  document.getElementById('btn-new-schedule').style.display = canWrite ? '' : 'none';
-  document.getElementById('btn-new-asset').style.display = currentRole === 'admin' ? '' : 'none';
-
-  lucide.createIcons();
-  await loadAssets();
-  await loadWorkOrders();
-}
-
-sb.auth.getSession().then(({ data }) => { if (data.session) onSignedIn(data.session.user); });
-
-function switchTab(tab) {
-  ['wo','assets','schedules'].forEach(t => document.getElementById('tab-' + t).classList.toggle('hidden', t !== tab));
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
-  if (tab === 'assets') loadAssets(true);
-  if (tab === 'schedules') loadSchedules();
-}
-
-// ================= CUSTOM ASSET DROPDOWN =================
-const searchInput = document.getElementById('wo-asset-search');
-const dropdownList = document.getElementById('wo-asset-dropdown');
-const hiddenAssetValue = document.getElementById('wo-asset-value');
-
-function renderAssetDropdown(filter = '') {
-  const term = filter.toLowerCase();
-  const filtered = assetsCache.filter(a => a.name.toLowerCase().includes(term));
-  
-  if (!filtered.length) {
-    dropdownList.innerHTML = '<div style="padding:10px 12px; font-size:13px; color:var(--text-muted);">No assets found.</div>';
-    return;
-  }
-  
-  dropdownList.innerHTML = filtered.map(a => 
-    `<div class="custom-select-item" onclick="selectAsset(${a.id}, '${escapeHtml(a.name).replace(/'/g, "\\'")}')">
-      ${escapeHtml(a.name)}
-      ${a.location ? `<span style="color:var(--text-muted); font-size:12px; display:block; margin-top:2px;">${escapeHtml(a.location)}</span>` : ''}
-    </div>`
-  ).join('');
-}
-
-function selectAsset(id, name) {
-  hiddenAssetValue.value = id;
-  searchInput.value = name;
-  dropdownList.classList.add('hidden');
-  // Trigger PM schedule update if needed
-  if (document.getElementById('wo-type').value === 'pm') populateScheduleSelect('wo-schedule');
-}
-
-searchInput.addEventListener('focus', () => {
-  renderAssetDropdown(searchInput.value);
-  dropdownList.classList.remove('hidden');
-});
-
-searchInput.addEventListener('input', (e) => {
-  hiddenAssetValue.value = ''; // clear true ID if they edit the text
-  renderAssetDropdown(e.target.value);
-  dropdownList.classList.remove('hidden');
-});
-
-// Close dropdown when clicking outside
-document.addEventListener('click', (e) => {
-  if (!e.target.closest('.custom-select-wrapper')) {
-    dropdownList.classList.add('hidden');
-  }
-});
-
-// ================= WORK ORDERS =================
-function openNewWoForm() {
-  document.getElementById('modal-new-wo').classList.remove('hidden');
-  
-  // Reset form
-  hiddenAssetValue.value = '';
-  searchInput.value = '';
-  document.getElementById('wo-description').value = '';
-  document.getElementById('wo-close-now').checked = false;
-  document.getElementById('wo-type').value = 'breakdown';
-  document.getElementById('wo-schedule-field').classList.add('hidden');
-  
-  document.getElementById('wo-type').onchange = (e) => {
-    const isPm = e.target.value === 'pm';
-    document.getElementById('wo-schedule-field').classList.toggle('hidden', !isPm);
-    if (isPm) populateScheduleSelect('wo-schedule');
-  };
-}
-
-function closeNewWoForm() { 
-  document.getElementById('modal-new-wo').classList.add('hidden'); 
-  dropdownList.classList.add('hidden');
-}
-
-async function createWorkOrder() {
-  const asset_id = hiddenAssetValue.value;
-  const type = document.getElementById('wo-type').value;
-  const schedule_id = type === 'pm' ? document.getElementById('wo-schedule').value : null;
-  const description = document.getElementById('wo-description').value.trim();
-  const closeNow = document.getElementById('wo-close-now').checked;
-
-  if (!asset_id) { toast('Please search and select an asset', 'err'); return; }
-
-  setButtonLoading('btn-create-wo', true);
-  const payload = {
-    asset_id, type, description,
-    schedule_id: schedule_id || null,
-    created_by: currentUser.id,
-    status: closeNow ? 'closed' : 'open',
-    closed_at: closeNow ? new Date().toISOString() : null
-  };
-
-  const { data: wo, error } = await sb.from('work_orders').insert(payload).select().single();
-  if (error) { toast(error.message, 'err'); setButtonLoading('btn-create-wo', false); return; }
-
-  if (type === 'pm' && schedule_id) {
-    const { data: items } = await sb.from('checklist_items').select('id').eq('schedule_id', schedule_id).eq('active', true);
-    if (items && items.length) {
-      const rows = items.map(i => ({ wo_id: wo.id, item_id: i.id, done: closeNow }));
-      await sb.from('wo_checklist_results').insert(rows);
-    }
-  }
-
-  toast('Work order created');
-  closeNewWoForm();
-  setButtonLoading('btn-create-wo', false);
-  loadWorkOrders();
-}
-
-async function loadWorkOrders() {
-  const list = document.getElementById('wo-list');
-  list.innerHTML = getLoaderHtml('Fetching work orders...');
-  
-  const statuses = document.getElementById('wo-filter').value.split(',');
-  const { data, error } = await sb
-    .from('work_orders')
-    .select('id, type, status, description, opened_at, closed_at, asset_id, schedule_id, assets(name)')
-    .in('status', statuses)
-    .order('opened_at', { ascending: false })
-    .limit(50);
-
-  if (error) { list.innerHTML = `<div class="readout-empty">${error.message}</div>`; return; }
-  
-  activeWorkOrders = data || [];
-  renderWorkOrders();
-}
-
-function renderWorkOrders() {
-  const list = document.getElementById('wo-list');
-  if (!activeWorkOrders.length) { list.innerHTML = '<div class="readout-empty"><i data-lucide="inbox" style="width:32px;height:32px;"></i> No work orders match.</div>'; lucide.createIcons(); return; }
-
-  list.innerHTML = activeWorkOrders.map(wo => `
-    <div class="panel wo-card" data-search="${wo.id} ${wo.assets?.name || ''} ${wo.description || ''}".toLowerCase()>
-      <div class="row" style="margin-bottom:8px;justify-content:space-between">
-        <div style="display:flex; gap:6px;">
-          <span class="badge ${wo.type}">${wo.type === 'pm' ? '<i data-lucide="calendar-clock" style="width:12px;"></i>' : '<i data-lucide="wrench" style="width:12px;"></i>'} ${wo.type}</span>
-          <span class="badge ${wo.status}">${wo.status.replace('_',' ')}</span>
-        </div>
-        <span class="card-meta">#${wo.id}</span>
-      </div>
-      <div class="card-title">${wo.assets?.name || 'Unknown asset'}</div>
-      <div style="margin:8px 0; font-size:14px; line-height:1.5;">${wo.description ? escapeHtml(wo.description) : '<span class="card-meta">No description provided</span>'}</div>
-      <div class="card-meta" style="margin-bottom:12px;">
-        <i data-lucide="clock" style="width:12px;display:inline-block;margin-right:2px;vertical-align:middle;"></i> Opened ${formatDate(wo.opened_at)}
-        ${wo.closed_at ? `<br><i data-lucide="check-circle-2" style="width:12px;display:inline-block;margin-right:2px;vertical-align:middle;margin-top:4px;"></i> Closed ${formatDate(wo.closed_at)}` : ''}
-      </div>
-      <div id="checklist-${wo.id}"></div>
-      <div class="row" style="margin-top:14px; border-top: 1px solid var(--border); padding-top: 14px;">
-        ${wo.status !== 'closed' && (currentRole === 'admin' || currentRole === 'technician') ? `
-          ${wo.status === 'open' ? `<button onclick="updateWoStatus(${wo.id},'in_progress')"><i data-lucide="play" style="width:14px;"></i> Start Work</button>` : ''}
-          <button class="primary" onclick="triggerCloseFlow(${wo.id})"><i data-lucide="check" style="width:14px;"></i> Mark Completed</button>
-        ` : ''}
-      </div>
-    </div>
-  `).join('');
-  
-  lucide.createIcons();
-  activeWorkOrders.forEach(wo => { if (wo.type === 'pm' && wo.schedule_id) loadChecklistForWo(wo.id); });
-}
-
-function filterWorkOrders() {
-  const term = document.getElementById('wo-search').value.toLowerCase();
-  document.querySelectorAll('.wo-card').forEach(card => {
-    card.style.display = card.dataset.search.includes(term) ? '' : 'none';
-  });
-}
-
-async function updateWoStatus(id, status) {
-  const payload = { status };
-  const { error } = await sb.from('work_orders').update(payload).eq('id', id);
-  if (error) { toast(error.message, 'err'); return; }
-  toast('Status updated');
-  loadWorkOrders();
-}
-
-function triggerCloseFlow(id) {
-  woToClose = activeWorkOrders.find(w => w.id === id);
-  if (!woToClose) return;
-  document.getElementById('modal-wo-title').innerText = `WO #${woToClose.id} - ${woToClose.assets?.name}`;
-  document.getElementById('modal-wo-notes').value = '';
-  document.getElementById('notes-req-star').style.display = (woToClose.type === 'breakdown') ? 'inline' : 'none';
-  document.getElementById('modal-close-wo').classList.remove('hidden');
-}
-
-function closeModal() { document.getElementById('modal-close-wo').classList.add('hidden'); woToClose = null; }
-
-async function confirmCloseWo() {
-  if (!woToClose) return;
-  const notes = document.getElementById('modal-wo-notes').value.trim();
-  
-  if (woToClose.type === 'breakdown' && !notes) {
-    toast('Resolution notes are required for breakdowns.', 'err');
-    document.getElementById('modal-wo-notes').focus();
-    return;
-  }
-  
-  setButtonLoading('btn-confirm-close', true);
-  const updatedDescription = notes ? `${woToClose.description || ''}\n\n[Resolution]: ${notes}` : woToClose.description;
-  const { error } = await sb.from('work_orders').update({ status: 'closed', closed_at: new Date().toISOString(), description: updatedDescription }).eq('id', woToClose.id);
-
-  if (error) { toast(error.message, 'err'); setButtonLoading('btn-confirm-close', false); return; }
-  toast('Work order closed successfully');
-  closeModal();
-  setButtonLoading('btn-confirm-close', false);
-  loadWorkOrders();
-}
-
-async function loadChecklistForWo(woId) {
-  const { data } = await sb.from('wo_checklist_results').select('id, done, checklist_items(description)').eq('wo_id', woId);
-  const box = document.getElementById('checklist-' + woId);
-  if (!box || !data || !data.length) return;
-  box.innerHTML = `<div style="background:var(--bg); border:1px solid var(--border); border-radius:6px; padding:0 12px; margin-top:12px;">` + 
-    data.map(r => `
-    <label class="checklist-item ${r.done ? 'done' : ''}" style="cursor:pointer;">
-      <input type="checkbox" ${r.done ? 'checked' : ''} ${currentRole === 'viewer' ? 'disabled' : ''} onchange="toggleChecklistItem(${r.id}, this)">
-      <span>${escapeHtml(r.checklist_items.description)}</span>
-    </label>
-  `).join('') + `</div>`;
-}
-
-async function toggleChecklistItem(resultId, checkboxEl) {
-  const done = checkboxEl.checked;
-  checkboxEl.closest('label').classList.toggle('done', done);
-  await sb.from('wo_checklist_results').update({ done, done_at: done ? new Date().toISOString() : null }).eq('id', resultId);
-}
-
-// ================= ASSETS & SCHEDULES =================
-function openNewAssetForm() { document.getElementById('new-asset-form').classList.remove('hidden'); }
-function closeNewAssetForm() { document.getElementById('new-asset-form').classList.add('hidden'); }
-
-async function createAsset() {
-  const name = document.getElementById('asset-name').value.trim();
-  const location = document.getElementById('asset-location').value.trim();
-  const criticality = document.getElementById('asset-criticality').value || null;
-  if (!name) { toast('Name required', 'err'); return; }
-  
-  setButtonLoading('btn-create-asset', true);
-  const { error } = await sb.from('assets').insert({ name, location, criticality });
-  if (error) { toast(error.message, 'err'); setButtonLoading('btn-create-asset', false); return; }
-  
-  toast('Asset created');
-  closeNewAssetForm();
-  document.getElementById('asset-name').value = '';
-  document.getElementById('asset-location').value = '';
-  setButtonLoading('btn-create-asset', false);
-  await loadAssets(true);
-}
-
-async function loadAssets(render) {
-  const list = document.getElementById('asset-list');
-  if (render) list.innerHTML = getLoaderHtml('Loading assets...');
-  
-  const { data, error } = await sb.from('assets').select('*').order('name');
-  if (!error) assetsCache = data || [];
-  
-  if (render) {
-    if (error) { list.innerHTML = `<div class="readout-empty">${error.message}</div>`; return; }
-    if (!assetsCache.length) { list.innerHTML = '<div class="readout-empty"><i data-lucide="server" style="width:32px;height:32px;"></i> No assets provisioned.</div>'; lucide.createIcons(); return; }
-    
-    list.innerHTML = assetsCache.map(a => `
-      <div class="panel">
-        <div class="row" style="justify-content:space-between; margin-bottom:4px;">
-          <div class="card-title" style="margin:0;">${escapeHtml(a.name)}</div>
-          ${a.criticality ? `<span class="badge open"><i data-lucide="alert-triangle" style="width:10px;"></i> ${a.criticality}</span>` : ''}
-        </div>
-        <div class="card-meta"><i data-lucide="map-pin" style="width:12px; display:inline-block; vertical-align:-2px;"></i> ${a.location || 'No location set'}</div>
-        <button class="ghost" style="padding:6px 0; margin-top:8px; font-size:12px; color:var(--text-muted);" onclick="toggleAssetHistory(${a.id}, this)">
-          <i data-lucide="history" style="width:14px;"></i> View Maintenance History
-        </button>
-        <div id="asset-hist-${a.id}" class="hidden" style="margin-top:8px; padding-top:8px; border-top:1px solid var(--border);"></div>
-      </div>
-    `).join('');
-    lucide.createIcons();
-  }
-}
-
-async function toggleAssetHistory(assetId, btnEl) {
-  const histDiv = document.getElementById(`asset-hist-${assetId}`);
-  if (!histDiv.classList.contains('hidden')) {
-    histDiv.classList.add('hidden');
-    btnEl.innerHTML = `<i data-lucide="history" style="width:14px;"></i> View Maintenance History`;
-    lucide.createIcons({ root: btnEl });
-    return;
-  }
-  histDiv.classList.remove('hidden');
-  btnEl.innerHTML = `<i data-lucide="chevron-up" style="width:14px;"></i> Hide History`;
-  lucide.createIcons({ root: btnEl });
-  histDiv.innerHTML = getLoaderHtml('Fetching history...');
-  
-  const { data } = await sb.from('work_orders').select('id, type, status, closed_at').eq('asset_id', assetId).eq('status', 'closed').order('closed_at', { ascending: false }).limit(5);
-  
-  if (!data || !data.length) {
-    histDiv.innerHTML = '<div class="card-meta">No completed work orders found.</div>';
-    return;
-  }
-  histDiv.innerHTML = data.map(wo => `
-    <div style="font-size:12px; display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.05);">
-      <span><span style="color:var(--text-muted)">#${wo.id}</span> &middot; ${wo.type}</span>
-      <span style="color:var(--text-muted)">${formatDate(wo.closed_at)}</span>
-    </div>
-  `).join('');
-}
-
-function populateScheduleSelect(id) {
-  const assetId = hiddenAssetValue.value;
-  const sel = document.getElementById(id);
-  if (!assetId) { sel.innerHTML = '<option value="">Select an asset first</option>'; return; }
-  
-  sb.from('recurring_schedules').select('id, title').eq('asset_id', assetId).eq('active', true).then(({ data }) => {
-    sel.innerHTML = (data && data.length) 
-      ? data.map(s => `<option value="${s.id}">${escapeHtml(s.title)}</option>`).join('')
-      : '<option value="">No PM schedules for this asset</option>';
-  });
-}
-
-// PM Forms (Left native for brevity, can be upgraded similarly)
-function openNewScheduleForm() {
-  document.getElementById('new-schedule-form').classList.remove('hidden');
-  document.getElementById('sched-asset').innerHTML = assetsCache.map(a => `<option value="${a.id}">${escapeHtml(a.name)}</option>`).join('');
-}
-function closeNewScheduleForm() { document.getElementById('new-schedule-form').classList.add('hidden'); }
-
-async function createSchedule() {
-  const asset_id = document.getElementById('sched-asset').value;
-  const title = document.getElementById('sched-title').value.trim();
-  const interval_days = parseInt(document.getElementById('sched-interval').value, 10);
-  const next_due_at = document.getElementById('sched-due').value;
-
-  if (!asset_id || !title || !interval_days || !next_due_at) { toast('Fill all required fields', 'err'); return; }
-
-  setButtonLoading('btn-create-schedule', true);
-  const { error } = await sb.from('recurring_schedules').insert({ asset_id, title, interval_days, next_due_at });
-  if (error) { toast(error.message, 'err'); setButtonLoading('btn-create-schedule', false); return; }
-  
-  toast('Schedule created');
-  closeNewScheduleForm();
-  document.getElementById('sched-title').value = '';
-  setButtonLoading('btn-create-schedule', false);
-  loadSchedules();
-}
-
-async function loadSchedules() {
-  const list = document.getElementById('schedule-list');
-  list.innerHTML = getLoaderHtml('Loading schedules...');
-  
-  const { data, error } = await sb.from('recurring_schedules').select('id, title, interval_days, next_due_at, active, assets(name)').order('next_due_at');
-  schedulesCache = data || [];
-  
-  if (error) { list.innerHTML = `<div class="readout-empty">${error.message}</div>`; return; }
-  if (!schedulesCache.length) { list.innerHTML = '<div class="readout-empty"><i data-lucide="calendar-clock" style="width:32px;height:32px;"></i> No PM schedules yet.</div>'; lucide.createIcons(); return; }
-
-  list.innerHTML = schedulesCache.map(s => `
-    <div class="panel">
-      <div class="card-title">${escapeHtml(s.title)}</div>
-      <div class="card-meta">
-        <i data-lucide="server" style="width:12px; display:inline-block; vertical-align:-2px;"></i> ${s.assets?.name || ''} &middot; 
-        <i data-lucide="rotate-cw" style="width:12px; display:inline-block; vertical-align:-2px;"></i> ${s.interval_days}d &middot; 
-        Due: ${s.next_due_at}
-      </div>
-      <div id="items-${s.id}" style="margin-top:12px"></div>
-      ${currentRole !== 'viewer' ? `
-        <div class="row" style="margin-top:12px">
-          <input id="new-item-${s.id}" placeholder="Add checklist item..." style="flex:1;">
-          <button class="ghost" onclick="addChecklistItem(${s.id})" style="border:1px solid var(--border);"><i data-lucide="plus" style="width:14px;"></i></button>
-        </div>` : ''}
-    </div>
-  `).join('');
-  lucide.createIcons();
-  for (const s of schedulesCache) loadChecklistItems(s.id);
-}
-
-async function loadChecklistItems(scheduleId) {
-  const { data } = await sb.from('checklist_items').select('id, description').eq('schedule_id', scheduleId).eq('active', true).order('added_at');
-  const box = document.getElementById('items-' + scheduleId);
-  if (!box) return;
-  if (!data || !data.length) { box.innerHTML = '<div class="card-meta">No checklist tasks defined.</div>'; return; }
-  box.innerHTML = data.map(i => `<div class="checklist-item"><i data-lucide="minus" style="width:12px; color:var(--text-muted); margin-top:2px;"></i> ${escapeHtml(i.description)}</div>`).join('');
-  lucide.createIcons({ root: box });
-}
-
-async function addChecklistItem(scheduleId) {
-  const input = document.getElementById('new-item-' + scheduleId);
-  const description = input.value.trim();
-  if (!description) return;
-  const { error } = await sb.from('checklist_items').insert({ schedule_id: scheduleId, description });
-  if (error) { toast(error.message, 'err'); return; }
-  input.value = '';
-  loadChecklistItems(scheduleId);
-}
-
-// Utils
-function formatDate(iso) {
-  if (!iso) return '';
-  const d = new Date(iso);
-  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-}
-function escapeHtml(str) {
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
-}
-</script>
+<script type="module" src="js/app.js"></script>
 </body>
 </html>
