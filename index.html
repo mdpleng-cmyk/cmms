@@ -150,18 +150,26 @@
 
 <!-- Asset History Modal -->
 <div id="modal-asset-history" class="modal-overlay hidden">
-  <div class="modal-box">
+  <div class="modal-box" style="max-width:480px;">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-      <div class="eyebrow">Asset History</div>
+      <div class="eyebrow">Asset Profile</div>
       <button class="ghost" style="padding:4px; margin:-4px;" onclick="window.closeAssetHistoryModal()">
         <i data-lucide="x" style="width:16px; color:var(--text-muted);"></i>
       </button>
     </div>
-    <div class="card-title" id="history-asset-title" style="margin-bottom:12px; color:var(--amber);">Asset Name</div>
-    
-    <!-- History list container -->
-    <div id="history-list-container" style="max-height: 400px; overflow-y: auto; padding-right: 4px;"></div>
-    
+    <div class="card-title" id="history-asset-title" style="margin-bottom:16px; color:var(--amber);">Asset Name</div>
+
+    <div style="max-height: 480px; overflow-y: auto; padding-right: 4px;">
+      <div class="eyebrow" style="margin-bottom:8px;">Open Work Orders</div>
+      <div id="history-open-container" style="margin-bottom:20px;"></div>
+
+      <div class="eyebrow" style="margin-bottom:8px;">PM Schedules</div>
+      <div id="history-schedules-container" style="margin-bottom:20px;"></div>
+
+      <div class="eyebrow" style="margin-bottom:8px;">History</div>
+      <div id="history-list-container"></div>
+    </div>
+
     <div class="row" style="margin-top:20px; justify-content:flex-end;">
       <button class="primary" onclick="window.closeAssetHistoryModal()">Close</button>
     </div>

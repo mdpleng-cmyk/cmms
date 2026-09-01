@@ -1,5 +1,5 @@
 import { sb, state, toast, setButtonLoading, getLoaderHtml, escapeHtml, formatDate } from './store.js';
-import { populateScheduleSelect } from './schedules.js';
+import { populateScheduleSelect, loadSchedules } from './schedules.js';
 
 export function openNewAssetForm() { document.getElementById('new-asset-form').classList.remove('hidden'); }
 export function closeNewAssetForm() { document.getElementById('new-asset-form').classList.add('hidden'); }
@@ -51,35 +51,77 @@ export async function loadAssets(render) {
 export async function openAssetHistoryModal(assetId, assetName) {
   const modal = document.getElementById('modal-asset-history');
   const titleEl = document.getElementById('history-asset-title');
-  const listContainer = document.getElementById('history-list-container');
+  const openContainer = document.getElementById('history-open-container');
+  const schedContainer = document.getElementById('history-schedules-container');
+  const historyContainer = document.getElementById('history-list-container');
 
   titleEl.textContent = assetName;
-  listContainer.innerHTML = getLoaderHtml('Fetching history...');
+  openContainer.innerHTML = getLoaderHtml('Loading...');
+  schedContainer.innerHTML = getLoaderHtml('Loading...');
+  historyContainer.innerHTML = getLoaderHtml('Loading...');
   modal.classList.remove('hidden');
 
-  const { data, error } = await sb.from('work_orders')
-    .select('id, type, status, opened_at, closed_at')
-    .eq('asset_id', assetId)
-    .order('opened_at', { ascending: false })
-    .limit(20);
-  
-  if (error) {
-    listContainer.innerHTML = `<div class="card-meta" style="color:var(--red);">${error.message}</div>`;
-    return;
+  const [woRes, schedRes] = await Promise.all([
+    sb.from('work_orders')
+      .select('id, type, status, opened_at, closed_at')
+      .eq('asset_id', assetId)
+      .order('opened_at', { ascending: false })
+      .limit(50),
+    sb.from('recurring_schedules')
+      .select('id, title, interval_days, next_due_at, active')
+      .eq('asset_id', assetId)
+      .eq('active', true)
+      .order('next_due_at'),
+  ]);
+
+  if (woRes.error) {
+    openContainer.innerHTML = `<div class="card-meta" style="color:var(--red);">${woRes.error.message}</div>`;
+    historyContainer.innerHTML = '';
+  } else {
+    const all = woRes.data || [];
+    const open = all.filter(wo => wo.status !== 'closed');
+    const closed = all.filter(wo => wo.status === 'closed').slice(0, 20);
+
+    openContainer.innerHTML = open.length ? open.map(wo => `
+      <div style="font-size:13px; display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid var(--border);">
+        <span><span style="color:var(--text-muted)">#${wo.id}</span> &middot; ${wo.type} &middot; <span class="badge ${wo.status}" style="font-size:9px;">${wo.status.replace('_',' ')}</span></span>
+        <span style="color:var(--text-muted)">${formatDate(wo.opened_at)}</span>
+      </div>
+    `).join('') : '<div class="card-meta">No open work orders.</div>';
+
+    historyContainer.innerHTML = closed.length ? closed.map(wo => `
+      <div style="font-size:13px; display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid var(--border);">
+        <span><span style="color:var(--text-muted)">#${wo.id}</span> &middot; ${wo.type}</span>
+        <span style="color:var(--text-muted)">${formatDate(wo.closed_at)}</span>
+      </div>
+    `).join('') : '<div class="card-meta">No closed work orders yet.</div>';
   }
-  
-  if (!data || !data.length) {
-    listContainer.innerHTML = '<div class="readout-empty"><i data-lucide="history" style="width:24px;height:24px;"></i> No work orders found.</div>';
-    lucide.createIcons({ root: listContainer });
-    return;
+
+  if (schedRes.error) {
+    schedContainer.innerHTML = `<div class="card-meta" style="color:var(--red);">${schedRes.error.message}</div>`;
+  } else if (!schedRes.data || !schedRes.data.length) {
+    schedContainer.innerHTML = '<div class="card-meta">No PM schedules for this asset.</div>';
+  } else {
+    schedContainer.innerHTML = schedRes.data.map(s => `
+      <div style="font-size:13px; padding:10px 0; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
+        <span>${escapeHtml(s.title)} <span class="card-meta">&middot; every ${s.interval_days}d &middot; due ${s.next_due_at}</span></span>
+        <button class="ghost" style="padding:4px 8px; font-size:11px; border:1px solid var(--border);" onclick="window.goToSchedule(${s.id})">Edit &rarr;</button>
+      </div>
+    `).join('');
   }
-  
-  listContainer.innerHTML = data.map(wo => `
-    <div style="font-size:13px; display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid var(--border);">
-      <span><span style="color:var(--text-muted)">#${wo.id}</span> &middot; ${wo.type} &middot; <span class="badge ${wo.status}" style="font-size:9px;">${wo.status.replace('_',' ')}</span></span>
-      <span style="color:var(--text-muted)">${formatDate(wo.closed_at || wo.opened_at)}</span>
-    </div>
-  `).join('');
+}
+
+export async function goToSchedule(scheduleId) {
+  closeAssetHistoryModal();
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === 'schedules'));
+  ['wo','assets','schedules'].forEach(t => document.getElementById('tab-' + t).classList.toggle('hidden', t !== 'schedules'));
+  await loadSchedules();
+  const el = document.getElementById('schedule-card-' + scheduleId);
+  if (el) {
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el.classList.add('flash-highlight');
+    setTimeout(() => el.classList.remove('flash-highlight'), 1500);
+  }
 }
 
 export function closeAssetHistoryModal() {

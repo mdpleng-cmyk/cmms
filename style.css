@@ -53,6 +53,8 @@ button.big { width: 100%; padding: 14px; font-size: 15px; }
 .hidden { display: none !important; }
 @keyframes spin { 100% { transform: rotate(360deg); } }
 .spin { animation: spin 1s linear infinite; }
+@keyframes flashHighlight { 0% { box-shadow: 0 0 0 2px var(--amber); } 100% { box-shadow: none; } }
+.flash-highlight { animation: flashHighlight 1.4s ease-out; }
 
 /* Modals */
 .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 200; padding: 16px; }

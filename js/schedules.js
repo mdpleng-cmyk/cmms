@@ -36,7 +36,7 @@ export async function loadSchedules() {
   if (!state.schedulesCache.length) { list.innerHTML = '<div class="readout-empty"><i data-lucide="calendar-clock" style="width:32px;height:32px;"></i> No PM schedules yet.</div>'; lucide.createIcons(); return; }
 
   list.innerHTML = state.schedulesCache.map(s => `
-    <div class="panel">
+    <div class="panel" id="schedule-card-${s.id}">
       <div class="card-title">${escapeHtml(s.title)}</div>
       <div class="card-meta">
         <i data-lucide="server" style="width:12px; display:inline-block; vertical-align:-2px;"></i> ${s.assets?.name || ''} &middot; 
