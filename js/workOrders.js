@@ -117,7 +117,7 @@ export function triggerUpdateFlow(id) {
   if (!state.woToUpdate) return;
   
   document.getElementById('modal-wo-title').innerText = `WO #${state.woToUpdate.id} - ${state.woToUpdate.assets?.name}`;
-  document.getElementById('modal-wo-original-desc').innerText = state.woToUpdate.description || "No initial description provided.";
+  document.getElementById('modal-wo-original-desc').innerText = state.woToUpdate.description || "No description provided.";
   
   document.getElementById('modal-wo-notes').value = '';
   document.getElementById('toggle-spare').checked = false;
@@ -172,20 +172,25 @@ export async function confirmSaveWo() {
   setButtonLoading('btn-confirm-save', true);
   const newStatus = state.woToUpdate.pendingStatus;
   const note = state.woToUpdate.pendingNote;
-  
-  let updatedDescription = state.woToUpdate.description || '';
-  if (note) {
-    const timeStamp = formatDate(new Date().toISOString());
-    updatedDescription += `\n\n[${timeStamp}] - Status: ${newStatus.replace('_',' ').toUpperCase()}\n${note}`;
-  }
 
-  const payload = { status: newStatus, description: updatedDescription };
+  const payload = { status: newStatus };
   if (newStatus === 'closed') payload.closed_at = new Date().toISOString();
 
   const { error } = await sb.from('work_orders').update(payload).eq('id', state.woToUpdate.id);
 
   if (error) { toast(error.message, 'err'); setButtonLoading('btn-confirm-save', false); return; }
-  
+
+  // Attach the note to the status-history row the trigger just created,
+  // instead of appending it onto work_orders.description.
+  if (note) {
+    const { data: histRows } = await sb.from('wo_status_history')
+      .select('id').eq('wo_id', state.woToUpdate.id)
+      .order('changed_at', { ascending: false }).limit(1);
+    if (histRows && histRows[0]) {
+      await sb.from('wo_status_history').update({ note }).eq('id', histRows[0].id);
+    }
+  }
+
   toast('Work order updated successfully');
   closeUpdateModal();
   setButtonLoading('btn-confirm-save', false);
