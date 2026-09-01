@@ -62,22 +62,48 @@
 
     <!-- ASSETS TAB -->
     <section id="tab-assets" class="hidden">
-      <div class="row" style="margin-top:16px; justify-content:flex-end;">
-        <button class="primary" onclick="window.openNewAssetForm()" id="btn-new-asset"><i data-lucide="plus"></i> New Asset</button>
-      </div>
-      <div id="new-asset-form" class="panel hidden">
-        <div class="eyebrow" style="margin-bottom:12px;">New Asset</div>
-        <div class="field"><label class="field-label">Name</label><input id="asset-name"></div>
-        <div class="field"><label class="field-label">Location</label><input id="asset-location"></div>
-        <div class="field"><label class="field-label">Criticality</label>
-          <select id="asset-criticality"><option value="">—</option><option>P1</option><option>P2</option><option>P3</option><option>P4</option></select>
+
+      <div id="assets-list-view">
+        <div class="row" style="margin-top:16px; justify-content:flex-end;">
+          <button class="primary" onclick="window.openNewAssetForm()" id="btn-new-asset"><i data-lucide="plus"></i> New Asset</button>
         </div>
-        <div class="row">
-          <button id="btn-create-asset" class="primary" onclick="window.createAsset()">Create</button>
-          <button class="ghost" onclick="window.closeNewAssetForm()">Cancel</button>
+        <div id="new-asset-form" class="panel hidden">
+          <div class="eyebrow" style="margin-bottom:12px;">New Asset</div>
+          <div class="field"><label class="field-label">Name</label><input id="asset-name"></div>
+          <div class="field"><label class="field-label">Location</label><input id="asset-location"></div>
+          <div class="field"><label class="field-label">Criticality</label>
+            <select id="asset-criticality"><option value="">—</option><option>P1</option><option>P2</option><option>P3</option><option>P4</option></select>
+          </div>
+          <div class="row">
+            <button id="btn-create-asset" class="primary" onclick="window.createAsset()">Create</button>
+            <button class="ghost" onclick="window.closeNewAssetForm()">Cancel</button>
+          </div>
         </div>
+        <div id="asset-list"></div>
       </div>
-      <div id="asset-list"></div>
+
+      <!-- ASSET DETAIL PAGE -->
+      <div id="asset-detail-view" class="hidden">
+        <button class="ghost" style="margin:16px 0 8px; padding:6px 10px;" onclick="window.closeAssetDetail()">
+          <i data-lucide="arrow-left" style="width:14px;"></i> Back
+        </button>
+
+        <div class="panel" id="ad-header"></div>
+        <div id="ad-quick-actions" style="margin-bottom:12px;"></div>
+
+        <div class="tab-nav" style="position:static; margin-bottom:4px;">
+          <button class="tab-btn active" data-adtab="overview" onclick="window.switchAssetDetailTab('overview')">Overview</button>
+          <button class="tab-btn" data-adtab="meter" onclick="window.switchAssetDetailTab('meter')">Meter</button>
+          <button class="tab-btn" data-adtab="pm" onclick="window.switchAssetDetailTab('pm')">PM &amp; Inspection</button>
+          <button class="tab-btn" data-adtab="wo" onclick="window.switchAssetDetailTab('wo')">Work Orders</button>
+        </div>
+
+        <div data-adpanel="overview" style="padding-top:14px;"></div>
+        <div data-adpanel="meter" class="hidden" style="padding-top:14px;"></div>
+        <div data-adpanel="pm" class="hidden" style="padding-top:14px;"></div>
+        <div data-adpanel="wo" class="hidden" style="padding-top:14px;"></div>
+      </div>
+
     </section>
 
     <!-- SCHEDULES TAB -->
