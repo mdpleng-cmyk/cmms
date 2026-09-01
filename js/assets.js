@@ -222,10 +222,6 @@ export async function goToSchedule(scheduleId) {
   }
 }
 
-export function closeAssetHistoryModal() {
-  document.getElementById('modal-asset-history').classList.add('hidden');
-}
-
 // Custom Searchable Dropdown Logic
 export function renderAssetDropdown(filter = '') {
   const dropdownList = document.getElementById('wo-asset-dropdown');
