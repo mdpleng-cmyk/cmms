@@ -1,6 +1,6 @@
 import { sb } from './store.js';
 import { signIn, signOut, onSignedIn } from './auth.js';
-import { openNewAssetForm, closeNewAssetForm, createAsset, loadAssets, openAssetHistoryModal, closeAssetHistoryModal, renderAssetDropdown, selectAsset, goToSchedule } from './assets.js';
+import { openNewAssetForm, closeNewAssetForm, createAsset, loadAssets, openAssetHistoryModal, closeAssetHistoryModal, renderAssetDropdown, selectAsset, goToSchedule, toggleScheduleItems } from './assets.js';
 import { openNewScheduleForm, closeNewScheduleForm, createSchedule, loadSchedules, addChecklistItem, toggleNewItemUnit } from './schedules.js';
 import { openNewWoForm, closeNewWoForm, createWorkOrder, loadWorkOrders, filterWorkOrders, triggerUpdateFlow, closeUpdateModal, reviewUpdateWo, backToEditWo, confirmSaveWo, toggleChecklistItem, saveReadingValue } from './workOrders.js';
 

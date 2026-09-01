@@ -102,13 +102,49 @@ export async function openAssetHistoryModal(assetId, assetName) {
   } else if (!schedRes.data || !schedRes.data.length) {
     schedContainer.innerHTML = '<div class="card-meta">No PM schedules for this asset.</div>';
   } else {
-    schedContainer.innerHTML = schedRes.data.map(s => `
-      <div style="font-size:13px; padding:10px 0; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
-        <span>${escapeHtml(s.title)} <span class="card-meta">&middot; every ${s.interval_days}d &middot; due ${s.next_due_at}</span></span>
-        <button class="ghost" style="padding:4px 8px; font-size:11px; border:1px solid var(--border);" onclick="window.goToSchedule(${s.id})">Edit &rarr;</button>
-      </div>
-    `).join('');
+    const scheduleIds = schedRes.data.map(s => s.id);
+    const { data: items } = await sb.from('checklist_items')
+      .select('id, schedule_id, description, item_type, unit')
+      .in('schedule_id', scheduleIds)
+      .eq('active', true)
+      .order('added_at');
+    const itemsBySchedule = {};
+    (items || []).forEach(i => {
+      (itemsBySchedule[i.schedule_id] = itemsBySchedule[i.schedule_id] || []).push(i);
+    });
+
+    schedContainer.innerHTML = schedRes.data.map(s => {
+      const its = itemsBySchedule[s.id] || [];
+      const itemsHtml = its.length ? its.map(i => `
+        <div class="checklist-item" style="padding:6px 0;">
+          <i data-lucide="${i.item_type === 'reading' ? 'gauge' : 'minus'}" style="width:12px; color:var(--text-muted); margin-top:2px;"></i>
+          <span>${escapeHtml(i.description)}${i.item_type === 'reading' ? ` <span class="card-meta">(${escapeHtml(i.unit)})</span>` : ''}</span>
+        </div>
+      `).join('') : '<div class="card-meta" style="padding:6px 0;">No checklist items yet.</div>';
+
+      return `
+      <div style="padding:10px 0; border-bottom:1px solid var(--border);">
+        <div style="display:flex; justify-content:space-between; align-items:center; cursor:pointer;" onclick="window.toggleScheduleItems(${s.id})">
+          <span style="font-size:13px;">${escapeHtml(s.title)} <span class="card-meta">&middot; every ${s.interval_days}d &middot; due ${s.next_due_at}</span></span>
+          <div style="display:flex; align-items:center; gap:6px;">
+            <i data-lucide="chevron-down" id="sched-chevron-${s.id}" style="width:14px; color:var(--text-muted); transition:transform 0.2s;"></i>
+            <button class="ghost" style="padding:4px 8px; font-size:11px; border:1px solid var(--border);" onclick="event.stopPropagation(); window.goToSchedule(${s.id})">Edit &rarr;</button>
+          </div>
+        </div>
+        <div id="sched-items-${s.id}" class="hidden" style="margin-top:8px; padding-left:4px;">${itemsHtml}</div>
+      </div>`;
+    }).join('');
+    lucide.createIcons({ root: schedContainer });
   }
+}
+
+export function toggleScheduleItems(scheduleId) {
+  const box = document.getElementById('sched-items-' + scheduleId);
+  const chevron = document.getElementById('sched-chevron-' + scheduleId);
+  if (!box) return;
+  const isHidden = box.classList.contains('hidden');
+  box.classList.toggle('hidden');
+  if (chevron) chevron.style.transform = isHidden ? 'rotate(180deg)' : 'rotate(0deg)';
 }
 
 export async function goToSchedule(scheduleId) {
