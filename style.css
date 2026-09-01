@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+<title>MDPL CMMS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=JetBrains+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script src="https://unpkg.com/lucide@latest"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen" class="wrap login-wrap">
+  <div class="eyebrow" style="text-align:center;">MDPL &middot; Maintenance</div>
+  <h1 style="text-align:center; margin-bottom:6px;">CM<span>MS</span></h1>
+  <p class="readout-empty" style="padding:0 0 24px;">Sign in to log and track work.</p>
+  <div class="field"><label class="field-label">Email</label><input id="login-email" type="email"></div>
+  <div class="field"><label class="field-label">Password</label><input id="login-password" type="password"></div>
+  <button id="btn-login" class="primary big" onclick="window.signIn()"><i data-lucide="log-in"></i> Sign In</button>
+  <p id="login-error" style="color:var(--red); font-size:13px; text-align:center; margin-top:14px; min-height:18px;"></p>
+</div>
+
+<!-- APP -->
+<div id="app" class="hidden">
+  <header class="appbar">
+    <div>
+      <p style="font-family:'Oswald',sans-serif; font-size:18px; font-weight:600; margin:0; letter-spacing:0.02em;">MDPL <span style="color:var(--amber);">CMMS</span></p>
+      <p class="readout-empty" style="margin:0; padding:0; font-size:11px; text-align:left; flex-direction:row;" id="who-name"></p>
+    </div>
+    <button class="ghost" style="padding:6px; color:var(--text-muted);" onclick="window.signOut()" title="Exit">
+      <i data-lucide="log-out" style="width:18px;height:18px;"></i>
+    </button>
+  </header>
+
+  <div class="tab-nav">
+    <button class="tab-btn active" data-tab="wo" onclick="window.switchTab('wo')"><i data-lucide="clipboard-list" style="width:16px;"></i> Work Orders</button>
+    <button class="tab-btn" data-tab="assets" onclick="window.switchTab('assets')"><i data-lucide="server" style="width:16px;"></i> Assets</button>
+    <button class="tab-btn" data-tab="schedules" onclick="window.switchTab('schedules')"><i data-lucide="calendar-clock" style="width:16px;"></i> PMs</button>
+  </div>
+
+  <main class="wrap">
+    <!-- WORK ORDERS TAB -->
+    <section id="tab-wo">
+      <div class="row" style="margin-top:16px;">
+        <div style="flex:1; position:relative;">
+          <i data-lucide="search" style="position:absolute; left:10px; top:10px; width:16px; color:var(--text-muted);"></i>
+          <input type="text" id="wo-search" placeholder="Search ID or description..." style="padding-left:34px;" oninput="window.filterWorkOrders()">
+        </div>
+        <select id="wo-filter" style="width:auto;" onchange="window.loadWorkOrders()">
+          <option value="open,in_progress">Active</option>
+          <option value="closed">Closed</option>
+          <option value="open,in_progress,closed">All</option>
+        </select>
+        <button class="primary" onclick="window.openNewWoForm()" id="btn-new-wo"><i data-lucide="plus"></i> New</button>
+      </div>
+      <div id="wo-list"></div>
+    </section>
+
+    <!-- ASSETS TAB -->
+    <section id="tab-assets" class="hidden">
+      <div class="row" style="margin-top:16px; justify-content:flex-end;">
+        <button class="primary" onclick="window.openNewAssetForm()" id="btn-new-asset"><i data-lucide="plus"></i> New Asset</button>
+      </div>
+      <div id="new-asset-form" class="panel hidden">
+        <div class="eyebrow" style="margin-bottom:12px;">New Asset</div>
+        <div class="field"><label class="field-label">Name</label><input id="asset-name"></div>
+        <div class="field"><label class="field-label">Location</label><input id="asset-location"></div>
+        <div class="field"><label class="field-label">Criticality</label>
+          <select id="asset-criticality"><option value="">—</option><option>P1</option><option>P2</option><option>P3</option><option>P4</option></select>
+        </div>
+        <div class="row">
+          <button id="btn-create-asset" class="primary" onclick="window.createAsset()">Create</button>
+          <button class="ghost" onclick="window.closeNewAssetForm()">Cancel</button>
+        </div>
+      </div>
+      <div id="asset-list"></div>
+    </section>
+
+    <!-- SCHEDULES TAB -->
+    <section id="tab-schedules" class="hidden">
+      <div class="row" style="margin-top:16px; justify-content:flex-end;">
+        <button class="primary" onclick="window.openNewScheduleForm()" id="btn-new-schedule"><i data-lucide="plus"></i> New PM Schedule</button>
+      </div>
+      <div id="new-schedule-form" class="panel hidden">
+        <div class="eyebrow" style="margin-bottom:12px;">New PM Schedule</div>
+        <div class="field"><label class="field-label">Asset</label><select id="sched-asset"></select></div>
+        <div class="field"><label class="field-label">Title</label><input id="sched-title" placeholder="e.g. 6-Month General PM"></div>
+        <div class="field"><label class="field-label">Interval (days)</label><input id="sched-interval" type="number" value="180"></div>
+        <div class="field"><label class="field-label">First due date</label><input id="sched-due" type="date"></div>
+        <div class="row">
+          <button id="btn-create-schedule" class="primary" onclick="window.createSchedule()">Create</button>
+          <button class="ghost" onclick="window.closeNewScheduleForm()">Cancel</button>
+        </div>
+      </div>
+      <div id="schedule-list"></div>
+    </section>
+  </main>
+</div>
+
+<!-- MODALS -->
+<!-- New Work Order Modal -->
+<div id="modal-new-wo" class="modal-overlay hidden">
+  <div class="modal-box">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+      <div class="eyebrow">New Work Order</div>
+      <button class="ghost" style="padding:4px; margin:-4px;" onclick="window.closeNewWoForm()"><i data-lucide="x" style="width:16px; color:var(--text-muted);"></i></button>
+    </div>
+    
+    <div class="field custom-select-wrapper">
+      <label class="field-label">Asset</label>
+      <div style="position:relative;">
+        <i data-lucide="search" style="position:absolute; left:10px; top:9px; width:14px; color:var(--text-muted);"></i>
+        <input type="text" id="wo-asset-search" placeholder="Search assets..." autocomplete="off" style="padding-left:32px;">
+      </div>
+      <input type="hidden" id="wo-asset-value">
+      <div id="wo-asset-dropdown" class="custom-select-dropdown hidden"></div>
+    </div>
+    
+    <div class="field">
+      <label class="field-label">Type</label>
+      <select id="wo-type">
+        <option value="breakdown">Breakdown / Fix</option>
+        <option value="pm">PM (linked to a schedule)</option>
+      </select>
+    </div>
+    
+    <div id="wo-schedule-field" class="field hidden">
+      <label class="field-label">Schedule</label>
+      <select id="wo-schedule"></select>
+    </div>
+    
+    <div class="field">
+      <label class="field-label">Description</label>
+      <textarea id="wo-description" placeholder="What needs to be done / was done"></textarea>
+    </div>
+    
+    <div class="field" style="font-size:13px; color:var(--text-muted); margin-bottom:24px;">
+      <label style="display:flex; align-items:center; gap:8px; cursor:pointer;"><input type="checkbox" id="wo-close-now" style="width:auto;"> Already done — log and close now</label>
+    </div>
+    
+    <div class="row" style="justify-content:flex-end;">
+      <button class="ghost" onclick="window.closeNewWoForm()">Cancel</button>
+      <button id="btn-create-wo" class="primary" onclick="window.createWorkOrder()">Create WO</button>
+    </div>
+  </div>
+</div>
+
+<!-- Close Work Order Modal -->
+<div id="modal-close-wo" class="modal-overlay hidden">
+  <div class="modal-box">
+    <div class="eyebrow" style="margin-bottom:8px;">Close Work Order</div>
+    <div class="card-title" id="modal-wo-title" style="margin-bottom:16px;">WO #</div>
+    <div class="field" id="modal-notes-field">
+      <label class="field-label">Resolution Notes <span style="color:var(--red);" id="notes-req-star">*</span></label>
+      <textarea id="modal-wo-notes" placeholder="What was the root cause and fix?"></textarea>
+      <p style="font-size:11px; color:var(--text-muted); margin-top:6px;">Required for breakdowns to maintain audit trail.</p>
+    </div>
+    <div class="row" style="margin-top:20px; justify-content:flex-end;">
+      <button class="ghost" onclick="window.closeModal()">Cancel</button>
+      <button class="primary" id="btn-confirm-close" onclick="window.confirmCloseWo()"><i data-lucide="check-circle"></i> Confirm Close</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container" class="toast-container"></div>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
