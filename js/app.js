@@ -2,7 +2,7 @@ import { sb } from './store.js';
 import { signIn, signOut, onSignedIn } from './auth.js';
 import { openNewAssetForm, closeNewAssetForm, createAsset, loadAssets, openAssetHistoryModal, closeAssetHistoryModal, renderAssetDropdown, selectAsset, goToSchedule, toggleScheduleItems, switchAssetModalTab } from './assets.js';
 import { openNewScheduleForm, closeNewScheduleForm, createSchedule, loadSchedules, addChecklistItem, toggleNewItemUnit } from './schedules.js';
-import { openNewWoForm, closeNewWoForm, createWorkOrder, loadWorkOrders, filterWorkOrders, triggerUpdateFlow, closeUpdateModal, reviewUpdateWo, backToEditWo, confirmSaveWo, toggleChecklistItem, saveReadingValue, openWoDetailModal, closeWoDetailModal, triggerUpdateFromDetail } from './workOrders.js';
+import { openNewWoForm, closeNewWoForm, createWorkOrder, loadWorkOrders, filterWorkOrders, triggerUpdateFlow, closeUpdateModal, reviewUpdateWo, backToEditWo, confirmSaveWo, toggleChecklistItem, saveReadingValue, openWoDetailModal, closeWoDetailModal, triggerUpdateFromDetail, openNewWoFormForAsset, raiseWoFromAssetPage } from './workOrders.js';
 import { loadManageAssetList, openManageAsset, backToManageList, saveManageCategory, saveManageSpecField, deleteManageSpec, addManageSpec } from './manage.js';
 import { loadOverview } from './overview.js';
 
@@ -41,6 +41,8 @@ window.saveReadingValue = saveReadingValue;
 window.openWoDetailModal = openWoDetailModal;
 window.closeWoDetailModal = closeWoDetailModal;
 window.triggerUpdateFromDetail = triggerUpdateFromDetail;
+window.openNewWoFormForAsset = openNewWoFormForAsset;
+window.raiseWoFromAssetPage = raiseWoFromAssetPage;
 
 window.openManageAsset = openManageAsset;
 window.backToManageList = backToManageList;

@@ -30,9 +30,14 @@
       <p style="font-family:'Oswald',sans-serif; font-size:18px; font-weight:600; margin:0; letter-spacing:0.02em;">MDPL <span style="color:var(--amber);">CMMS</span></p>
       <p class="readout-empty" style="margin:0; padding:0; font-size:11px; text-align:left; flex-direction:row;" id="who-name"></p>
     </div>
-    <button class="ghost" style="padding:6px; color:var(--text-muted);" onclick="window.signOut()" title="Exit">
-      <i data-lucide="log-out" style="width:18px;height:18px;"></i>
-    </button>
+    <div style="display:flex; align-items:center; gap:8px;">
+      <button id="btn-global-new-wo" class="primary" style="padding:8px 12px; font-size:12px;" onclick="window.openNewWoForm()">
+        <i data-lucide="plus" style="width:14px;"></i> New WO
+      </button>
+      <button class="ghost" style="padding:6px; color:var(--text-muted);" onclick="window.signOut()" title="Exit">
+        <i data-lucide="log-out" style="width:18px;height:18px;"></i>
+      </button>
+    </div>
   </header>
 
   <div class="tab-nav">
@@ -171,6 +176,17 @@
       <label class="field-label">Schedule</label>
       <select id="wo-schedule"></select>
     </div>
+
+    <div class="field">
+      <label class="field-label">Priority</label>
+      <select id="wo-priority">
+        <option value="">Unset</option>
+        <option value="P1">P1 &mdash; Critical</option>
+        <option value="P2">P2 &mdash; High</option>
+        <option value="P3">P3 &mdash; Normal</option>
+        <option value="P4">P4 &mdash; Low</option>
+      </select>
+    </div>
     
     <div class="field">
       <label class="field-label">Description</label>
@@ -210,9 +226,14 @@
   <div class="asset-modal-box">
   <div class="asset-topbar">
     <div class="eyebrow">Asset Profile</div>
-    <button class="ghost" style="padding:4px; margin:-4px;" onclick="window.closeAssetHistoryModal()">
-      <i data-lucide="x" style="width:16px; color:var(--text-muted);"></i>
-    </button>
+    <div style="display:flex; align-items:center; gap:10px;">
+      <button class="primary" style="padding:6px 10px; font-size:11px;" onclick="window.raiseWoFromAssetPage()">
+        <i data-lucide="wrench" style="width:13px;"></i> Raise Work Order
+      </button>
+      <button class="ghost" style="padding:4px; margin:-4px;" onclick="window.closeAssetHistoryModal()">
+        <i data-lucide="x" style="width:16px; color:var(--text-muted);"></i>
+      </button>
+    </div>
   </div>
   <div style="padding:0 20px;">
     <div class="card-title" id="history-asset-title" style="margin:16px 0 0; color:var(--amber);">Asset Name</div>

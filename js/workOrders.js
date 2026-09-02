@@ -1,4 +1,4 @@
-import { sb, state, toast, setButtonLoading, getLoaderHtml, escapeHtml, formatDate } from './store.js';
+import { sb, state, toast, setButtonLoading, getLoaderHtml, escapeHtml, formatDate, priorityMeta } from './store.js';
 import { populateScheduleSelect } from './schedules.js';
 
 export function openNewWoForm() {
@@ -8,6 +8,7 @@ export function openNewWoForm() {
   document.getElementById('wo-description').value = '';
   document.getElementById('wo-close-now').checked = false;
   document.getElementById('wo-type').value = 'breakdown';
+  document.getElementById('wo-priority').value = '';
   document.getElementById('wo-schedule-field').classList.add('hidden');
   
   document.getElementById('wo-type').onchange = (e) => {
@@ -15,6 +16,32 @@ export function openNewWoForm() {
     document.getElementById('wo-schedule-field').classList.toggle('hidden', !isPm);
     if (isPm) populateScheduleSelect('wo-schedule');
   };
+
+  refreshAssetStatusCache();
+}
+
+export function openNewWoFormForAsset(assetId, assetName) {
+  openNewWoForm();
+  window.selectAsset(assetId, assetName);
+}
+
+export function raiseWoFromAssetPage() {
+  const current = state.assetPageCurrent;
+  if (!current) return;
+  window.closeAssetHistoryModal();
+  openNewWoFormForAsset(current.id, current.name);
+}
+
+// Populated once per form-open (not per keystroke) — cheap single query,
+// used only to show a "has an open breakdown" dot in the asset dropdown.
+async function refreshAssetStatusCache() {
+  const { data } = await sb.from('work_orders').select('asset_id, type').in('status', ['open','in_progress','waiting_parts']);
+  const cache = {};
+  (data || []).forEach(w => {
+    cache[w.asset_id] = cache[w.asset_id] || { hasBreakdown: false };
+    if (w.type === 'breakdown') cache[w.asset_id].hasBreakdown = true;
+  });
+  state.assetStatusCache = cache;
 }
 
 export function closeNewWoForm() { 
@@ -28,12 +55,14 @@ export async function createWorkOrder() {
   const schedule_id = type === 'pm' ? document.getElementById('wo-schedule').value : null;
   const description = document.getElementById('wo-description').value.trim();
   const closeNow = document.getElementById('wo-close-now').checked;
+  const priority = document.getElementById('wo-priority').value || null;
 
   if (!asset_id) { toast('Please search and select an asset', 'err'); return; }
+  if (type === 'pm' && !schedule_id) { toast('Select a PM schedule, or switch type to Breakdown', 'err'); return; }
 
   setButtonLoading('btn-create-wo', true);
   const payload = {
-    asset_id, type, description,
+    asset_id, type, description, priority,
     schedule_id: schedule_id || null,
     created_by: state.currentUser.id,
     status: closeNow ? 'closed' : 'open',
@@ -63,7 +92,7 @@ export async function loadWorkOrders() {
   
   const statuses = document.getElementById('wo-filter').value.split(',');
   const { data, error } = await sb.from('work_orders')
-    .select('id, type, status, description, opened_at, closed_at, asset_id, schedule_id, assets(name)')
+    .select('id, type, status, description, opened_at, closed_at, asset_id, schedule_id, priority, assets(name)')
     .in('status', statuses).order('opened_at', { ascending: false }).limit(50);
 
   if (error) { list.innerHTML = `<div class="readout-empty">${error.message}</div>`; return; }
@@ -84,7 +113,7 @@ function renderWorkOrders() {
         </div>
         <span class="card-meta">#${wo.id}</span>
       </div>
-      <div class="card-title">${escapeHtml(wo.assets?.name || 'Unknown asset')}</div>
+      <div class="card-title">${escapeHtml(wo.assets?.name || 'Unknown asset')} <span class="badge ${priorityMeta(wo.priority).cls}" style="font-size:9px;">${priorityMeta(wo.priority).label}</span></div>
       <div style="margin:6px 0; font-size:13.5px; line-height:1.5; color:var(--text-muted); overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;">${wo.description ? escapeHtml(wo.description) : 'No description provided'}</div>
       <div class="card-meta"><i data-lucide="clock" style="width:12px;display:inline-block;margin-right:2px;vertical-align:middle;"></i> Opened ${formatDate(wo.opened_at)}</div>
     </div>
@@ -96,7 +125,7 @@ function renderWorkOrders() {
 export async function openWoDetailModal(id) {
   let wo = state.activeWorkOrders.find(w => w.id === id);
   if (!wo) {
-    const { data } = await sb.from('work_orders').select('id, type, status, description, opened_at, closed_at, asset_id, schedule_id, assets(name)').eq('id', id).single();
+    const { data } = await sb.from('work_orders').select('id, type, status, description, opened_at, closed_at, asset_id, schedule_id, priority, assets(name)').eq('id', id).single();
     wo = data;
   }
   if (!wo) { toast('Work order not found', 'err'); return; }
@@ -107,6 +136,7 @@ export async function openWoDetailModal(id) {
       <div style="display:flex; gap:6px;">
         <span class="badge ${wo.type}">${wo.type}</span>
         <span class="badge ${wo.status}">${wo.status.replace('_',' ')}</span>
+        <span class="badge ${priorityMeta(wo.priority).cls}">${priorityMeta(wo.priority).label}</span>
       </div>
       <span class="card-meta">#${wo.id}</span>
     </div>

@@ -18,8 +18,20 @@ export const state = {
   assetsCache: [],
   schedulesCache: [],
   activeWorkOrders: [],
-  woToUpdate: null
+  woToUpdate: null,
+  woDetailCurrent: null,
+  assetPageCurrent: null,
+  assetStatusCache: {}
 };
+
+// { label, cls } for a P1-P4 (or null) priority value — used anywhere a
+// priority badge is rendered, so the mapping stays in one place.
+export function priorityMeta(p) {
+  if (p === 'P1') return { label: 'Critical', cls: 'prio-crit' };
+  if (p === 'P2') return { label: 'High', cls: 'prio-warn' };
+  if (p === 'P3' || p === 'P4') return { label: 'Normal', cls: 'prio-normal' };
+  return { label: 'Unset', cls: 'prio-normal' };
+}
 
 // Global UI Utilities
 export function toast(msg, kind) {

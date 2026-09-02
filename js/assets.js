@@ -68,6 +68,7 @@ export async function openAssetHistoryModal(assetId, assetName) {
   const schedContainer = document.getElementById('history-schedules-container');
   const historyContainer = document.getElementById('history-list-container');
 
+  state.assetPageCurrent = { id: assetId, name: assetName };
   titleEl.textContent = assetName;
   glyphEl.innerHTML = '';
   statusEl.innerHTML = getLoaderHtml('Loading...');
@@ -234,12 +235,16 @@ export function renderAssetDropdown(filter = '') {
     return;
   }
   
-  dropdownList.innerHTML = filtered.map(a => 
-    `<div class="custom-select-item" onclick="window.selectAsset(${a.id}, '${escapeHtml(a.name).replace(/'/g, "\\'")}')">
-      ${escapeHtml(a.name)}
+  dropdownList.innerHTML = filtered.map(a => {
+    const down = state.assetStatusCache[a.id]?.hasBreakdown;
+    const dot = down
+      ? '<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--red);margin-right:6px;" title="Has an open breakdown"></span>'
+      : '';
+    return `<div class="custom-select-item" onclick="window.selectAsset(${a.id}, '${escapeHtml(a.name).replace(/'/g, "\\'")}')">
+      ${dot}${escapeHtml(a.name)}
       ${a.location ? `<span style="color:var(--text-muted); font-size:12px; display:block; margin-top:2px;">${escapeHtml(a.location)}</span>` : ''}
-    </div>`
-  ).join('');
+    </div>`;
+  }).join('');
 }
 
 export function selectAsset(id, name) {
@@ -247,4 +252,8 @@ export function selectAsset(id, name) {
   document.getElementById('wo-asset-search').value = name;
   document.getElementById('wo-asset-dropdown').classList.add('hidden');
   if (document.getElementById('wo-type').value === 'pm') populateScheduleSelect('wo-schedule');
+
+  const prioritySel = document.getElementById('wo-priority');
+  const asset = state.assetsCache.find(a => a.id === id);
+  if (prioritySel && asset?.criticality) prioritySel.value = asset.criticality;
 }

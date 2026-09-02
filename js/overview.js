@@ -1,4 +1,4 @@
-import { sb, sbTelemetry, state, escapeHtml, formatDate } from './store.js';
+import { sb, sbTelemetry, state, escapeHtml, formatDate, priorityMeta } from './store.js';
 
 export async function loadOverview() {
   const el = document.getElementById('tab-overview');
@@ -7,7 +7,7 @@ export async function loadOverview() {
   const todayStart = new Date(); todayStart.setHours(0,0,0,0);
 
   const [openRes, schedRes, visitsRes, readingsRes, metersRes] = await Promise.all([
-    sb.from('work_orders').select('id, type, status, opened_at, asset_id, assets(name, criticality)').in('status', ['open','in_progress','waiting_parts']).order('opened_at', { ascending: true }),
+    sb.from('work_orders').select('id, type, status, priority, opened_at, asset_id, assets(name, criticality)').in('status', ['open','in_progress','waiting_parts']).order('opened_at', { ascending: true }),
     sb.from('recurring_schedules').select('id, title, next_due_at, active, asset_id, assets(name)').eq('active', true).order('next_due_at', { ascending: true }),
     sb.from('wo_visits').select('visit_type, action_taken, technician, visited_at, wo_id, work_orders(id, asset_id, assets(name))').order('visited_at', { ascending: false }).limit(8),
     sbTelemetry.from('meter_readings').select('meter_id, reading_value, consumption, recorded_at, shift').order('recorded_at', { ascending: false }).limit(200).then(r => r).catch(() => ({ data: null, error: true })),
@@ -19,9 +19,8 @@ export async function loadOverview() {
   const visits = visitsRes.data || [];
 
   // ---- WO queue ----
-  const priorityFor = c => c === 'P1' ? ['Critical','prio-crit'] : c === 'P2' ? ['High','prio-warn'] : ['Normal','prio-normal'];
   const woRows = openWOs.slice(0, 10).map(w => {
-    const [label, cls] = priorityFor(w.assets?.criticality);
+    const { label, cls } = priorityMeta(w.priority || w.assets?.criticality);
     const ageMs = Date.now() - new Date(w.opened_at).getTime();
     const ageH = Math.floor(ageMs / 3600000);
     const ageStr = ageH >= 24 ? `${Math.floor(ageH/24)}d ${ageH%24}h` : `${ageH}h`;
