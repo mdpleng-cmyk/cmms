@@ -19,9 +19,9 @@ export async function loadOverview() {
   const visits = visitsRes.data || [];
 
   // ---- WO queue ----
-  const priorityFor = c => c === 'P1' ? ['Critical','crit'] : c === 'P2' ? ['High','warn'] : ['Normal','ok'];
+  const priorityFor = c => c === 'P1' ? ['Critical','prio-crit'] : c === 'P2' ? ['High','prio-warn'] : ['Normal','prio-normal'];
   const woRows = openWOs.slice(0, 10).map(w => {
-    const [label, tone] = priorityFor(w.assets?.criticality);
+    const [label, cls] = priorityFor(w.assets?.criticality);
     const ageMs = Date.now() - new Date(w.opened_at).getTime();
     const ageH = Math.floor(ageMs / 3600000);
     const ageStr = ageH >= 24 ? `${Math.floor(ageH/24)}d ${ageH%24}h` : `${ageH}h`;
@@ -30,7 +30,7 @@ export async function loadOverview() {
         <td class="ov-wo-id">#${w.id}</td>
         <td>${escapeHtml(w.assets?.name || 'Unknown')}</td>
         <td>${w.type}</td>
-        <td><span class="badge ${tone === 'crit' ? 'breakdown' : ''}" style="font-size:10px;">${label}</span></td>
+        <td><span class="badge ${cls}" style="font-size:10px;">${label}</span></td>
         <td><span class="badge ${w.status}" style="font-size:10px;">${w.status.replace('_',' ')}</span></td>
         <td class="ov-wo-id">${ageStr}</td>
       </tr>`;
@@ -40,7 +40,7 @@ export async function loadOverview() {
   const pmDueHtml = schedules.slice(0, 6).map(s => {
     const days = Math.round((new Date(s.next_due_at) - todayStart) / 86400000);
     const cls = days < 0 ? 'over' : days <= 3 ? 'soon' : '';
-    const label = days < 0 ? `${days}d` : days === 0 ? 'Today' : `${days}d`;
+    const label = days < 0 ? `${Math.abs(days)}d overdue` : days === 0 ? 'Today' : `${days}d`;
     const assetName = (s.assets?.name || '').replace(/'/g, "\\'");
     return `
       <div class="ov-pm-due-item" style="cursor:pointer;" onclick="window.openAssetHistoryModal(${s.asset_id}, '${assetName}')">
