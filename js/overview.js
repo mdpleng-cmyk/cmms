@@ -13,7 +13,7 @@ export async function loadOverview() {
     sb.from('recurring_schedules').select('id, title, next_due_at, active, asset_id, assets(name)').eq('active', true).order('next_due_at', { ascending: true }),
     sb.from('assets').select('id, name, location'),
     sb.from('wo_visits').select('visit_type, action_taken, technician, visited_at, wo_id, work_orders(id, asset_id, assets(name))').order('visited_at', { ascending: false }).limit(8),
-    sbTelemetry.from('latest_meter_readings').select('meter_id, reading_value, recorded_at, shift').then(r => r).catch(() => ({ data: null, error: true })),
+    sbTelemetry.from('meter_readings').select('meter_id, reading_value, consumption, recorded_at, shift').order('recorded_at', { ascending: false }).limit(200).then(r => r).catch(() => ({ data: null, error: true })),
     sbTelemetry.from('meters').select('id, name, unit, active').eq('active', true).then(r => r).catch(() => ({ data: null, error: true })),
   ]);
 
@@ -26,7 +26,13 @@ export async function loadOverview() {
   // ---- Meter readings (telemetry project, read-only) ----
   const meterById = {};
   (metersRes.data || []).forEach(m => { meterById[m.id] = m; });
+  const seenMeters = new Set();
   const meterRows = (readingsRes.data || [])
+    .filter(r => {
+      if (seenMeters.has(r.meter_id)) return false;
+      seenMeters.add(r.meter_id);
+      return true;
+    })
     .map(r => ({ ...r, meter: meterById[r.meter_id] }))
     .filter(r => r.meter)
     .slice(0, 6);
@@ -152,7 +158,7 @@ export async function loadOverview() {
                 ? meterRows.map(r => `
                     <div class="ov-meter-row">
                       <span class="ov-meter-name">${escapeHtml(r.meter.name)}</span>
-                      <span class="ov-meter-val">${r.reading_value.toLocaleString()}<span class="unit">${escapeHtml(r.meter.unit || '')}</span></span>
+                      <span class="ov-meter-val">${r.consumption != null ? r.consumption.toLocaleString() : '\u2014'}<span class="unit">${escapeHtml(r.meter.unit || '')} / interval</span></span>
                     </div>`).join('')
                 : '<div class="card-meta">No readings logged yet.</div>'
           }</div>
