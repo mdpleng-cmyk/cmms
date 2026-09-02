@@ -1,9 +1,10 @@
 import { sb } from './store.js';
 import { signIn, signOut, onSignedIn } from './auth.js';
 import { openNewAssetForm, closeNewAssetForm, createAsset, loadAssets, openAssetHistoryModal, closeAssetHistoryModal, renderAssetDropdown, selectAsset, goToSchedule, toggleScheduleItems, switchAssetModalTab } from './assets.js';
-import { loadManageAssetList, openManageAsset, backToManageList, saveManageCategory, saveManageSpecField, deleteManageSpec, addManageSpec } from './manage.js';
 import { openNewScheduleForm, closeNewScheduleForm, createSchedule, loadSchedules, addChecklistItem, toggleNewItemUnit } from './schedules.js';
 import { openNewWoForm, closeNewWoForm, createWorkOrder, loadWorkOrders, filterWorkOrders, triggerUpdateFlow, closeUpdateModal, reviewUpdateWo, backToEditWo, confirmSaveWo, toggleChecklistItem, saveReadingValue } from './workOrders.js';
+import { loadManageAssetList, openManageAsset, backToManageList, saveManageCategory, saveManageSpecField, deleteManageSpec, addManageSpec } from './manage.js';
+import { loadOverview } from './overview.js';
 
 // Bind to Window so HTML onclicks work
 window.signIn = signIn;
@@ -15,12 +16,6 @@ window.createAsset = createAsset;
 window.openAssetHistoryModal = openAssetHistoryModal;
 window.closeAssetHistoryModal = closeAssetHistoryModal;
 window.selectAsset = selectAsset;
-window.openManageAsset = openManageAsset;
-window.backToManageList = backToManageList;
-window.saveManageCategory = saveManageCategory;
-window.saveManageSpecField = saveManageSpecField;
-window.deleteManageSpec = deleteManageSpec;
-window.addManageSpec = addManageSpec;
 window.goToSchedule = goToSchedule;
 window.toggleScheduleItems = toggleScheduleItems;
 window.switchAssetModalTab = switchAssetModalTab;
@@ -44,10 +39,18 @@ window.confirmSaveWo = confirmSaveWo;
 window.toggleChecklistItem = toggleChecklistItem;
 window.saveReadingValue = saveReadingValue;
 
+window.openManageAsset = openManageAsset;
+window.backToManageList = backToManageList;
+window.saveManageCategory = saveManageCategory;
+window.saveManageSpecField = saveManageSpecField;
+window.deleteManageSpec = deleteManageSpec;
+window.addManageSpec = addManageSpec;
+
 // Tab Logic
 window.switchTab = function(tab) {
-  ['wo','assets','schedules','manage'].forEach(t => document.getElementById('tab-' + t).classList.toggle('hidden', t !== tab));
+  ['overview','wo','assets','schedules','manage'].forEach(t => document.getElementById('tab-' + t).classList.toggle('hidden', t !== tab));
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  if (tab === 'overview') loadOverview();
   if (tab === 'assets') loadAssets(true);
   if (tab === 'schedules') loadSchedules();
   if (tab === 'manage') { document.getElementById('manage-detail-view').classList.add('hidden'); document.getElementById('manage-list-view').classList.remove('hidden'); loadManageAssetList(); }

@@ -36,15 +36,18 @@
   </header>
 
   <div class="tab-nav">
-    <button class="tab-btn active" data-tab="wo" onclick="window.switchTab('wo')"><i data-lucide="clipboard-list" style="width:16px;"></i> Work Orders</button>
+    <button class="tab-btn active" data-tab="overview" onclick="window.switchTab('overview')"><i data-lucide="layout-dashboard" style="width:16px;"></i> Overview</button>
+    <button class="tab-btn" data-tab="wo" onclick="window.switchTab('wo')"><i data-lucide="clipboard-list" style="width:16px;"></i> Work Orders</button>
     <button class="tab-btn" data-tab="assets" onclick="window.switchTab('assets')"><i data-lucide="server" style="width:16px;"></i> Assets</button>
     <button class="tab-btn" data-tab="schedules" onclick="window.switchTab('schedules')"><i data-lucide="calendar-clock" style="width:16px;"></i> PMs</button>
     <button class="tab-btn" data-tab="manage" onclick="window.switchTab('manage')"><i data-lucide="settings" style="width:16px;"></i> Manage</button>
   </div>
 
-  <main class="wrap">
+  <div id="tab-overview" class="ov-wrap"></div>
+
+<main class="wrap">
     <!-- WORK ORDERS TAB -->
-    <section id="tab-wo">
+    <section id="tab-wo" class="hidden">
       <div class="row" style="margin-top:16px;">
         <div style="flex:1; position:relative;">
           <i data-lucide="search" style="position:absolute; left:10px; top:10px; width:16px; color:var(--text-muted);"></i>
