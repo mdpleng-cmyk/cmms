@@ -1,4 +1,4 @@
-import { sb, state, escapeHtml, formatDate } from './store.js';
+import { sb, sbTelemetry, state, escapeHtml, formatDate } from './store.js';
 
 export async function loadOverview() {
   const el = document.getElementById('tab-overview');
@@ -7,12 +7,14 @@ export async function loadOverview() {
   const todayStart = new Date(); todayStart.setHours(0,0,0,0);
   const todayISO = new Date().toISOString().slice(0,10);
 
-  const [openRes, closedRes, schedRes, assetsRes, visitsRes] = await Promise.all([
+  const [openRes, closedRes, schedRes, assetsRes, visitsRes, readingsRes, metersRes] = await Promise.all([
     sb.from('work_orders').select('id, type, status, opened_at, asset_id, assets(name, criticality, location)').in('status', ['open','in_progress','waiting_parts']).order('opened_at', { ascending: true }),
     sb.from('work_orders').select('id, opened_at, closed_at').eq('status', 'closed').gte('closed_at', todayStart.toISOString()),
     sb.from('recurring_schedules').select('id, title, next_due_at, active, asset_id, assets(name)').eq('active', true).order('next_due_at', { ascending: true }),
     sb.from('assets').select('id, name, location'),
     sb.from('wo_visits').select('visit_type, action_taken, technician, visited_at, wo_id, work_orders(id, asset_id, assets(name))').order('visited_at', { ascending: false }).limit(8),
+    sbTelemetry.from('latest_meter_readings').select('meter_id, reading_value, recorded_at, shift').then(r => r).catch(() => ({ data: null, error: true })),
+    sbTelemetry.from('meters').select('id, name, unit, active').eq('active', true).then(r => r).catch(() => ({ data: null, error: true })),
   ]);
 
   const openWOs = openRes.data || [];
@@ -20,6 +22,15 @@ export async function loadOverview() {
   const schedules = schedRes.data || [];
   const assets = assetsRes.data || [];
   const visits = visitsRes.data || [];
+
+  // ---- Meter readings (telemetry project, read-only) ----
+  const meterById = {};
+  (metersRes.data || []).forEach(m => { meterById[m.id] = m; });
+  const meterRows = (readingsRes.data || [])
+    .map(r => ({ ...r, meter: meterById[r.meter_id] }))
+    .filter(r => r.meter)
+    .slice(0, 6);
+  const meterFetchFailed = readingsRes.error || metersRes.error;
 
   // ---- KPIs ----
   const breakdownCount = openWOs.filter(w => w.type === 'breakdown').length;
@@ -133,8 +144,18 @@ export async function loadOverview() {
           <div class="ov-panel-body">${pmDueHtml}</div>
         </div>
         <div class="ov-panel">
-          <div class="ov-panel-head"><div class="ov-panel-title">Meter readings</div><div class="ov-panel-meta">not connected</div></div>
-          <div class="ov-panel-body"><div class="card-meta">Telemetry project not linked yet — this panel will populate once connected.</div></div>
+          <div class="ov-panel-head"><div class="ov-panel-title">Meter readings</div><div class="ov-panel-meta">telemetry</div></div>
+          <div class="ov-panel-body">${
+            meterFetchFailed
+              ? '<div class="card-meta">Could not reach the telemetry project.</div>'
+              : meterRows.length
+                ? meterRows.map(r => `
+                    <div class="ov-meter-row">
+                      <span class="ov-meter-name">${escapeHtml(r.meter.name)}</span>
+                      <span class="ov-meter-val">${r.reading_value.toLocaleString()}<span class="unit">${escapeHtml(r.meter.unit || '')}</span></span>
+                    </div>`).join('')
+                : '<div class="card-meta">No readings logged yet.</div>'
+          }</div>
         </div>
         <div class="ov-panel">
           <div class="ov-panel-head"><div class="ov-panel-title">Recent activity</div></div>

@@ -3,6 +3,14 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 export const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+// Read-only link to the telemetry/meter-reading project — separate Supabase
+// project, anonymous access confirmed open on latest_meter_readings + meters.
+// Never used for writes; CMMS auth has no relationship to that project's auth.
+export const sbTelemetry = supabase.createClient(
+  'https://cyycyzwfeswnodpnhpdu.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN5eWN5endmZXN3bm9kcG5ocGR1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxMjI2MTQsImV4cCI6MjEwMjY5ODYxNH0.WXMde2-K_roIqqhZvcTyi-O_dB1q0HvPzRRMpj6MzN4'
+);
+
 // Shared Global State
 export const state = {
   currentUser: null,
