@@ -80,7 +80,7 @@ export async function openAssetHistoryModal(assetId, assetName) {
 
   const [woRes, schedRes] = await Promise.all([
     sb.from('work_orders')
-      .select('id, type, status, opened_at, closed_at, schedule_id')
+      .select('id, type, status, description, opened_at, closed_at, schedule_id')
       .eq('asset_id', assetId)
       .order('opened_at', { ascending: false })
       .limit(50),
@@ -107,19 +107,21 @@ export async function openAssetHistoryModal(assetId, assetName) {
     });
 
     openContainer.innerHTML = open.length ? open.map(wo => `
-      <div class="activity-entry">
+      <div class="activity-entry" style="cursor:pointer;" onclick="window.closeAssetHistoryModal(); window.openWoDetailModal(${wo.id})">
         <span class="activity-date">${formatDate(wo.opened_at).split(',')[0]}</span>
         <div class="activity-body">
-          <p class="activity-title">#${wo.id} &middot; ${wo.type} <span class="badge ${wo.status}" style="font-size:9px;">${wo.status.replace('_',' ')}</span></p>
+          <p class="activity-title">#${wo.id} &middot; <span class="badge ${wo.type}" style="font-size:9px;">${wo.type}</span> <span class="badge ${wo.status}" style="font-size:9px;">${wo.status.replace('_',' ')}</span></p>
+          <p class="activity-meta" style="overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;">${wo.description ? escapeHtml(wo.description) : 'No description provided'}</p>
         </div>
       </div>
     `).join('') : '<div class="card-meta">No open work orders.</div>';
 
     historyContainer.innerHTML = closed.length ? closed.map(wo => `
-      <div class="activity-entry">
+      <div class="activity-entry" style="cursor:pointer;" onclick="window.closeAssetHistoryModal(); window.openWoDetailModal(${wo.id})">
         <span class="activity-date">${formatDate(wo.closed_at).split(',')[0]}</span>
         <div class="activity-body">
-          <p class="activity-title">#${wo.id} &middot; ${wo.type}</p>
+          <p class="activity-title">#${wo.id} &middot; <span class="badge ${wo.type}" style="font-size:9px;">${wo.type}</span></p>
+          <p class="activity-meta" style="overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;">${wo.description ? escapeHtml(wo.description) : 'No description provided'}</p>
         </div>
       </div>
     `).join('') : '<div class="card-meta">No closed work orders yet.</div>';

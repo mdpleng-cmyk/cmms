@@ -1,6 +1,7 @@
 import { sb, state, setButtonLoading, toast } from './store.js';
 import { loadAssets } from './assets.js';
 import { loadWorkOrders } from './workOrders.js';
+import { loadOverview } from './overview.js';
 
 export async function signIn() {
   setButtonLoading('btn-login', true);
@@ -43,6 +44,7 @@ export async function onSignedIn(user) {
   document.getElementById('btn-new-asset').style.display = state.currentRole === 'admin' ? '' : 'none';
 
   lucide.createIcons();
+  await loadOverview();
   await loadAssets();
   await loadWorkOrders();
 }

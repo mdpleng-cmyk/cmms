@@ -85,9 +85,8 @@ export async function loadOverview() {
     const ageMs = Date.now() - new Date(w.opened_at).getTime();
     const ageH = Math.floor(ageMs / 3600000);
     const ageStr = ageH >= 24 ? `${Math.floor(ageH/24)}d ${ageH%24}h` : `${ageH}h`;
-    const assetName = (w.assets?.name || 'Unknown').replace(/'/g, "\\'");
     return `
-      <tr style="cursor:pointer;" onclick="window.openAssetHistoryModal(${w.asset_id}, '${assetName}')">
+      <tr style="cursor:pointer;" onclick="window.openWoDetailModal(${w.id})">
         <td class="ov-wo-id">#${w.id}</td>
         <td>${escapeHtml(w.assets?.name || 'Unknown')}</td>
         <td>${w.type}</td>
