@@ -85,28 +85,6 @@
         <div id="asset-list"></div>
       </div>
 
-      <!-- ASSET DETAIL PAGE -->
-      <div id="asset-detail-view" class="hidden">
-        <button class="ghost" style="margin:16px 0 8px; padding:6px 10px;" onclick="window.closeAssetDetail()">
-          <i data-lucide="arrow-left" style="width:14px;"></i> Back
-        </button>
-
-        <div class="panel" id="ad-header"></div>
-        <div id="ad-quick-actions" style="margin-bottom:12px;"></div>
-
-        <div class="tab-nav" style="position:static; margin-bottom:4px;">
-          <button class="tab-btn active" data-adtab="overview" onclick="window.switchAssetDetailTab('overview')">Overview</button>
-          <button class="tab-btn" data-adtab="meter" onclick="window.switchAssetDetailTab('meter')">Meter</button>
-          <button class="tab-btn" data-adtab="pm" onclick="window.switchAssetDetailTab('pm')">PM &amp; Inspection</button>
-          <button class="tab-btn" data-adtab="wo" onclick="window.switchAssetDetailTab('wo')">Work Orders</button>
-        </div>
-
-        <div data-adpanel="overview" style="padding-top:14px;"></div>
-        <div data-adpanel="meter" class="hidden" style="padding-top:14px;"></div>
-        <div data-adpanel="pm" class="hidden" style="padding-top:14px;"></div>
-        <div data-adpanel="wo" class="hidden" style="padding-top:14px;"></div>
-      </div>
-
     </section>
 
     <!-- SCHEDULES TAB -->
@@ -206,6 +184,23 @@
     <div class="row" style="justify-content:flex-end;">
       <button class="ghost" onclick="window.closeNewWoForm()">Cancel</button>
       <button id="btn-create-wo" class="primary" onclick="window.createWorkOrder()">Create WO</button>
+    </div>
+  </div>
+</div>
+
+<!-- Work Order Detail Modal -->
+<div id="modal-wo-detail" class="modal-overlay hidden">
+  <div class="modal-box wide">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+      <div class="eyebrow">Work Order</div>
+      <button class="ghost" style="padding:4px; margin:-4px;" onclick="window.closeWoDetailModal()"><i data-lucide="x" style="width:16px; color:var(--text-muted);"></i></button>
+    </div>
+    <div id="wo-detail-header"></div>
+    <div id="wo-detail-checklist" class="hidden"></div>
+    <div class="eyebrow" style="margin:16px 0 8px;">Activity</div>
+    <div id="wo-detail-visits"></div>
+    <div class="row" style="margin-top:16px; border-top: 1px solid var(--border); padding-top: 14px; justify-content:flex-end;">
+      <button id="wo-detail-update-btn" class="primary hidden" onclick="window.triggerUpdateFromDetail()"><i data-lucide="edit" style="width:14px;"></i> Update Ticket</button>
     </div>
   </div>
 </div>

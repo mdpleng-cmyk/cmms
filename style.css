@@ -77,6 +77,7 @@ button.big { width: 100%; padding: 14px; font-size: 15px; }
 /* Modals */
 .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 200; padding: 16px; }
 .modal-box { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); width: 100%; max-width: 400px; padding: 20px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5); max-height: 90vh; overflow-y: auto; }
+.modal-box.wide { max-width: 560px; }
 
 .asset-modal-box { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); width: 100%; max-width: 900px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5); }
 .asset-topbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 16px 20px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--panel); z-index: 5; }
