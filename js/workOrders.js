@@ -7,8 +7,11 @@ export function openNewWoForm() {
   document.getElementById('wo-asset-search').value = '';
   document.getElementById('wo-description').value = '';
   document.getElementById('wo-close-now').checked = false;
+  document.getElementById('wo-close-times').classList.add('hidden');
+  document.getElementById('wo-start-time').value = '';
+  document.getElementById('wo-end-time').value = '';
   document.getElementById('wo-type').value = 'breakdown';
-  document.getElementById('wo-priority').value = '';
+  document.getElementById('wo-priority').value = 'P3';
   document.getElementById('wo-schedule-field').classList.add('hidden');
   
   document.getElementById('wo-type').onchange = (e) => {
@@ -18,6 +21,21 @@ export function openNewWoForm() {
   };
 
   refreshAssetStatusCache();
+}
+
+export function toggleWoCloseTimes(checked) {
+  document.getElementById('wo-close-times').classList.toggle('hidden', !checked);
+  if (checked) {
+    const startEl = document.getElementById('wo-start-time');
+    const endEl = document.getElementById('wo-end-time');
+    if (!startEl.value) startEl.value = toDatetimeLocalValue(new Date());
+    if (!endEl.value) endEl.value = toDatetimeLocalValue(new Date());
+  }
+}
+
+function toDatetimeLocalValue(d) {
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 export function openNewWoFormForAsset(assetId, assetName) {
@@ -60,13 +78,28 @@ export async function createWorkOrder() {
   if (!asset_id) { toast('Please search and select an asset', 'err'); return; }
   if (type === 'pm' && !schedule_id) { toast('Select a PM schedule, or switch type to Breakdown', 'err'); return; }
 
+  let openedAt = new Date().toISOString();
+  let closedAt = closeNow ? new Date().toISOString() : null;
+
+  if (closeNow) {
+    const startVal = document.getElementById('wo-start-time').value;
+    const endVal = document.getElementById('wo-end-time').value;
+    if (!startVal || !endVal) { toast('Enter both start and end time', 'err'); return; }
+    const start = new Date(startVal);
+    const end = new Date(endVal);
+    if (end < start) { toast('End time cannot be before start time', 'err'); return; }
+    openedAt = start.toISOString();
+    closedAt = end.toISOString();
+  }
+
   setButtonLoading('btn-create-wo', true);
   const payload = {
     asset_id, type, description, priority,
     schedule_id: schedule_id || null,
     created_by: state.currentUser.id,
     status: closeNow ? 'closed' : 'open',
-    closed_at: closeNow ? new Date().toISOString() : null
+    opened_at: openedAt,
+    closed_at: closedAt
   };
 
   const { data: wo, error } = await sb.from('work_orders').insert(payload).select().single();

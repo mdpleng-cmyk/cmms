@@ -193,8 +193,19 @@
       <textarea id="wo-description" placeholder="What needs to be done / was done"></textarea>
     </div>
     
-    <div class="field" style="font-size:13px; color:var(--text-muted); margin-bottom:24px;">
-      <label style="display:flex; align-items:center; gap:8px; cursor:pointer;"><input type="checkbox" id="wo-close-now" style="width:auto;"> Already done — log and close now</label>
+    <div class="field" style="font-size:13px; color:var(--text-muted);">
+      <label style="display:flex; align-items:center; gap:8px; cursor:pointer;"><input type="checkbox" id="wo-close-now" onchange="window.toggleWoCloseTimes(this.checked)" style="width:auto;"> Already done — log and close now</label>
+    </div>
+
+    <div id="wo-close-times" class="row hidden" style="gap:10px; margin-bottom:24px;">
+      <div class="field" style="flex:1; margin-bottom:0;">
+        <label class="field-label">Started</label>
+        <input type="datetime-local" id="wo-start-time" style="width:100%;">
+      </div>
+      <div class="field" style="flex:1; margin-bottom:0;">
+        <label class="field-label">Finished</label>
+        <input type="datetime-local" id="wo-end-time" style="width:100%;">
+      </div>
     </div>
     
     <div class="row" style="justify-content:flex-end;">

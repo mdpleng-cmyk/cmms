@@ -29,7 +29,7 @@ export async function loadSchedules() {
   const list = document.getElementById('schedule-list');
   list.innerHTML = getLoaderHtml('Loading schedules...');
   
-  const { data, error } = await sb.from('recurring_schedules').select('id, title, interval_days, next_due_at, active, assets(name)').order('next_due_at');
+  const { data, error } = await sb.from('recurring_schedules').select('id, title, interval_days, next_due_at, active, asset_id, assets(name)').order('next_due_at');
   state.schedulesCache = data || [];
   
   if (error) { list.innerHTML = `<div class="readout-empty">${error.message}</div>`; return; }
@@ -37,7 +37,10 @@ export async function loadSchedules() {
 
   list.innerHTML = state.schedulesCache.map(s => `
     <div class="panel" id="schedule-card-${s.id}">
-      <div class="card-title">${escapeHtml(s.title)}</div>
+      <div class="row" style="justify-content:space-between; margin-bottom:2px;">
+        <div class="card-title" style="margin:0;">${escapeHtml(s.title)}</div>
+        ${state.currentRole !== 'viewer' ? `<button class="ghost" style="padding:4px 8px; font-size:11px; border:1px solid var(--border);" onclick="window.generatePmWoNow(${s.id})"><i data-lucide="zap" style="width:12px;"></i> Generate WO Now</button>` : ''}
+      </div>
       <div class="card-meta">
         <i data-lucide="server" style="width:12px; display:inline-block; vertical-align:-2px;"></i> ${s.assets?.name || ''} &middot; 
         <i data-lucide="rotate-cw" style="width:12px; display:inline-block; vertical-align:-2px;"></i> ${s.interval_days}d &middot; 
@@ -99,4 +102,30 @@ export function populateScheduleSelect(id) {
       ? data.map(s => `<option value="${s.id}">${escapeHtml(s.title)}</option>`).join('')
       : '<option value="">No PM schedules for this asset</option>';
   });
+}
+
+export async function generatePmWoNow(scheduleId) {
+  const schedule = state.schedulesCache.find(s => s.id === scheduleId);
+  if (!schedule) { toast('Schedule not found', 'err'); return; }
+
+  const { data: wo, error } = await sb.from('work_orders').insert({
+    asset_id: schedule.asset_id,
+    type: 'pm',
+    schedule_id: scheduleId,
+    status: 'open',
+    priority: 'P3',
+    created_by: state.currentUser.id,
+    description: `Manually generated PM: ${schedule.title}`,
+  }).select().single();
+  if (error) { toast(error.message, 'err'); return; }
+
+  const { data: items } = await sb.from('checklist_items').select('id').eq('schedule_id', scheduleId).eq('active', true);
+  if (items && items.length) {
+    const rows = items.map(i => ({ wo_id: wo.id, item_id: i.id, done: false }));
+    await sb.from('wo_checklist_results').insert(rows);
+  }
+
+  toast('PM work order generated');
+  window.switchTab('wo');
+  window.openWoDetailModal(wo.id);
 }
