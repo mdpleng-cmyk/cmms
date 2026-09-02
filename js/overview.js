@@ -12,7 +12,7 @@ export async function loadOverview() {
     sb.from('work_orders').select('id, opened_at, closed_at').eq('status', 'closed').gte('closed_at', todayStart.toISOString()),
     sb.from('recurring_schedules').select('id, title, next_due_at, active, asset_id, assets(name)').eq('active', true).order('next_due_at', { ascending: true }),
     sb.from('assets').select('id, name, location'),
-    sb.from('wo_visits').select('visit_type, action_taken, technician, visited_at, wo_id, work_orders(id, assets(name))').order('visited_at', { ascending: false }).limit(8),
+    sb.from('wo_visits').select('visit_type, action_taken, technician, visited_at, wo_id, work_orders(id, asset_id, assets(name))').order('visited_at', { ascending: false }).limit(8),
   ]);
 
   const openWOs = openRes.data || [];
@@ -68,8 +68,9 @@ export async function loadOverview() {
     const ageMs = Date.now() - new Date(w.opened_at).getTime();
     const ageH = Math.floor(ageMs / 3600000);
     const ageStr = ageH >= 24 ? `${Math.floor(ageH/24)}d ${ageH%24}h` : `${ageH}h`;
+    const assetName = (w.assets?.name || 'Unknown').replace(/'/g, "\\'");
     return `
-      <tr>
+      <tr style="cursor:pointer;" onclick="window.openAssetHistoryModal(${w.asset_id}, '${assetName}')">
         <td class="ov-wo-id">#${w.id}</td>
         <td>${escapeHtml(w.assets?.name || 'Unknown')}</td>
         <td>${w.type}</td>
@@ -84,20 +85,24 @@ export async function loadOverview() {
     const days = Math.round((new Date(s.next_due_at) - todayStart) / 86400000);
     const cls = days < 0 ? 'over' : days <= 3 ? 'soon' : '';
     const label = days < 0 ? `${days}d` : days === 0 ? 'Today' : `${days}d`;
+    const assetName = (s.assets?.name || '').replace(/'/g, "\\'");
     return `
-      <div class="ov-pm-due-item">
+      <div class="ov-pm-due-item" style="cursor:pointer;" onclick="window.openAssetHistoryModal(${s.asset_id}, '${assetName}')">
         <span>${escapeHtml(s.assets?.name || '')} &mdash; ${escapeHtml(s.title)}</span>
         <span class="ov-pm-due-days ${cls}">${label}</span>
       </div>`;
   }).join('') || '<div class="card-meta">No active PM schedules.</div>';
 
   // ---- Activity feed ----
-  const activityHtml = visits.length ? visits.map(v => `
-    <div class="ov-activity-item">
+  const activityHtml = visits.length ? visits.map(v => {
+    const assetId = v.work_orders?.asset_id;
+    const assetName = (v.work_orders?.assets?.name || '').replace(/'/g, "\\'");
+    return `
+    <div class="ov-activity-item" ${assetId ? `style="cursor:pointer;" onclick="window.openAssetHistoryModal(${assetId}, '${assetName}')"` : ''}>
       <span class="ov-activity-time">${formatDate(v.visited_at).split(',')[1] || formatDate(v.visited_at)}</span>
       <span class="ov-activity-text"><b>${escapeHtml(v.technician || 'Someone')}</b> ${v.visit_type} &middot; ${escapeHtml(v.work_orders?.assets?.name || 'WO #' + v.wo_id)}</span>
-    </div>
-  `).join('') : '<div class="card-meta">No recent activity.</div>';
+    </div>`;
+  }).join('') : '<div class="card-meta">No recent activity.</div>';
 
   el.innerHTML = `
     <div class="ov-kpi-row">
