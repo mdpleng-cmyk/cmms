@@ -1,5 +1,5 @@
 # MDPL CMMS — Project Module Map
-_Give this whole file to any AI assistant as context before asking for changes. It exists specifically so a new AI doesn't have to guess your schema — guessing is what caused the bug this file was rewritten to prevent (see "Lessons learned" below)._
+
 
 ## Status right now
 - **Database**: Supabase (Postgres), own project — separate from the telemetry/meter-reading project (deliberately not merged).

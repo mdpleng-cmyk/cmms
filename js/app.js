@@ -2,7 +2,7 @@ import { sb } from './store.js';
 import { signIn, signOut, onSignedIn } from './auth.js';
 import { openNewAssetForm, closeNewAssetForm, createAsset, loadAssets, openAssetHistoryModal, closeAssetHistoryModal, renderAssetDropdown, selectAsset, goToSchedule, toggleScheduleItems, switchAssetModalTab } from './assets.js';
 import { openNewScheduleForm, closeNewScheduleForm, createSchedule, loadSchedules, addChecklistItem, toggleNewItemUnit, generatePmWoNow } from './schedules.js';
-import { openNewWoForm, closeNewWoForm, createWorkOrder, loadWorkOrders, filterWorkOrders, triggerUpdateFlow, closeUpdateModal, reviewUpdateWo, backToEditWo, confirmSaveWo, toggleChecklistItem, saveReadingValue, openWoDetailModal, closeWoDetailModal, triggerUpdateFromDetail, openNewWoFormForAsset, raiseWoFromAssetPage } from './workOrders.js';
+import { openNewWoForm, closeNewWoForm, createWorkOrder, loadWorkOrders, filterWorkOrders, triggerUpdateFlow, closeUpdateModal, reviewUpdateWo, backToEditWo, confirmSaveWo, toggleChecklistItem, saveReadingValue, openWoDetailModal, closeWoDetailModal, triggerUpdateFromDetail, openNewWoFormForAsset, raiseWoFromAssetPage, toggleWoCloseTimes } from './workOrders.js';
 import { loadManageAssetList, openManageAsset, backToManageList, saveManageCategory, saveManageSpecField, deleteManageSpec, addManageSpec } from './manage.js';
 import { loadOverview } from './overview.js';
 
@@ -58,6 +58,7 @@ window.switchTab = function(tab) {
   ['overview','wo','assets','schedules','manage'].forEach(t => document.getElementById('tab-' + t).classList.toggle('hidden', t !== tab));
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
   if (tab === 'overview') loadOverview();
+  if (tab === 'wo') loadWorkOrders();
   if (tab === 'assets') loadAssets(true);
   if (tab === 'schedules') loadSchedules();
   if (tab === 'manage') { document.getElementById('manage-detail-view').classList.add('hidden'); document.getElementById('manage-list-view').classList.remove('hidden'); loadManageAssetList(); }
