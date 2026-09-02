@@ -207,12 +207,17 @@
   </div>
 </div>
 
-<!-- Asset Detail Page (full-screen takeover) -->
-<div id="asset-page" class="hidden">
+<!-- Asset Profile Modal -->
+<div id="asset-page" class="modal-overlay hidden">
+  <div class="asset-modal-box">
   <div class="asset-topbar">
-    <button class="ghost" onclick="window.closeAssetHistoryModal()"><i data-lucide="arrow-left" style="width:16px;"></i> Back</button>
-    <div class="card-title" id="history-asset-title" style="margin:0; color:var(--amber);">Asset Name</div>
-    <span style="width:70px;"></span>
+    <div class="eyebrow">Asset Profile</div>
+    <button class="ghost" style="padding:4px; margin:-4px;" onclick="window.closeAssetHistoryModal()">
+      <i data-lucide="x" style="width:16px; color:var(--text-muted);"></i>
+    </button>
+  </div>
+  <div style="padding:0 20px;">
+    <div class="card-title" id="history-asset-title" style="margin:16px 0 0; color:var(--amber);">Asset Name</div>
   </div>
 
   <div class="asset-layout">
@@ -242,6 +247,7 @@
         </div>
       </div>
     </div>
+  </div>
   </div>
 </div>
 

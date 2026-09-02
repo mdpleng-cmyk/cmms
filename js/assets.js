@@ -58,7 +58,6 @@ export function switchAssetModalTab(tab) {
 
 export async function openAssetHistoryModal(assetId, assetName) {
   document.getElementById('asset-page').classList.remove('hidden');
-  window.scrollTo(0, 0);
 
   const titleEl = document.getElementById('history-asset-title');
   const glyphEl = document.getElementById('asset-page-glyph');
