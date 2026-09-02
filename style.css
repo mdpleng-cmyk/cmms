@@ -96,8 +96,8 @@ button.big { width: 100%; padding: 14px; font-size: 15px; }
 .ov-kpi-value.ok { color: var(--green); }
 .ov-kpi-delta { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
 
-.ov-grid { display: grid; grid-template-columns: 1.35fr 1fr; gap: 14px; align-items: start; }
-@media (max-width: 900px) { .ov-grid { grid-template-columns: 1fr; } }
+.ov-row-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; align-items: start; }
+@media (max-width: 900px) { .ov-row-3 { grid-template-columns: 1fr; } }
 .ov-stack { display: flex; flex-direction: column; gap: 14px; }
 
 .ov-panel { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
