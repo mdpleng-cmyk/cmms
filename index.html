@@ -82,6 +82,9 @@
           <div class="field"><label class="field-label">Criticality</label>
             <select id="asset-criticality"><option value="">—</option><option>P1</option><option>P2</option><option>P3</option><option>P4</option></select>
           </div>
+          <div class="field"><label class="field-label">Equipment Type <span class="card-meta">(optional — auto-applies its PM checklist)</span></label>
+            <select id="asset-equipment-type"><option value="">— none —</option></select>
+          </div>
           <div class="row">
             <button id="btn-create-asset" class="primary" onclick="window.createAsset()">Create</button>
             <button class="ghost" onclick="window.closeNewAssetForm()">Cancel</button>
@@ -113,31 +116,79 @@
 
     <!-- MANAGE TAB -->
     <section id="tab-manage" class="hidden">
-      <div id="manage-list-view">
-        <div class="eyebrow" style="margin:16px 0 8px;">Asset Management</div>
-        <div class="card-meta" style="margin-bottom:12px;">Pick an asset to edit its category and nameplate specs.</div>
-        <div id="manage-asset-list"></div>
+      <div class="modal-tabs" style="margin:16px 0 4px;">
+        <button class="modal-tab-btn active" data-manage-mode="assets" onclick="window.switchManageMode('assets')">Assets</button>
+        <button class="modal-tab-btn" data-manage-mode="types" onclick="window.switchManageMode('types')">Equipment Types</button>
       </div>
 
-      <div id="manage-detail-view" class="hidden">
-        <button class="ghost" style="margin:16px 0 8px; padding:6px 10px;" onclick="window.backToManageList()">
-          <i data-lucide="arrow-left" style="width:14px;"></i> Back
-        </button>
-        <div class="card-title" id="manage-asset-title" style="margin-bottom:12px;"></div>
-
-        <div class="panel">
-          <label class="field-label">Category</label>
-          <select id="manage-category-select" onchange="window.saveManageCategory()" style="width:100%;"></select>
+      <div id="manage-assets-mode">
+        <div id="manage-list-view">
+          <div class="card-meta" style="margin:12px 0;">Pick an asset to edit its category and nameplate specs.</div>
+          <div id="manage-asset-list"></div>
         </div>
 
-        <div class="panel">
-          <label class="field-label">Specs</label>
-          <div id="manage-specs-list" style="margin-top:10px;"></div>
-          <div id="manage-add-spec-row" class="row" style="margin-top:10px; align-items:center;">
-            <input id="manage-new-spec-label" placeholder="Label (e.g. Max pressure)" style="flex:1;">
-            <input id="manage-new-spec-value" placeholder="value" style="width:80px;">
-            <input id="manage-new-spec-unit" placeholder="unit" style="width:64px;">
-            <button class="ghost" style="border:1px solid var(--border);" onclick="window.addManageSpec()"><i data-lucide="plus" style="width:14px;"></i></button>
+        <div id="manage-detail-view" class="hidden">
+          <button class="ghost" style="margin:16px 0 8px; padding:6px 10px;" onclick="window.backToManageList()">
+            <i data-lucide="arrow-left" style="width:14px;"></i> Back
+          </button>
+          <div class="card-title" id="manage-asset-title" style="margin-bottom:12px;"></div>
+
+          <div class="panel">
+            <label class="field-label">Category</label>
+            <select id="manage-category-select" onchange="window.saveManageCategory()" style="width:100%;"></select>
+          </div>
+
+          <div class="panel">
+            <label class="field-label">Specs</label>
+            <div id="manage-specs-list" style="margin-top:10px;"></div>
+            <div id="manage-add-spec-row" class="row" style="margin-top:10px; align-items:center;">
+              <input id="manage-new-spec-label" placeholder="Label (e.g. Max pressure)" style="flex:1;">
+              <input id="manage-new-spec-value" placeholder="value" style="width:80px;">
+              <input id="manage-new-spec-unit" placeholder="unit" style="width:64px;">
+              <button class="ghost" style="border:1px solid var(--border);" onclick="window.addManageSpec()"><i data-lucide="plus" style="width:14px;"></i></button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="manage-types-mode" class="hidden">
+        <div id="manage-types-list-view">
+          <div class="row" style="margin:12px 0;">
+            <input id="new-type-name" placeholder="New equipment type (e.g. AC)" style="flex:1;">
+            <button class="primary" onclick="window.createEquipmentType()"><i data-lucide="plus" style="width:14px;"></i></button>
+          </div>
+          <div id="manage-types-list"></div>
+        </div>
+
+        <div id="manage-types-detail-view" class="hidden">
+          <button class="ghost" style="margin:16px 0 8px; padding:6px 10px;" onclick="window.backToTypesList()">
+            <i data-lucide="arrow-left" style="width:14px;"></i> Back
+          </button>
+          <div class="card-title" id="manage-type-title" style="margin-bottom:12px;"></div>
+
+          <div class="panel">
+            <div class="eyebrow" style="margin-bottom:10px;">PM Template</div>
+            <div class="card-meta" style="margin-bottom:12px;">Stamped onto every new asset created with this type. Editing this never changes assets already created.</div>
+            <div class="field"><label class="field-label">Title</label><input id="type-template-title" placeholder="e.g. 6-Month General PM" style="width:100%;"></div>
+            <div class="row">
+              <div class="field" style="flex:1;"><label class="field-label">Interval (days)</label><input id="type-template-interval" type="number" value="180" style="width:100%;"></div>
+              <div class="field" style="flex:1;"><label class="field-label">Reminder (days before)</label><input id="type-template-reminder" type="number" style="width:100%;"></div>
+            </div>
+            <button class="primary" onclick="window.saveTypeTemplateMeta()">Save Template</button>
+          </div>
+
+          <div class="panel">
+            <label class="field-label">Checklist Items</label>
+            <div id="type-template-items" style="margin-top:10px;"></div>
+            <div class="row" style="margin-top:10px;">
+              <input id="new-type-item-desc" placeholder="Add checklist item..." style="flex:1;">
+              <select id="new-type-item-type" style="width:auto;" onchange="window.toggleNewTypeItemUnit()">
+                <option value="check">Check</option>
+                <option value="reading">Reading</option>
+              </select>
+              <input id="new-type-item-unit" placeholder="unit" style="width:64px; display:none;">
+              <button class="ghost" style="border:1px solid var(--border);" onclick="window.addTypeTemplateItem()"><i data-lucide="plus" style="width:14px;"></i></button>
+            </div>
           </div>
         </div>
       </div>

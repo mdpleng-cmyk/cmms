@@ -4,17 +4,23 @@ import { getAssetStatus, getAllWatchItemsForAsset } from './assetDetailHelpers.j
 import { getAssetSpecs } from './assetSpecs.js';
 import { renderAssetGlyph } from './assetGlyphs.js';
 
-export function openNewAssetForm() { document.getElementById('new-asset-form').classList.remove('hidden'); }
+export async function openNewAssetForm() {
+  document.getElementById('new-asset-form').classList.remove('hidden');
+  const sel = document.getElementById('asset-equipment-type');
+  const { data } = await sb.from('equipment_types').select('id, name').order('name');
+  sel.innerHTML = '<option value="">\u2014 none \u2014</option>' + (data || []).map(t => `<option value="${t.id}">${escapeHtml(t.name)}</option>`).join('');
+}
 export function closeNewAssetForm() { document.getElementById('new-asset-form').classList.add('hidden'); }
 
 export async function createAsset() {
   const name = document.getElementById('asset-name').value.trim();
   const location = document.getElementById('asset-location').value.trim();
   const criticality = document.getElementById('asset-criticality').value || null;
+  const equipment_type_id = document.getElementById('asset-equipment-type').value || null;
   if (!name) { toast('Name required', 'err'); return; }
   
   setButtonLoading('btn-create-asset', true);
-  const { error } = await sb.from('assets').insert({ name, location, criticality });
+  const { error } = await sb.from('assets').insert({ name, location, criticality, equipment_type_id });
   if (error) { toast(error.message, 'err'); setButtonLoading('btn-create-asset', false); return; }
   
   toast('Asset created');

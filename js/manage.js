@@ -2,6 +2,128 @@ import { sb, state, toast, escapeHtml, getLoaderHtml } from './store.js';
 import { getAssetSpecs, addAssetSpec, updateAssetSpec, deleteAssetSpec } from './assetSpecs.js';
 import { ASSET_GLYPHS, renderAssetGlyph } from './assetGlyphs.js';
 
+let currentTypeId = null;
+
+export function switchManageMode(mode) {
+  document.querySelectorAll('[data-manage-mode]').forEach(b => b.classList.toggle('active', b.dataset.manageMode === mode));
+  document.getElementById('manage-assets-mode').classList.toggle('hidden', mode !== 'assets');
+  document.getElementById('manage-types-mode').classList.toggle('hidden', mode !== 'types');
+  if (mode === 'types') {
+    document.getElementById('manage-types-detail-view').classList.add('hidden');
+    document.getElementById('manage-types-list-view').classList.remove('hidden');
+    loadEquipmentTypesList();
+  }
+}
+
+export async function loadEquipmentTypesList() {
+  const list = document.getElementById('manage-types-list');
+  list.innerHTML = getLoaderHtml('Loading...');
+  const { data, error } = await sb.from('equipment_types').select('id, name').order('name');
+  if (error) { list.innerHTML = `<div class="readout-empty">${error.message}</div>`; return; }
+  if (!data || !data.length) { list.innerHTML = '<div class="readout-empty">No equipment types yet.</div>'; return; }
+  list.innerHTML = data.map(t => `
+    <div class="panel" style="cursor:pointer;" onclick="window.openManageType(${t.id}, '${escapeHtml(t.name).replace(/'/g, "\\'")}')">
+      <div class="card-title" style="margin:0;">${escapeHtml(t.name)}</div>
+    </div>
+  `).join('');
+}
+
+export async function createEquipmentType() {
+  const name = document.getElementById('new-type-name').value.trim();
+  if (!name) { toast('Name required', 'err'); return; }
+  const { error } = await sb.from('equipment_types').insert({ name });
+  if (error) { toast(error.message, 'err'); return; }
+  document.getElementById('new-type-name').value = '';
+  toast('Equipment type created');
+  loadEquipmentTypesList();
+}
+
+export async function openManageType(typeId, name) {
+  currentTypeId = typeId;
+  document.getElementById('manage-types-list-view').classList.add('hidden');
+  document.getElementById('manage-types-detail-view').classList.remove('hidden');
+  document.getElementById('manage-type-title').textContent = name;
+
+  const { data: template } = await sb.from('equipment_type_pm_templates').select('*').eq('equipment_type_id', typeId).limit(1).maybeSingle();
+  document.getElementById('type-template-title').value = template?.title || '';
+  document.getElementById('type-template-interval').value = template?.interval_days || 180;
+  document.getElementById('type-template-reminder').value = template?.reminder_days_before || '';
+
+  await refreshTypeTemplateItems();
+}
+
+export function backToTypesList() {
+  document.getElementById('manage-types-detail-view').classList.add('hidden');
+  document.getElementById('manage-types-list-view').classList.remove('hidden');
+  loadEquipmentTypesList();
+}
+
+async function getOrCreateTemplateId() {
+  const { data } = await sb.from('equipment_type_pm_templates').select('id').eq('equipment_type_id', currentTypeId).limit(1).maybeSingle();
+  return data?.id || null;
+}
+
+export async function saveTypeTemplateMeta() {
+  const title = document.getElementById('type-template-title').value.trim();
+  const interval_days = parseInt(document.getElementById('type-template-interval').value, 10);
+  const reminder_days_before = document.getElementById('type-template-reminder').value || null;
+  if (!title || !interval_days) { toast('Title and interval required', 'err'); return; }
+
+  const existingId = await getOrCreateTemplateId();
+  if (existingId) {
+    const { error } = await sb.from('equipment_type_pm_templates').update({ title, interval_days, reminder_days_before }).eq('id', existingId);
+    if (error) { toast(error.message, 'err'); return; }
+  } else {
+    const { error } = await sb.from('equipment_type_pm_templates').insert({ equipment_type_id: currentTypeId, title, interval_days, reminder_days_before });
+    if (error) { toast(error.message, 'err'); return; }
+  }
+  toast('Template saved');
+}
+
+export function toggleNewTypeItemUnit() {
+  const isReading = document.getElementById('new-type-item-type').value === 'reading';
+  document.getElementById('new-type-item-unit').style.display = isReading ? '' : 'none';
+}
+
+async function refreshTypeTemplateItems() {
+  const box = document.getElementById('type-template-items');
+  const templateId = await getOrCreateTemplateId();
+  if (!templateId) { box.innerHTML = '<div class="card-meta">Save the template above first.</div>'; return; }
+  const { data } = await sb.from('equipment_type_pm_template_items').select('id, description, item_type, unit').eq('template_id', templateId).order('sort_order');
+  if (!data || !data.length) { box.innerHTML = '<div class="card-meta">No checklist items yet.</div>'; return; }
+  box.innerHTML = data.map(i => `
+    <div class="checklist-item">
+      <i data-lucide="${i.item_type === 'reading' ? 'gauge' : 'minus'}" style="width:12px; color:var(--text-muted); margin-top:2px;"></i>
+      <span style="flex:1;">${escapeHtml(i.description)}${i.item_type === 'reading' ? ` <span class="card-meta">(${escapeHtml(i.unit || '')})</span>` : ''}</span>
+      <button class="ghost" style="padding:2px 6px;" onclick="window.deleteTypeTemplateItem(${i.id})"><i data-lucide="trash-2" style="width:12px; color:var(--red);"></i></button>
+    </div>
+  `).join('');
+  lucide.createIcons({ root: box });
+}
+
+export async function addTypeTemplateItem() {
+  const description = document.getElementById('new-type-item-desc').value.trim();
+  if (!description) return;
+  const item_type = document.getElementById('new-type-item-type').value;
+  const unitInput = document.getElementById('new-type-item-unit');
+  const unit = item_type === 'reading' ? unitInput.value.trim() : null;
+  if (item_type === 'reading' && !unit) { toast('Enter a unit for readings', 'err'); return; }
+
+  const templateId = await getOrCreateTemplateId();
+  if (!templateId) { toast('Save the template above first', 'err'); return; }
+
+  const { error } = await sb.from('equipment_type_pm_template_items').insert({ template_id: templateId, description, item_type, unit });
+  if (error) { toast(error.message, 'err'); return; }
+  document.getElementById('new-type-item-desc').value = '';
+  unitInput.value = '';
+  refreshTypeTemplateItems();
+}
+
+export async function deleteTypeTemplateItem(itemId) {
+  await sb.from('equipment_type_pm_template_items').delete().eq('id', itemId);
+  refreshTypeTemplateItems();
+}
+
 let currentManageAssetId = null;
 
 export async function loadManageAssetList() {
