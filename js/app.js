@@ -3,7 +3,7 @@ import { signIn, signOut, onSignedIn } from './auth.js';
 import { openNewAssetForm, closeNewAssetForm, createAsset, loadAssets, openAssetHistoryModal, closeAssetHistoryModal, renderAssetDropdown, selectAsset, goToSchedule, toggleScheduleItems, switchAssetModalTab, toggleAssetClassFields, onEquipmentTypeChange } from './assets.js';
 import { openNewScheduleForm, closeNewScheduleForm, createSchedule, loadSchedules, addChecklistItem, toggleNewItemUnit, generatePmWoNow } from './schedules.js';
 import { openNewWoForm, closeNewWoForm, createWorkOrder, loadWorkOrders, filterWorkOrders, triggerUpdateFlow, closeUpdateModal, reviewUpdateWo, backToEditWo, confirmSaveWo, toggleChecklistItem, saveReadingValue, openWoDetailModal, closeWoDetailModal, triggerUpdateFromDetail, openNewWoFormForAsset, raiseWoFromAssetPage, toggleWoCloseTimes } from './workOrders.js';
-import { loadManageAssetList, openManageAsset, backToManageList, saveManageCategory, saveManageSpecField, deleteManageSpec, addManageSpec, switchManageMode, createEquipmentType, openManageType, backToTypesList, saveTypeTemplateMeta, toggleNewTypeItemUnit, addTypeTemplateItem, deleteTypeTemplateItem } from './manage.js';
+import { loadManageAssetList, openManageAsset, backToManageList, saveManageCategory, saveManageSpecField, deleteManageSpec, addManageSpec, switchManageMode, createEquipmentType, openManageType, backToTypesList, saveTypeTemplateMeta, toggleNewTypeItemUnit, addTypeTemplateItem, deleteTypeTemplateItem, saveManageAssetField } from './manage.js';
 import { loadOverview } from './overview.js';
 
 // Bind to Window so HTML onclicks work
@@ -54,6 +54,7 @@ window.saveManageCategory = saveManageCategory;
 window.saveManageSpecField = saveManageSpecField;
 window.deleteManageSpec = deleteManageSpec;
 window.addManageSpec = addManageSpec;
+window.saveManageAssetField = saveManageAssetField;
 window.switchManageMode = switchManageMode;
 window.createEquipmentType = createEquipmentType;
 window.openManageType = openManageType;
@@ -62,6 +63,7 @@ window.saveTypeTemplateMeta = saveTypeTemplateMeta;
 window.toggleNewTypeItemUnit = toggleNewTypeItemUnit;
 window.addTypeTemplateItem = addTypeTemplateItem;
 window.deleteTypeTemplateItem = deleteTypeTemplateItem;
+window.saveManageAssetField = saveManageAssetField;
 
 // Tab Logic
 window.switchTab = function(tab) {

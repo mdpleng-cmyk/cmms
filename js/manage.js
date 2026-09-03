@@ -158,11 +158,27 @@ export async function openManageAsset(assetId, assetName) {
     .map(k => `<option value="${k}">${k ? k.replace('_',' ') : '— uncategorized —'}</option>`).join('');
   catSelect.disabled = !canWrite;
 
-  const { data: asset } = await sb.from('assets').select('category').eq('id', assetId).single();
+  const { data: asset } = await sb.from('assets').select('category, name, location, criticality').eq('id', assetId).single();
   catSelect.value = asset?.category || '';
+
+  const nameEl = document.getElementById('manage-asset-name');
+  const locEl = document.getElementById('manage-asset-location');
+  const critEl = document.getElementById('manage-asset-criticality');
+  nameEl.value = asset?.name || '';
+  locEl.value = asset?.location || '';
+  critEl.value = asset?.criticality || '';
+  nameEl.disabled = locEl.disabled = critEl.disabled = !canWrite;
 
   document.getElementById('manage-add-spec-row').classList.toggle('hidden', !canWrite);
   await refreshManageSpecs(canWrite);
+}
+
+export async function saveManageAssetField(field, value) {
+  if (field === 'name' && !value.trim()) { toast('Name cannot be empty', 'err'); return; }
+  const { error } = await sb.from('assets').update({ [field]: value }).eq('id', currentManageAssetId);
+  if (error) { toast(error.message, 'err'); return; }
+  toast('Saved');
+  if (field === 'name') document.getElementById('manage-asset-title').textContent = value;
 }
 
 export function backToManageList() {

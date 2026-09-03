@@ -150,6 +150,16 @@
           <div class="card-title" id="manage-asset-title" style="margin-bottom:12px;"></div>
 
           <div class="panel">
+            <div class="field"><label class="field-label">Name</label><input id="manage-asset-name" onchange="window.saveManageAssetField('name', this.value)" style="width:100%;"></div>
+            <div class="field"><label class="field-label">Location</label><input id="manage-asset-location" onchange="window.saveManageAssetField('location', this.value)" style="width:100%;"></div>
+            <div class="field" style="margin-bottom:0;"><label class="field-label">Criticality</label>
+              <select id="manage-asset-criticality" onchange="window.saveManageAssetField('criticality', this.value || null)" style="width:100%;">
+                <option value="">—</option><option>P1</option><option>P2</option><option>P3</option><option>P4</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="panel">
             <label class="field-label">Category</label>
             <select id="manage-category-select" onchange="window.saveManageCategory()" style="width:100%;"></select>
           </div>
