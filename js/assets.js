@@ -6,19 +6,69 @@ import { renderAssetGlyph } from './assetGlyphs.js';
 
 export async function openNewAssetForm() {
   document.getElementById('new-asset-form').classList.remove('hidden');
+  document.getElementById('asset-is-multiple').checked = false;
+  document.getElementById('asset-class-fields').classList.add('hidden');
+  document.getElementById('asset-new-type-field').classList.add('hidden');
+  document.getElementById('asset-new-type-name').value = '';
+  await refreshEquipmentTypeSelect();
+}
+
+async function refreshEquipmentTypeSelect() {
   const sel = document.getElementById('asset-equipment-type');
   const { data } = await sb.from('equipment_types').select('id, name').order('name');
-  sel.innerHTML = '<option value="">\u2014 none \u2014</option>' + (data || []).map(t => `<option value="${t.id}">${escapeHtml(t.name)}</option>`).join('');
+  sel.innerHTML =
+    '<option value="">\u2014 select \u2014</option>' +
+    (data || []).map(t => `<option value="${t.id}">${escapeHtml(t.name)}</option>`).join('') +
+    '<option value="__new__">+ Create new class...</option>';
 }
+
+export function toggleAssetClassFields(checked) {
+  document.getElementById('asset-class-fields').classList.toggle('hidden', !checked);
+  if (!checked) {
+    document.getElementById('asset-equipment-type').value = '';
+    document.getElementById('asset-new-type-field').classList.add('hidden');
+  }
+}
+
+export async function onEquipmentTypeChange() {
+  const sel = document.getElementById('asset-equipment-type');
+  const isNew = sel.value === '__new__';
+  document.getElementById('asset-new-type-field').classList.toggle('hidden', !isNew);
+  if (isNew || !sel.value) return;
+
+  // Suggest "<Class> <N+1>" as the name, only if the user hasn't typed one yet.
+  const nameEl = document.getElementById('asset-name');
+  if (nameEl.value.trim()) return;
+  const className = sel.options[sel.selectedIndex].textContent;
+  const { count } = await sb.from('assets').select('id', { count: 'exact', head: true }).eq('equipment_type_id', sel.value);
+  nameEl.value = `${className} ${(count || 0) + 1}`;
+}
+
 export function closeNewAssetForm() { document.getElementById('new-asset-form').classList.add('hidden'); }
 
 export async function createAsset() {
   const name = document.getElementById('asset-name').value.trim();
   const location = document.getElementById('asset-location').value.trim();
   const criticality = document.getElementById('asset-criticality').value || null;
-  const equipment_type_id = document.getElementById('asset-equipment-type').value || null;
+  const isMultiple = document.getElementById('asset-is-multiple').checked;
   if (!name) { toast('Name required', 'err'); return; }
-  
+
+  let equipment_type_id = null;
+  if (isMultiple) {
+    const sel = document.getElementById('asset-equipment-type').value;
+    if (sel === '__new__') {
+      const newName = document.getElementById('asset-new-type-name').value.trim();
+      if (!newName) { toast('Enter a name for the new asset class', 'err'); return; }
+      const { data: newType, error: typeErr } = await sb.from('equipment_types').insert({ name: newName }).select().single();
+      if (typeErr) { toast(typeErr.message, 'err'); return; }
+      equipment_type_id = newType.id;
+    } else if (sel) {
+      equipment_type_id = sel;
+    } else {
+      toast('Select or create an asset class', 'err'); return;
+    }
+  }
+
   setButtonLoading('btn-create-asset', true);
   const { error } = await sb.from('assets').insert({ name, location, criticality, equipment_type_id });
   if (error) { toast(error.message, 'err'); setButtonLoading('btn-create-asset', false); return; }

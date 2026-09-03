@@ -77,13 +77,29 @@
         </div>
         <div id="new-asset-form" class="panel hidden">
           <div class="eyebrow" style="margin-bottom:12px;">New Asset</div>
+
+          <div class="field" style="font-size:13px;">
+            <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+              <input type="checkbox" id="asset-is-multiple" style="width:auto;" onchange="window.toggleAssetClassFields(this.checked)">
+              Do you have multiple similar items? (e.g. more than one AC, more than one FFS line)
+            </label>
+          </div>
+
+          <div id="asset-class-fields" class="hidden">
+            <div class="field">
+              <label class="field-label">Asset Class</label>
+              <select id="asset-equipment-type" onchange="window.onEquipmentTypeChange()"></select>
+            </div>
+            <div class="field hidden" id="asset-new-type-field">
+              <label class="field-label">New Class Name</label>
+              <input id="asset-new-type-name" placeholder="e.g. Ammonia Compressor">
+            </div>
+          </div>
+
           <div class="field"><label class="field-label">Name</label><input id="asset-name"></div>
           <div class="field"><label class="field-label">Location</label><input id="asset-location"></div>
           <div class="field"><label class="field-label">Criticality</label>
             <select id="asset-criticality"><option value="">—</option><option>P1</option><option>P2</option><option>P3</option><option>P4</option></select>
-          </div>
-          <div class="field"><label class="field-label">Equipment Type <span class="card-meta">(optional — auto-applies its PM checklist)</span></label>
-            <select id="asset-equipment-type"><option value="">— none —</option></select>
           </div>
           <div class="row">
             <button id="btn-create-asset" class="primary" onclick="window.createAsset()">Create</button>
