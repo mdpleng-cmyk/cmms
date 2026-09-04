@@ -158,16 +158,18 @@ export async function openManageAsset(assetId, assetName) {
     .map(k => `<option value="${k}">${k ? k.replace('_',' ') : '— uncategorized —'}</option>`).join('');
   catSelect.disabled = !canWrite;
 
-  const { data: asset } = await sb.from('assets').select('category, name, location, criticality').eq('id', assetId).single();
+  const { data: asset } = await sb.from('assets').select('category, name, location, department, criticality').eq('id', assetId).single();
   catSelect.value = asset?.category || '';
 
   const nameEl = document.getElementById('manage-asset-name');
   const locEl = document.getElementById('manage-asset-location');
+  const deptEl = document.getElementById('manage-asset-department');
   const critEl = document.getElementById('manage-asset-criticality');
   nameEl.value = asset?.name || '';
   locEl.value = asset?.location || '';
+  deptEl.value = asset?.department || '';
   critEl.value = asset?.criticality || '';
-  nameEl.disabled = locEl.disabled = critEl.disabled = !canWrite;
+  nameEl.disabled = locEl.disabled = deptEl.disabled = critEl.disabled = !canWrite;
 
   document.getElementById('manage-add-spec-row').classList.toggle('hidden', !canWrite);
   await refreshManageSpecs(canWrite);

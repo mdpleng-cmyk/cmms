@@ -98,6 +98,17 @@
 
           <div class="field"><label class="field-label">Name</label><input id="asset-name"></div>
           <div class="field"><label class="field-label">Location</label><input id="asset-location"></div>
+          <div class="field"><label class="field-label">Department</label>
+            <select id="asset-department">
+              <option value="">—</option>
+              <option>Building Facilities</option>
+              <option>Processing</option>
+              <option>Packaging</option>
+              <option>Boiler &amp; Refrigeration</option>
+              <option>WTP / ETP</option>
+              <option>Engineering &amp; Maintenance</option>
+            </select>
+          </div>
           <div class="field"><label class="field-label">Criticality</label>
             <select id="asset-criticality"><option value="">—</option><option>P1</option><option>P2</option><option>P3</option><option>P4</option></select>
           </div>
@@ -152,6 +163,17 @@
           <div class="panel">
             <div class="field"><label class="field-label">Name</label><input id="manage-asset-name" onchange="window.saveManageAssetField('name', this.value)" style="width:100%;"></div>
             <div class="field"><label class="field-label">Location</label><input id="manage-asset-location" onchange="window.saveManageAssetField('location', this.value)" style="width:100%;"></div>
+            <div class="field"><label class="field-label">Department</label>
+              <select id="manage-asset-department" onchange="window.saveManageAssetField('department', this.value || null)" style="width:100%;">
+                <option value="">—</option>
+                <option>Building Facilities</option>
+                <option>Processing</option>
+                <option>Packaging</option>
+                <option>Boiler &amp; Refrigeration</option>
+                <option>WTP / ETP</option>
+                <option>Engineering &amp; Maintenance</option>
+              </select>
+            </div>
             <div class="field" style="margin-bottom:0;"><label class="field-label">Criticality</label>
               <select id="manage-asset-criticality" onchange="window.saveManageAssetField('criticality', this.value || null)" style="width:100%;">
                 <option value="">—</option><option>P1</option><option>P2</option><option>P3</option><option>P4</option>

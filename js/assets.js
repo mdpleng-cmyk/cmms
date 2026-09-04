@@ -49,6 +49,7 @@ export function closeNewAssetForm() { document.getElementById('new-asset-form').
 export async function createAsset() {
   const name = document.getElementById('asset-name').value.trim();
   const location = document.getElementById('asset-location').value.trim();
+  const department = document.getElementById('asset-department').value || null;
   const criticality = document.getElementById('asset-criticality').value || null;
   const isMultiple = document.getElementById('asset-is-multiple').checked;
   if (!name) { toast('Name required', 'err'); return; }
@@ -70,7 +71,7 @@ export async function createAsset() {
   }
 
   setButtonLoading('btn-create-asset', true);
-  const { error } = await sb.from('assets').insert({ name, location, criticality, equipment_type_id });
+  const { error } = await sb.from('assets').insert({ name, location, department, criticality, equipment_type_id });
   if (error) { toast(error.message, 'err'); setButtonLoading('btn-create-asset', false); return; }
   
   toast('Asset created');
