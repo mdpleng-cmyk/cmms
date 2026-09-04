@@ -130,9 +130,18 @@ button.big { width: 100%; padding: 14px; font-size: 15px; }
 .ov-table td { padding: 9px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
 .ov-table tr:last-child td { border-bottom: none; }
 .ov-wo-id { color: var(--text-muted); font-family: 'JetBrains Mono', monospace; font-size: 11.5px; }
+.ov-wo-id.age-danger { color: var(--red); }
+.ov-wo-id.age-warn { color: var(--amber); }
+.ov-attention { display: flex; gap: 8px; align-items: center; padding: 8px 12px; margin: -1px -1px 0; background: rgba(239,68,68,.06); border-bottom: 1px solid rgba(239,68,68,.18); font-size: 11px; color: #e8baba; }
 
-.ov-meter-row { display: flex; justify-content: space-between; align-items: baseline; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 12.5px; }
+.ov-meter-row { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 12.5px; }
 .ov-meter-row:last-child { border-bottom: none; }
+.ov-meter-left { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.ov-meter-icon { width: 26px; height: 26px; flex: 0 0 26px; display: grid; place-items: center; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); }
+.ov-meter-icon svg { width: 14px; height: 14px; }
+.ov-meter-icon.electrical { color: #fbbf24; background: rgba(245,158,11,.07); }
+.ov-meter-icon.boiler { color: #fb7185; background: rgba(239,68,68,.06); }
+.ov-meter-icon.machine { color: #60a5fa; background: rgba(59,130,246,.06); }
 .ov-meter-val { font-family: 'JetBrains Mono', monospace; }
 .ov-meter-val .unit { color: var(--text-muted); font-size: 11px; margin-left: 3px; }
 
