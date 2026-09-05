@@ -9,8 +9,12 @@ export function openNewWoForm() {
   document.getElementById('wo-description').value = '';
   document.getElementById('wo-close-now').checked = false;
   document.getElementById('wo-close-times').classList.add('hidden');
+  document.getElementById('wo-close-details').classList.add('hidden');
   document.getElementById('wo-start-time').value = '';
   document.getElementById('wo-end-time').value = '';
+  document.getElementById('wo-close-notes').value = '';
+  document.getElementById('wo-close-parts').value = '';
+  document.getElementById('wo-close-technician').value = '';
   document.getElementById('wo-type').value = 'breakdown';
   document.getElementById('wo-priority').value = 'P3';
   document.getElementById('wo-schedule-field').classList.add('hidden');
@@ -26,6 +30,7 @@ export function openNewWoForm() {
 
 export function toggleWoCloseTimes(checked) {
   document.getElementById('wo-close-times').classList.toggle('hidden', !checked);
+  document.getElementById('wo-close-details').classList.toggle('hidden', !checked);
   if (checked) {
     const startEl = document.getElementById('wo-start-time');
     const endEl = document.getElementById('wo-end-time');
@@ -82,6 +87,7 @@ export async function createWorkOrder() {
 
   let openedAt = new Date().toISOString();
   let closedAt = closeNow ? new Date().toISOString() : null;
+  let closeNotes = '', closeParts = '', closeTechnician = '';
 
   if (closeNow) {
     const startVal = document.getElementById('wo-start-time').value;
@@ -92,6 +98,11 @@ export async function createWorkOrder() {
     if (end < start) { toast('End time cannot be before start time', 'err'); return; }
     openedAt = start.toISOString();
     closedAt = end.toISOString();
+
+    closeNotes = document.getElementById('wo-close-notes').value.trim();
+    closeParts = document.getElementById('wo-close-parts').value.trim();
+    closeTechnician = document.getElementById('wo-close-technician').value.trim();
+    if (type === 'breakdown' && !closeNotes) { toast('Action taken is required to log a completed breakdown.', 'err'); return; }
   }
 
   setButtonLoading('btn-create-wo', true);
@@ -106,6 +117,18 @@ export async function createWorkOrder() {
 
   const { data: wo, error } = await sb.from('work_orders').insert(payload).select().single();
   if (error) { toast(error.message, 'err'); setButtonLoading('btn-create-wo', false); return; }
+
+  if (closeNow) {
+    await sb.from('wo_visits').insert({
+      wo_id: wo.id,
+      visit_type: 'closed',
+      action_taken: closeNotes || null,
+      parts_used: closeParts || null,
+      technician: closeTechnician || null,
+      logged_by: state.currentUser.id,
+      visited_at: closedAt,
+    });
+  }
 
   if (type === 'pm' && schedule_id) {
     const { data: items } = await sb.from('checklist_items').select('id').eq('schedule_id', schedule_id).eq('active', true);
