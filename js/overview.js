@@ -151,24 +151,26 @@ export async function loadOverview() {
 
   el.innerHTML = `
 
-    <div class="ov-panel ov-section">
-      <div class="ov-panel-head">
-        <div class="ov-panel-title-row"><div class="ov-icon-badge blue"><i data-lucide="clipboard-list"></i></div><div class="ov-panel-title">Open Work Orders</div></div>
-        <div class="ov-subtabs">
-          <button class="ov-subtab active" data-filter="all" onclick="window.filterOpenWos('all')">All (${openWOs.length})</button>
-          <button class="ov-subtab" data-filter="open" onclick="window.filterOpenWos('open')">Open</button>
-          <button class="ov-subtab" data-filter="in_progress" onclick="window.filterOpenWos('in_progress')">In Progress</button>
-          <button class="ov-subtab" data-filter="waiting_parts" onclick="window.filterOpenWos('waiting_parts')">Awaiting Spares</button>
+    <div class="ov-row-2-wide">
+      <div class="ov-panel">
+        <div class="ov-panel-head">
+          <div class="ov-panel-title-row"><div class="ov-icon-badge blue"><i data-lucide="clipboard-list"></i></div><div class="ov-panel-title">Open Work Orders</div></div>
+          <div class="ov-subtabs">
+            <button class="ov-subtab active" data-filter="all" onclick="window.filterOpenWos('all')">All (${openWOs.length})</button>
+            <button class="ov-subtab" data-filter="open" onclick="window.filterOpenWos('open')">Open</button>
+            <button class="ov-subtab" data-filter="in_progress" onclick="window.filterOpenWos('in_progress')">In Progress</button>
+            <button class="ov-subtab" data-filter="waiting_parts" onclick="window.filterOpenWos('waiting_parts')">Awaiting Spares</button>
+          </div>
         </div>
+        <div id="ov-open-list">${openHtml}</div>
       </div>
-      <div id="ov-open-list">${openHtml}</div>
-    </div>
-
-    <div class="ov-row-3 ov-section">
       <div class="ov-panel">
         <div class="ov-panel-head"><div class="ov-panel-title-row"><div class="ov-icon-badge amber"><i data-lucide="calendar-clock"></i></div><div class="ov-panel-title">PM Due</div></div></div>
         <div class="ov-panel-body">${pmHtml}${snoozedHtml}</div>
       </div>
+    </div>
+
+    <div class="ov-row-3">
       <div class="ov-panel">
         <div class="ov-panel-head"><div class="ov-panel-title-row"><div class="ov-icon-badge green"><i data-lucide="activity"></i></div><div class="ov-panel-title">Recent Activity</div></div></div>
         <div class="ov-panel-body">${activityHtml}</div>
@@ -177,17 +179,18 @@ export async function loadOverview() {
         <div class="ov-panel-head"><div class="ov-panel-title-row"><div class="ov-icon-badge blue"><i data-lucide="bar-chart-3"></i></div><div class="ov-panel-title">Meter Readings</div></div><div class="ov-panel-meta">telemetry</div></div>
         <div class="ov-panel-body">${meterHtml}</div>
       </div>
-    </div>
-
-    <div class="ov-panel">
-      <div class="ov-panel-head">
-        <div class="ov-panel-title-row"><div class="ov-icon-badge purple"><i data-lucide="bell"></i></div><div class="ov-panel-title">Reminders</div></div>
-        <div class="row" style="margin:0; gap:6px;">
-          <input id="new-note-text" placeholder="Add a note..." style="width:200px; font-size:12px; padding:6px 8px;">
-          <button class="ghost" style="padding:6px 10px; font-size:11px; border:1px solid var(--border);" onclick="window.addNote()">+ Add</button>
+      <div class="ov-panel">
+        <div class="ov-panel-head">
+          <div class="ov-panel-title-row"><div class="ov-icon-badge purple"><i data-lucide="bell"></i></div><div class="ov-panel-title">Reminders</div></div>
+        </div>
+        <div class="ov-panel-body">
+          <div class="row" style="margin-bottom:8px; gap:6px;">
+            <input id="new-note-text" placeholder="Add a note..." style="flex:1; font-size:12px; padding:6px 8px;">
+            <button class="ghost" style="padding:6px 10px; font-size:11px; border:1px solid var(--border);" onclick="window.addNote()">+</button>
+          </div>
+          ${notesHtml}
         </div>
       </div>
-      <div class="ov-panel-body">${notesHtml}</div>
     </div>
   `;
 

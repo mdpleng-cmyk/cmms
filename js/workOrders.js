@@ -324,10 +324,10 @@ export async function confirmSaveWo() {
 
   toast('Work order updated successfully');
   closeUpdateModal();
+  closeWoDetailModal();
   setButtonLoading('btn-confirm-save', false);
   loadWorkOrders();
   loadOverview();
-  if (state.woDetailCurrent && state.woDetailCurrent.id === wo.id) openWoDetailModal(wo.id);
 }
 
 async function loadChecklistForWo(woId) {

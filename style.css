@@ -97,6 +97,8 @@ button.big { width: 100%; padding: 14px; font-size: 15px; }
 .ov-kpi-value.ok { color: var(--green); }
 .ov-kpi-delta { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
 
+.ov-row-2-wide { display: grid; grid-template-columns: 1.6fr 1fr; gap: 14px; align-items: stretch; margin-bottom: 14px; }
+@media (max-width: 900px) { .ov-row-2-wide { grid-template-columns: 1fr; } }
 .ov-row-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; align-items: stretch; }
 @media (max-width: 900px) { .ov-row-3 { grid-template-columns: 1fr; } }
 .ov-row-3 .ov-panel { display: flex; flex-direction: column; }
