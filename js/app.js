@@ -102,3 +102,5 @@ if (searchInput) {
 
 // Check session on load
 sb.auth.getSession().then(({ data }) => { if (data.session) onSignedIn(data.session.user); });
+
+document.getElementById('header-date').textContent = new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });

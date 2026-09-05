@@ -18,7 +18,7 @@ function renderOpenWoList() {
     return `
       <div class="ov-open-row ${isCrit ? 'crit' : ''}" onclick="window.openWoDetailModal(${wo.id})">
         <div style="min-width:0;">
-          <div class="ov-open-asset">${escapeHtml(wo.assets?.name || 'Unknown')}</div>
+          <div class="ov-open-asset">${escapeHtml(wo.assets?.name || 'Unknown')} ${wo.assets?.category ? `<span class="badge" style="font-size:9px; vertical-align:2px;">${escapeHtml(wo.assets.category.replace('_',' '))}</span>` : ''}</div>
           <div class="ov-open-desc">${escapeHtml(wo.description || 'No description')}</div>
           <div class="ov-open-sub">${lv ? `<i data-lucide="corner-down-right" style="width:11px; vertical-align:-1px;"></i> ${escapeHtml(lv.action_taken || lv.visit_type)} &middot; ${escapeHtml(lv.technician || 'unassigned')}` : 'No updates yet'}</div>
         </div>
@@ -44,7 +44,7 @@ export async function loadOverview() {
   const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000);
 
   const [openRes, schedRes, visitsRes, notesRes, readingsRes, metersRes] = await Promise.all([
-    sb.from('work_orders').select('id, type, status, priority, description, opened_at, asset_id, assets(name, criticality)').in('status', ['open','in_progress','waiting_parts']).order('opened_at', { ascending: true }),
+    sb.from('work_orders').select('id, type, status, priority, description, opened_at, asset_id, assets(name, criticality, category)').in('status', ['open','in_progress','waiting_parts']).order('opened_at', { ascending: true }),
     sb.from('recurring_schedules').select('id, title, next_due_at, active, asset_id, snoozed_until, assets(name)').eq('active', true).order('next_due_at', { ascending: true }),
     sb.from('wo_visits').select('visit_type, action_taken, technician, visited_at, wo_id, work_orders(id, asset_id, description, assets(name))').order('visited_at', { ascending: false }).limit(20),
     sb.from('notes').select('id, text, done, created_at').order('created_at', { ascending: false }),
@@ -150,10 +150,6 @@ export async function loadOverview() {
   `).join('') : '<div class="card-meta">No notes yet.</div>';
 
   el.innerHTML = `
-    <div style="margin-bottom:14px;">
-      <span style="font-family:'Oswald',sans-serif; font-size:16px; font-weight:600;">Today</span>
-      <span style="font-size:12px; color:var(--text-muted); margin-left:8px;">${new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}</span>
-    </div>
 
     <div class="ov-panel ov-section">
       <div class="ov-panel-head">
