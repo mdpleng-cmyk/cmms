@@ -69,6 +69,7 @@ export function closeNewWoForm() {
 }
 
 export async function createWorkOrder() {
+  const planned_date = document.getElementById('wo-planned-date').value || null;
   const asset_id = document.getElementById('wo-asset-value').value;
   const type = document.getElementById('wo-type').value;
   const schedule_id = type === 'pm' ? document.getElementById('wo-schedule').value : null;
@@ -95,7 +96,7 @@ export async function createWorkOrder() {
 
   setButtonLoading('btn-create-wo', true);
   const payload = {
-    asset_id, type, description, priority,
+    asset_id, type, description, priority, planned_date,
     schedule_id: schedule_id || null,
     created_by: state.currentUser.id,
     status: closeNow ? 'closed' : 'open',
@@ -127,7 +128,7 @@ export async function loadWorkOrders() {
   
   const statuses = document.getElementById('wo-filter').value.split(',');
   const { data, error } = await sb.from('work_orders')
-    .select('id, type, status, description, opened_at, closed_at, asset_id, schedule_id, priority, assets(name)')
+    .select('id, type, status, description, opened_at, closed_at, asset_id, schedule_id, priority, planned_date, assets(name)')
     .in('status', statuses).order('opened_at', { ascending: false }).limit(50);
 
   if (error) { list.innerHTML = `<div class="readout-empty">${error.message}</div>`; return; }
@@ -160,7 +161,7 @@ function renderWorkOrders() {
 export async function openWoDetailModal(id) {
   let wo = state.activeWorkOrders.find(w => w.id === id);
   if (!wo) {
-    const { data } = await sb.from('work_orders').select('id, type, status, description, opened_at, closed_at, asset_id, schedule_id, priority, assets(name)').eq('id', id).single();
+    const { data } = await sb.from('work_orders').select('id, type, status, description, opened_at, closed_at, asset_id, schedule_id, priority, planned_date, assets(name)').eq('id', id).single();
     wo = data;
   }
   if (!wo) { toast('Work order not found', 'err'); return; }
@@ -236,6 +237,7 @@ export function filterWorkOrders() {
 export function triggerUpdateFlow(id) {
   state.woToUpdate = state.activeWorkOrders.find(w => w.id === id) || (state.woDetailCurrent?.id === id ? state.woDetailCurrent : null);
   if (!state.woToUpdate) return;
+  document.getElementById('modal-wo-planned-date').value = state.woToUpdate.planned_date || '';
   
   document.getElementById('modal-wo-title').innerText = `WO #${state.woToUpdate.id} - ${state.woToUpdate.assets?.name}`;
   document.getElementById('modal-wo-original-desc').innerText = state.woToUpdate.description || "No initial description provided.";
@@ -286,6 +288,7 @@ export function reviewUpdateWo() {
   state.woToUpdate.pendingStatus = newStatus;
   state.woToUpdate.pendingVisitType = visitType;
   state.woToUpdate.pendingNote = note;
+  state.woToUpdate.pendingPlannedDate = document.getElementById('modal-wo-planned-date').value || null;
   state.woToUpdate.pendingParts = parts;
   state.woToUpdate.pendingTechnician = technician;
 
@@ -304,7 +307,7 @@ export async function confirmSaveWo() {
   const wo = state.woToUpdate;
   const newStatus = wo.pendingStatus;
 
-  const payload = { status: newStatus };
+  const payload = { status: newStatus, planned_date: wo.pendingPlannedDate };
   if (newStatus === 'closed') payload.closed_at = new Date().toISOString();
 
   const { error } = await sb.from('work_orders').update(payload).eq('id', wo.id);

@@ -278,6 +278,11 @@
     </div>
 
     <div class="field">
+      <label class="field-label">Planned Date <span class="card-meta">(optional — defers staleness tracking)</span></label>
+      <input type="date" id="wo-planned-date">
+    </div>
+
+    <div class="field">
       <label class="field-label">Priority</label>
       <select id="wo-priority">
         <option value="">Unset</option>
@@ -391,6 +396,11 @@
       <div class="card-title" id="modal-wo-title" style="margin-bottom:8px;">WO #</div>
       <div style="font-size:13px; color:var(--text-muted); background:var(--bg); padding:10px; border-radius:6px; margin-bottom:16px; border:1px solid var(--border);" id="modal-wo-original-desc"></div>
       
+      <div class="field">
+        <label class="field-label">Planned Date <span class="card-meta">(optional)</span></label>
+        <input type="date" id="modal-wo-planned-date">
+      </div>
+
       <div class="field">
         <label class="field-label">Action Taken <span style="color:var(--red); display:none;" id="notes-req-star">*</span></label>
         <textarea id="modal-wo-notes" placeholder="What was done on this visit..."></textarea>

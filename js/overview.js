@@ -1,6 +1,19 @@
 import { sb, sbTelemetry, state, escapeHtml, formatDate, priorityMeta } from './store.js';
 
 const PM_DUE_WINDOW_DAYS = 7;
+const STALE_DAYS = 2;
+
+function staleDaysFor(wo, latestVisit, todayStart) {
+  if (wo.status === 'waiting_parts') return 0;
+  let effectiveStart = latestVisit ? new Date(latestVisit.visited_at) : new Date(wo.opened_at);
+  if (wo.planned_date) {
+    const planned = new Date(wo.planned_date + 'T00:00:00');
+    if (planned > todayStart) return 0;
+    if (planned > effectiveStart) effectiveStart = planned;
+  }
+  const days = Math.floor((todayStart - effectiveStart) / 86400000);
+  return days >= STALE_DAYS ? days : 0;
+}
 let cachedOpenWOs = [];
 let cachedLatestVisitByWo = {};
 let openWoFilter = 'all';
@@ -10,11 +23,18 @@ function priorityRank(p) {
 }
 
 function renderOpenWoList() {
-  const filtered = openWoFilter === 'all' ? cachedOpenWOs : cachedOpenWOs.filter(w => w.status === openWoFilter);
+  const todayStart = new Date(); todayStart.setHours(0,0,0,0);
+  let filtered = openWoFilter === 'all' ? cachedOpenWOs : cachedOpenWOs.filter(w => w.status === openWoFilter);
+  filtered = [...filtered].sort((a, b) => {
+    const sa = staleDaysFor(a, cachedLatestVisitByWo[a.id], todayStart);
+    const sb = staleDaysFor(b, cachedLatestVisitByWo[b.id], todayStart);
+    return sb - sa;
+  });
   return filtered.length ? filtered.map(wo => {
     const p = wo.priority || wo.assets?.criticality;
     const isCrit = p === 'P1' || p === 'P2';
     const lv = cachedLatestVisitByWo[wo.id];
+    const stale = staleDaysFor(wo, lv, todayStart);
     return `
       <div class="ov-open-row ${isCrit ? 'crit' : ''}" onclick="window.openWoDetailModal(${wo.id})">
         <div style="min-width:0;">
@@ -22,7 +42,10 @@ function renderOpenWoList() {
           <div class="ov-open-desc">${escapeHtml(wo.description || 'No description')}</div>
           <div class="ov-open-sub">${lv ? `<i data-lucide="corner-down-right" style="width:11px; vertical-align:-1px;"></i> ${escapeHtml(lv.action_taken || lv.visit_type)} &middot; ${escapeHtml(lv.technician || 'unassigned')}` : 'No updates yet'}</div>
         </div>
-        <span class="badge ${wo.status}" style="font-size:9px; flex-shrink:0;">${wo.status.replace('_',' ')}</span>
+        <div style="display:flex; flex-direction:column; align-items:flex-end; gap:5px; flex-shrink:0;">
+          ${stale ? `<span class="badge" style="font-size:9px; background:rgba(239,68,68,.12); color:var(--red);">No update ${stale}d</span>` : ''}
+          <span class="badge ${wo.status}" style="font-size:9px;">${wo.status.replace('_',' ')}</span>
+        </div>
       </div>`;
   }).join('') : '<div class="card-meta" style="padding:14px;">Nothing here.</div>';
 }
@@ -44,7 +67,7 @@ export async function loadOverview() {
   const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000);
 
   const [openRes, schedRes, visitsRes, notesRes, readingsRes, metersRes] = await Promise.all([
-    sb.from('work_orders').select('id, type, status, priority, description, opened_at, asset_id, assets(name, criticality, category)').in('status', ['open','in_progress','waiting_parts']).order('opened_at', { ascending: true }),
+    sb.from('work_orders').select('id, type, status, priority, description, opened_at, asset_id, planned_date, assets(name, criticality, category)').in('status', ['open','in_progress','waiting_parts']).order('opened_at', { ascending: true }),
     sb.from('recurring_schedules').select('id, title, next_due_at, active, asset_id, snoozed_until, assets(name)').eq('active', true).order('next_due_at', { ascending: true }),
     sb.from('wo_visits').select('visit_type, action_taken, technician, visited_at, wo_id, work_orders(id, asset_id, description, assets(name))').order('visited_at', { ascending: false }).limit(20),
     sb.from('notes').select('id, text, done, created_at').order('created_at', { ascending: false }),
