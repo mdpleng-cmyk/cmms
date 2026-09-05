@@ -38,8 +38,9 @@ export async function loadOverview() {
     return `
       <div class="ov-open-row ${isCrit ? 'crit' : ''}" onclick="window.openWoDetailModal(${wo.id})">
         <div style="min-width:0;">
-          <div class="ov-open-title"><b>${escapeHtml(wo.assets?.name || 'Unknown')}</b> &mdash; ${escapeHtml(wo.description || 'No description')}</div>
-          <div class="ov-open-sub">${lv ? `${escapeHtml(lv.action_taken || lv.visit_type)} &middot; ${escapeHtml(lv.technician || 'unassigned')}` : 'No updates yet'}</div>
+          <div class="ov-open-asset">${escapeHtml(wo.assets?.name || 'Unknown')}</div>
+          <div class="ov-open-desc">${escapeHtml(wo.description || 'No description')}</div>
+          <div class="ov-open-sub">${lv ? `<i data-lucide="corner-down-right" style="width:11px; vertical-align:-1px;"></i> ${escapeHtml(lv.action_taken || lv.visit_type)} &middot; ${escapeHtml(lv.technician || 'unassigned')}` : 'No updates yet'}</div>
         </div>
         <span class="badge ${wo.status}" style="font-size:9px; flex-shrink:0;">${wo.status.replace('_',' ')}</span>
       </div>`;

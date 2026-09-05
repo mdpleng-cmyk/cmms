@@ -1,4 +1,5 @@
 import { sb, state, toast, setButtonLoading, getLoaderHtml, escapeHtml, formatDate, priorityMeta } from './store.js';
+import { loadOverview } from './overview.js';
 import { populateScheduleSelect } from './schedules.js';
 
 export function openNewWoForm() {
@@ -114,6 +115,7 @@ export async function createWorkOrder() {
   }
 
   toast('Work order created');
+  loadOverview();
   closeNewWoForm();
   setButtonLoading('btn-create-wo', false);
   loadWorkOrders();
@@ -324,6 +326,7 @@ export async function confirmSaveWo() {
   closeUpdateModal();
   setButtonLoading('btn-confirm-save', false);
   loadWorkOrders();
+  loadOverview();
   if (state.woDetailCurrent && state.woDetailCurrent.id === wo.id) openWoDetailModal(wo.id);
 }
 
