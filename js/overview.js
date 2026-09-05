@@ -1,5 +1,7 @@
 import { sb, sbTelemetry, state, escapeHtml, formatDate, priorityMeta } from './store.js';
 
+const PM_DUE_WINDOW_DAYS = 7;
+
 function priorityRank(p) {
   return { P1: 1, P2: 2, P3: 3, P4: 4 }[p] || 5;
 }
@@ -9,157 +11,186 @@ export async function loadOverview() {
   el.innerHTML = `<div class="readout-empty" style="padding-top:60px;">Loading overview...</div>`;
 
   const todayStart = new Date(); todayStart.setHours(0,0,0,0);
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000);
 
-  const [openRes, schedRes, visitsRes, readingsRes, metersRes] = await Promise.all([
-    sb.from('work_orders').select('id, type, status, priority, opened_at, asset_id, assets(name, criticality)').in('status', ['open','in_progress','waiting_parts']).order('opened_at', { ascending: true }),
-    sb.from('recurring_schedules').select('id, title, next_due_at, active, asset_id, assets(name)').eq('active', true).order('next_due_at', { ascending: true }),
-    sb.from('wo_visits').select('visit_type, action_taken, technician, visited_at, wo_id, work_orders(id, asset_id, assets(name))').order('visited_at', { ascending: false }).limit(8),
-    sbTelemetry.from('meter_readings').select('meter_id, reading_value, consumption, recorded_at, shift').order('recorded_at', { ascending: false }).limit(200).then(r => r).catch(() => ({ data: null, error: true })),
+  const [openRes, schedRes, visitsRes, notesRes, readingsRes, metersRes] = await Promise.all([
+    sb.from('work_orders').select('id, type, status, priority, description, opened_at, asset_id, assets(name, criticality)').in('status', ['open','in_progress','waiting_parts']).order('opened_at', { ascending: true }),
+    sb.from('recurring_schedules').select('id, title, next_due_at, active, asset_id, snoozed_until, assets(name)').eq('active', true).order('next_due_at', { ascending: true }),
+    sb.from('wo_visits').select('visit_type, action_taken, technician, visited_at, wo_id, work_orders(id, asset_id, description, assets(name))').order('visited_at', { ascending: false }).limit(20),
+    sb.from('notes').select('id, text, done, created_at').order('created_at', { ascending: false }),
+    sbTelemetry.from('meter_readings').select('meter_id, reading_value, consumption, recorded_at').gte('recorded_at', thirtyDaysAgo.toISOString()).order('recorded_at', { ascending: false }).limit(2000).then(r => r).catch(() => ({ data: null, error: true })),
     sbTelemetry.from('meters').select('id, name, unit, meter_type, active').eq('active', true).then(r => r).catch(() => ({ data: null, error: true })),
   ]);
 
   const openWOs = openRes.data || [];
   const schedules = schedRes.data || [];
   const visits = visitsRes.data || [];
+  const notes = notesRes.data || [];
 
-  // ---- KPIs (a different, smaller set than the one dropped earlier —
-  // triage-focused: what needs attention right now, not a restatement
-  // of the table below it) ----
-  const now = Date.now();
-  const agingCount = openWOs.filter(w => (now - new Date(w.opened_at).getTime()) > 24 * 3600000).length;
-  const highPriorityCount = openWOs.filter(w => (w.priority || w.assets?.criticality) === 'P1' || (w.priority || w.assets?.criticality) === 'P2').length;
-  const inProgressCount = openWOs.filter(w => w.status === 'in_progress').length;
-  const pmTodaySchedules = schedules.filter(s => Math.round((new Date(s.next_due_at) - todayStart) / 86400000) <= 0);
+  // ---- latest visit per open WO, for the collapsed "issue + action + who" row ----
+  const latestVisitByWo = {};
+  visits.forEach(v => { if (!latestVisitByWo[v.wo_id]) latestVisitByWo[v.wo_id] = v; });
 
-  // ---- WO queue: sorted by priority first, then oldest within that priority ----
-  const sortedWOs = [...openWOs].sort((a, b) => {
-    const pa = priorityRank(a.priority || a.assets?.criticality);
-    const pb = priorityRank(b.priority || b.assets?.criticality);
-    if (pa !== pb) return pa - pb;
-    return new Date(a.opened_at) - new Date(b.opened_at);
-  });
-
-  const woRows = sortedWOs.slice(0, 10).map(w => {
-    const p = w.priority || w.assets?.criticality;
-    const { label, cls } = priorityMeta(p);
-    const ageMs = now - new Date(w.opened_at).getTime();
-    const ageH = Math.floor(ageMs / 3600000);
-    const ageStr = ageH >= 24 ? `${Math.floor(ageH/24)}d ${ageH%24}h` : `${ageH}h`;
-    const isHighPriority = p === 'P1' || p === 'P2';
-    const ageCls = (isHighPriority || ageH > 24) ? 'age-danger' : ageH > 8 ? 'age-warn' : '';
+  const openHtml = openWOs.length ? openWOs.map(wo => {
+    const p = wo.priority || wo.assets?.criticality;
+    const isCrit = p === 'P1' || p === 'P2';
+    const lv = latestVisitByWo[wo.id];
     return `
-      <tr style="cursor:pointer;" onclick="window.openWoDetailModal(${w.id})">
-        <td class="ov-wo-id">#${w.id}</td>
-        <td>${escapeHtml(w.assets?.name || 'Unknown')}</td>
-        <td>${w.type}</td>
-        <td><span class="badge ${cls}" style="font-size:10px;">${label}</span></td>
-        <td><span class="badge ${w.status}" style="font-size:10px;">${w.status.replace('_',' ')}</span></td>
-        <td class="ov-wo-id ${ageCls}">${ageStr}</td>
-      </tr>`;
-  }).join('');
-
-  const showAttention = agingCount > 0 || highPriorityCount > 0;
-
-  // ---- PM due soon ----
-  const pmDueHtml = schedules.slice(0, 6).map(s => {
-    const days = Math.round((new Date(s.next_due_at) - todayStart) / 86400000);
-    const cls = days < 0 ? 'over' : days <= 3 ? 'soon' : '';
-    const label = days < 0 ? `${Math.abs(days)}d overdue` : days === 0 ? 'Today' : `${days}d`;
-    const assetName = (s.assets?.name || '').replace(/'/g, "\\'");
-    return `
-      <div class="ov-pm-due-item" style="cursor:pointer;" onclick="window.openAssetHistoryModal(${s.asset_id}, '${assetName}')">
-        <span>${escapeHtml(s.assets?.name || '')} &mdash; ${escapeHtml(s.title)}</span>
-        <span class="ov-pm-due-days ${cls}">${label}</span>
+      <div class="ov-open-row ${isCrit ? 'crit' : ''}" onclick="window.openWoDetailModal(${wo.id})">
+        <div style="min-width:0;">
+          <div class="ov-open-title"><b>${escapeHtml(wo.assets?.name || 'Unknown')}</b> &mdash; ${escapeHtml(wo.description || 'No description')}</div>
+          <div class="ov-open-sub">${lv ? `${escapeHtml(lv.action_taken || lv.visit_type)} &middot; ${escapeHtml(lv.technician || 'unassigned')}` : 'No updates yet'}</div>
+        </div>
+        <span class="badge ${wo.status}" style="font-size:9px; flex-shrink:0;">${wo.status.replace('_',' ')}</span>
       </div>`;
-  }).join('') || '<div class="card-meta">No active PM schedules.</div>';
+  }).join('') : '<div class="card-meta" style="padding:14px;">No open work orders.</div>';
 
-  // ---- Meter readings (telemetry project, read-only) ----
-  const meterById = {};
-  (metersRes.data || []).forEach(m => { meterById[m.id] = m; });
-  const seenMeters = new Set();
-  const meterRows = (readingsRes.data || [])
-    .filter(r => {
-      if (seenMeters.has(r.meter_id)) return false;
-      seenMeters.add(r.meter_id);
-      return true;
-    })
-    .map(r => ({ ...r, meter: meterById[r.meter_id] }))
-    .filter(r => r.meter)
-    .slice(0, 6);
-  const meterFetchFailed = readingsRes.error || metersRes.error;
-  const metersBlocked = !meterFetchFailed && (metersRes.data || []).length === 0 && (readingsRes.data || []).length > 0;
-  const readingsBlocked = !meterFetchFailed && (readingsRes.data || []).length === 0 && (metersRes.data || []).length > 0;
+  // ---- PM due within window, split active/snoozed ----
+  const now = new Date();
+  const dueItems = schedules
+    .map(s => ({ ...s, days: Math.round((new Date(s.next_due_at) - todayStart) / 86400000) }))
+    .filter(s => s.days <= PM_DUE_WINDOW_DAYS)
+    .sort((a, b) => a.days - b.days);
+  const activeItems = dueItems.filter(s => !s.snoozed_until || new Date(s.snoozed_until) <= now);
+  const snoozedItems = dueItems.filter(s => s.snoozed_until && new Date(s.snoozed_until) > now);
 
-  // Heuristic icon/color per meter — we don't know the exact meter_type
-  // enum values on the telemetry side, so match loosely on type+name
-  // rather than hard-coding values that might not match reality.
-  function meterVisual(m) {
-    const key = `${m.meter_type || ''} ${m.name || ''}`.toLowerCase();
-    if (key.includes('boiler') || key.includes('fuel')) return { cls: 'boiler', icon: 'flame' };
-    if (key.includes('panel') || key.includes('msb') || key.includes('electric') || (m.unit || '').toLowerCase() === 'kwh') return { cls: 'electrical', icon: 'zap' };
-    return { cls: 'machine', icon: 'settings-2' };
-  }
+  const pmHtml = activeItems.length ? activeItems.map(s => {
+    const label = s.days < 0 ? `${Math.abs(s.days)}d overdue` : s.days === 0 ? 'Due today' : `Due in ${s.days}d`;
+    const cls = s.days < 0 ? 'over' : s.days === 0 ? 'soon' : '';
+    return `
+      <div style="padding:8px 0; border-bottom:1px solid var(--border);">
+        <div style="font-size:13px; color:var(--text);">${escapeHtml(s.title)} &mdash; ${escapeHtml(s.assets?.name || '')}</div>
+        <div class="ov-pm-due-days ${cls}" style="padding:0;">${label}</div>
+        ${s.days <= 0 ? `
+          <div class="ov-snooze-row">
+            <span class="ov-snooze-btn" onclick="window.snoozeSchedule(${s.id}, 1)">Snooze 1h</span>
+            <span class="ov-snooze-btn" onclick="window.snoozeSchedule(${s.id}, 4)">4h</span>
+            <span class="ov-snooze-btn" onclick="window.snoozeSchedule(${s.id}, 24)">1d</span>
+          </div>` : ''}
+      </div>`;
+  }).join('') : '<div class="card-meta">Nothing due in the next ' + PM_DUE_WINDOW_DAYS + ' days.</div>';
 
-  // ---- Activity feed ----
-  const activityHtml = visits.length ? visits.map(v => `
-    <div class="ov-activity-item" style="cursor:pointer;" onclick="window.openWoDetailModal(${v.wo_id})">
-      <span class="ov-activity-time">${formatDate(v.visited_at).split(',')[1] || formatDate(v.visited_at)}</span>
-      <span class="ov-activity-text"><b>${escapeHtml(v.technician || 'Someone')}</b> ${v.visit_type} &middot; ${escapeHtml(v.work_orders?.assets?.name || 'WO #' + v.wo_id)}</span>
+  const snoozedHtml = snoozedItems.length ? `
+    <div class="ov-snoozed-list">
+      Snoozed: ${snoozedItems.map(s => `${escapeHtml(s.title)} (until ${formatDate(s.snoozed_until)})`).join(', ')}
+    </div>` : '';
+
+  // ---- Recent activity, collapsed asset + issue + outcome + who ----
+  const activityHtml = visits.length ? visits.slice(0, 6).map(v => `
+    <div class="ov-activity-row" onclick="window.openWoDetailModal(${v.wo_id})">
+      <b>${escapeHtml(v.work_orders?.assets?.name || 'WO #' + v.wo_id)}</b> &mdash; ${escapeHtml(v.work_orders?.description || v.visit_type)}
+      <span class="badge ${v.visit_type === 'closed' ? 'closed' : 'open'}" style="font-size:9px; margin-left:4px;">${v.visit_type.replace('_',' ')}</span>
+      <div style="color:var(--text-muted); font-size:11px; margin-top:2px;">${escapeHtml(v.technician || 'unassigned')}</div>
     </div>
   `).join('') : '<div class="card-meta">No recent activity.</div>';
 
+  // ---- Meters: latest reading + 30-day average per meter ----
+  const meterById = {};
+  (metersRes.data || []).forEach(m => { meterById[m.id] = m; });
+  const readings = readingsRes.data || [];
+  const latestByMeter = {};
+  const sumByMeter = {};
+  const countByMeter = {};
+  readings.forEach(r => {
+    if (!latestByMeter[r.meter_id]) latestByMeter[r.meter_id] = r;
+    if (r.consumption != null) {
+      sumByMeter[r.meter_id] = (sumByMeter[r.meter_id] || 0) + r.consumption;
+      countByMeter[r.meter_id] = (countByMeter[r.meter_id] || 0) + 1;
+    }
+  });
+  const meterFetchFailed = readingsRes.error || metersRes.error;
+  const meterIds = Object.keys(latestByMeter).filter(id => meterById[id]).slice(0, 6);
+
+  const meterHtml = meterFetchFailed
+    ? '<div class="card-meta">Could not reach the telemetry project.</div>'
+    : meterIds.length ? meterIds.map(id => {
+        const meter = meterById[id];
+        const latest = latestByMeter[id];
+        const avg = countByMeter[id] ? sumByMeter[id] / countByMeter[id] : null;
+        const val = latest.consumption;
+        let deltaHtml = '';
+        if (avg && val != null) {
+          const pct = Math.round(((val - avg) / avg) * 100);
+          deltaHtml = `<span class="ov-meter-delta ${pct >= 0 ? 'up' : 'down'}">${pct >= 0 ? '+' : ''}${pct}%</span>`;
+        }
+        return `
+        <div style="display:flex; justify-content:space-between; align-items:baseline; padding:7px 0; border-bottom:1px solid var(--border);">
+          <span class="ov-meter-name">${escapeHtml(meter.name)}</span>
+          <span style="text-align:right;">
+            <div style="font-family:'JetBrains Mono',monospace; font-size:13px;">${val != null ? val.toLocaleString() : '\u2014'} ${deltaHtml}</div>
+            ${avg ? `<div class="ov-meter-avg">avg ${avg.toFixed(1)} (30d)</div>` : ''}
+          </span>
+        </div>`;
+      }).join('') : '<div class="card-meta">No readings in the last 30 days.</div>';
+
+  // ---- Notes ----
+  const notesHtml = notes.length ? notes.map(n => `
+    <div class="ov-note-row ${n.done ? 'done' : ''}">
+      <input type="checkbox" ${n.done ? 'checked' : ''} onchange="window.toggleNoteDone(${n.id}, this.checked)" style="margin-top:2px;">
+      <span>${escapeHtml(n.text)}</span>
+    </div>
+  `).join('') : '<div class="card-meta">No notes yet.</div>';
+
   el.innerHTML = `
-    <div class="ov-kpi-row">
-      <div class="ov-kpi"><div class="ov-kpi-label">Open</div><div class="ov-kpi-value ${openWOs.length ? 'warn' : ''}">${openWOs.length}</div><div class="ov-kpi-delta">active work orders</div></div>
-      <div class="ov-kpi"><div class="ov-kpi-label">Aging</div><div class="ov-kpi-value ${agingCount ? 'crit' : ''}">${agingCount}</div><div class="ov-kpi-delta">open &gt; 24h</div></div>
-      <div class="ov-kpi"><div class="ov-kpi-label">PM Today</div><div class="ov-kpi-value ${pmTodaySchedules.length ? 'warn' : ''}">${pmTodaySchedules.length}</div><div class="ov-kpi-delta">${escapeHtml(pmTodaySchedules[0]?.assets?.name || 'none due')}</div></div>
-      <div class="ov-kpi"><div class="ov-kpi-label">P1 / P2</div><div class="ov-kpi-value ${highPriorityCount ? 'crit' : ''}">${highPriorityCount}</div><div class="ov-kpi-delta">high priority</div></div>
-      <div class="ov-kpi"><div class="ov-kpi-label">In Progress</div><div class="ov-kpi-value">${inProgressCount}</div><div class="ov-kpi-delta">being worked</div></div>
+    <div style="margin-bottom:14px;">
+      <span style="font-family:'Oswald',sans-serif; font-size:16px; font-weight:600;">Today</span>
+      <span style="font-size:12px; color:var(--text-muted); margin-left:8px;">${new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}</span>
     </div>
 
-    <div class="ov-panel" style="margin-bottom:14px;">
-      <div class="ov-panel-head"><div class="ov-panel-title">Work order queue</div><div class="ov-panel-meta">${openWOs.length} open</div></div>
-      ${showAttention ? '<div class="ov-attention">\u26a0 <span>High-priority and aging work orders are surfaced first.</span></div>' : ''}
-      <div class="ov-panel-body" style="padding:0 14px 6px;">
-        <table class="ov-table"><tr><th>ID</th><th>Asset</th><th>Type</th><th>Priority</th><th>Status</th><th>Age</th></tr>${woRows || '<tr><td colspan="6" class="card-meta" style="padding:14px 0;">No open work orders.</td></tr>'}</table>
-      </div>
+    <div class="ov-panel ov-section">
+      <div class="ov-panel-head"><div class="ov-panel-title">Open Work Orders</div><div class="ov-panel-meta">${openWOs.length} open</div></div>
+      <div>${openHtml}</div>
     </div>
 
-    <div class="ov-row-3">
+    <div class="ov-row-3 ov-section">
       <div class="ov-panel">
-        <div class="ov-panel-head"><div class="ov-panel-title">PM due soon</div><div class="ov-panel-meta">next up</div></div>
-        <div class="ov-panel-body">${pmDueHtml}</div>
+        <div class="ov-panel-head"><div class="ov-panel-title">PM Due</div></div>
+        <div class="ov-panel-body">${pmHtml}${snoozedHtml}</div>
       </div>
       <div class="ov-panel">
-        <div class="ov-panel-head"><div class="ov-panel-title">Meter readings</div><div class="ov-panel-meta">telemetry</div></div>
-        <div class="ov-panel-body">${
-          meterFetchFailed
-            ? '<div class="card-meta">Could not reach the telemetry project.</div>'
-            : metersBlocked
-              ? '<div class="card-meta">Readings found, but the meters table isn\'t readable yet.</div>'
-              : readingsBlocked
-                ? '<div class="card-meta">Meters found, but readings aren\'t readable yet.</div>'
-                : meterRows.length
-                  ? meterRows.map(r => {
-                      const v = meterVisual(r.meter);
-                      return `
-                      <div class="ov-meter-row">
-                        <div class="ov-meter-left">
-                          <span class="ov-meter-icon ${v.cls}"><i data-lucide="${v.icon}"></i></span>
-                          <span class="ov-meter-name">${escapeHtml(r.meter.name)}</span>
-                        </div>
-                        <span class="ov-meter-val">${r.consumption != null ? r.consumption.toLocaleString() : '\u2014'}<span class="unit">${escapeHtml(r.meter.unit || '')}</span></span>
-                      </div>`;
-                    }).join('')
-                  : '<div class="card-meta">No readings logged yet.</div>'
-        }</div>
-      </div>
-      <div class="ov-panel">
-        <div class="ov-panel-head"><div class="ov-panel-title">Recent activity</div></div>
+        <div class="ov-panel-head"><div class="ov-panel-title">Recent Activity</div></div>
         <div class="ov-panel-body">${activityHtml}</div>
       </div>
+      <div class="ov-panel">
+        <div class="ov-panel-head"><div class="ov-panel-title">Meter Readings</div><div class="ov-panel-meta">telemetry</div></div>
+        <div class="ov-panel-body">${meterHtml}</div>
+      </div>
+    </div>
+
+    <div class="ov-panel">
+      <div class="ov-panel-head">
+        <div class="ov-panel-title">Reminders</div>
+        <div class="row" style="margin:0; gap:6px;">
+          <input id="new-note-text" placeholder="Add a note..." style="width:200px; font-size:12px; padding:6px 8px;">
+          <button class="ghost" style="padding:6px 10px; font-size:11px; border:1px solid var(--border);" onclick="window.addNote()">+ Add</button>
+        </div>
+      </div>
+      <div class="ov-panel-body">${notesHtml}</div>
     </div>
   `;
 
   lucide.createIcons({ root: el });
 }
+
+export async function snoozeSchedule(scheduleId, hours) {
+  const until = new Date(Date.now() + hours * 3600000).toISOString();
+  await sb.from('recurring_schedules').update({ snoozed_until: until }).eq('id', scheduleId);
+  loadOverview();
+}
+
+export async function addNote() {
+  const input = document.getElementById('new-note-text');
+  const text = input.value.trim();
+  if (!text) return;
+  await sb.from('notes').insert({ text, created_by: state.currentUser.id });
+  loadOverview();
+}
+
+export async function toggleNoteDone(id, done) {
+  await sb.from('notes').update({ done }).eq('id', id);
+  loadOverview();
+}
+
+window.snoozeSchedule = snoozeSchedule;
+window.addNote = addNote;
+window.toggleNoteDone = toggleNoteDone;
