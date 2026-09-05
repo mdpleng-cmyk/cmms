@@ -109,6 +109,13 @@ button.big { width: 100%; padding: 14px; font-size: 15px; }
 
 .ov-panel { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
 .ov-panel-head { display: flex; align-items: center; justify-content: space-between; padding: 11px 14px; border-bottom: 1px solid var(--border); }
+.ov-icon-badge { width: 28px; height: 28px; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.ov-icon-badge i { width: 15px; height: 15px; }
+.ov-icon-badge.blue { background: rgba(96,165,250,.15); color: #60a5fa; }
+.ov-icon-badge.amber { background: rgba(245,158,11,.15); color: var(--amber); }
+.ov-icon-badge.green { background: var(--green-bg); color: var(--green); }
+.ov-icon-badge.purple { background: rgba(192,132,252,.15); color: #c084fc; }
+.ov-panel-title-row { display: flex; align-items: center; gap: 10px; }
 .ov-panel-title { font-family: 'Oswald', sans-serif; font-size: 13px; font-weight: 600; letter-spacing: 0.02em; }
 .ov-panel-meta { font-size: 11px; color: var(--text-muted); }
 .ov-panel-body { padding: 14px; }
