@@ -24,6 +24,17 @@ export const ASSET_GLYPHS = {
     </svg>`,
 
   boiler: `
+    <svg width="140" height="120" viewBox="0 0 140 120" fill="none">
+      <rect x="42" y="20" width="56" height="80" rx="10" fill="var(--panel-raised)" stroke="var(--border)"/>
+      <circle cx="70" cy="34" r="5" fill="none" stroke="#71717a" stroke-width="1.6"/>
+      <line x1="70" y1="46" x2="70" y2="94" stroke="#71717a" stroke-width="1.6" stroke-dasharray="3 4"/>
+      <rect x="60" y="8" width="20" height="12" rx="2" fill="var(--border)"/>
+      <rect x="30" y="60" width="12" height="10" rx="2" fill="var(--border)"/>
+      <rect x="98" y="60" width="12" height="10" rx="2" fill="var(--border)"/>
+    </svg>`,
+
+
+
     <svg width="140" height="120" viewBox="0 0 140 120" fill="none" xmlns="http://www.w3.org/2000/svg">
       <rect x="8" y="104" width="124" height="4" rx="2" fill="#374151"/>
       

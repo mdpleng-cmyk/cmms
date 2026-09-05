@@ -171,12 +171,13 @@ button.big { width: 100%; padding: 14px; font-size: 15px; }
 .ov-subtabs { display: flex; gap: 4px; }
 .ov-subtab { font-size: 11px; color: var(--text-muted); background: transparent; border: 1px solid transparent; border-radius: 5px; padding: 4px 9px; cursor: pointer; }
 .ov-subtab.active { color: var(--amber); background: rgba(245,158,11,0.1); border-color: var(--amber-dim); }
-.ov-open-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px; border-bottom: 1px solid #27272a; border-left: 3px solid var(--border); cursor: pointer; }
+.ov-open-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 14px; border-bottom: 1px solid #27272a; border-left: 3px solid var(--border); cursor: pointer; transition: background 0.15s; }
 .ov-open-row:last-child { border-bottom: none; }
+.ov-open-row:hover { background: var(--panel-raised); }
 .ov-open-row.crit { border-left-color: var(--red); }
-.ov-open-asset { font-size: 15.5px; font-weight: 600; color: var(--amber); }
-.ov-open-desc { font-size: 12.5px; color: var(--text-muted); margin-top: 3px; line-height: 1.4; }
-.ov-open-sub { font-size: 11.5px; color: var(--text-muted); margin-top: 5px; }
+.ov-open-asset { font-family: 'Oswald', sans-serif; font-size: 14px; font-weight: 600; letter-spacing: 0.01em; color: var(--amber); }
+.ov-open-desc { font-size: 12.5px; color: var(--text-muted); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 480px; }
+.ov-open-sub { font-size: 11px; color: #71717a; margin-top: 6px; }
 
 .ov-snooze-row { display: flex; gap: 6px; margin-top: 8px; }
 .ov-snooze-btn { font-size: 10.5px; color: var(--text-muted); background: var(--panel-raised); border: 1px solid var(--border); border-radius: 5px; padding: 4px 8px; cursor: pointer; }
