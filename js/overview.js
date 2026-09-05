@@ -1,10 +1,40 @@
 import { sb, sbTelemetry, state, escapeHtml, formatDate, priorityMeta } from './store.js';
 
 const PM_DUE_WINDOW_DAYS = 7;
+let cachedOpenWOs = [];
+let cachedLatestVisitByWo = {};
+let openWoFilter = 'all';
 
 function priorityRank(p) {
   return { P1: 1, P2: 2, P3: 3, P4: 4 }[p] || 5;
 }
+
+function renderOpenWoList() {
+  const filtered = openWoFilter === 'all' ? cachedOpenWOs : cachedOpenWOs.filter(w => w.status === openWoFilter);
+  return filtered.length ? filtered.map(wo => {
+    const p = wo.priority || wo.assets?.criticality;
+    const isCrit = p === 'P1' || p === 'P2';
+    const lv = cachedLatestVisitByWo[wo.id];
+    return `
+      <div class="ov-open-row ${isCrit ? 'crit' : ''}" onclick="window.openWoDetailModal(${wo.id})">
+        <div style="min-width:0;">
+          <div class="ov-open-asset">${escapeHtml(wo.assets?.name || 'Unknown')}</div>
+          <div class="ov-open-desc">${escapeHtml(wo.description || 'No description')}</div>
+          <div class="ov-open-sub">${lv ? `<i data-lucide="corner-down-right" style="width:11px; vertical-align:-1px;"></i> ${escapeHtml(lv.action_taken || lv.visit_type)} &middot; ${escapeHtml(lv.technician || 'unassigned')}` : 'No updates yet'}</div>
+        </div>
+        <span class="badge ${wo.status}" style="font-size:9px; flex-shrink:0;">${wo.status.replace('_',' ')}</span>
+      </div>`;
+  }).join('') : '<div class="card-meta" style="padding:14px;">Nothing here.</div>';
+}
+
+export function filterOpenWos(status) {
+  openWoFilter = status;
+  document.querySelectorAll('.ov-subtab').forEach(b => b.classList.toggle('active', b.dataset.filter === status));
+  document.getElementById('ov-open-list').innerHTML = renderOpenWoList();
+  lucide.createIcons({ root: document.getElementById('ov-open-list') });
+}
+
+window.filterOpenWos = filterOpenWos;
 
 export async function loadOverview() {
   const el = document.getElementById('tab-overview');
@@ -28,23 +58,10 @@ export async function loadOverview() {
   const notes = notesRes.data || [];
 
   // ---- latest visit per open WO, for the collapsed "issue + action + who" row ----
-  const latestVisitByWo = {};
-  visits.forEach(v => { if (!latestVisitByWo[v.wo_id]) latestVisitByWo[v.wo_id] = v; });
-
-  const openHtml = openWOs.length ? openWOs.map(wo => {
-    const p = wo.priority || wo.assets?.criticality;
-    const isCrit = p === 'P1' || p === 'P2';
-    const lv = latestVisitByWo[wo.id];
-    return `
-      <div class="ov-open-row ${isCrit ? 'crit' : ''}" onclick="window.openWoDetailModal(${wo.id})">
-        <div style="min-width:0;">
-          <div class="ov-open-asset">${escapeHtml(wo.assets?.name || 'Unknown')}</div>
-          <div class="ov-open-desc">${escapeHtml(wo.description || 'No description')}</div>
-          <div class="ov-open-sub">${lv ? `<i data-lucide="corner-down-right" style="width:11px; vertical-align:-1px;"></i> ${escapeHtml(lv.action_taken || lv.visit_type)} &middot; ${escapeHtml(lv.technician || 'unassigned')}` : 'No updates yet'}</div>
-        </div>
-        <span class="badge ${wo.status}" style="font-size:9px; flex-shrink:0;">${wo.status.replace('_',' ')}</span>
-      </div>`;
-  }).join('') : '<div class="card-meta" style="padding:14px;">No open work orders.</div>';
+  cachedOpenWOs = openWOs;
+  cachedLatestVisitByWo = {};
+  visits.forEach(v => { if (!cachedLatestVisitByWo[v.wo_id]) cachedLatestVisitByWo[v.wo_id] = v; });
+  const openHtml = renderOpenWoList();
 
   // ---- PM due within window, split active/snoozed ----
   const now = new Date();
@@ -139,8 +156,16 @@ export async function loadOverview() {
     </div>
 
     <div class="ov-panel ov-section">
-      <div class="ov-panel-head"><div class="ov-panel-title">Open Work Orders</div><div class="ov-panel-meta">${openWOs.length} open</div></div>
-      <div>${openHtml}</div>
+      <div class="ov-panel-head">
+        <div class="ov-panel-title">Open Work Orders</div>
+        <div class="ov-subtabs">
+          <button class="ov-subtab active" data-filter="all" onclick="window.filterOpenWos('all')">All (${openWOs.length})</button>
+          <button class="ov-subtab" data-filter="open" onclick="window.filterOpenWos('open')">Open</button>
+          <button class="ov-subtab" data-filter="in_progress" onclick="window.filterOpenWos('in_progress')">In Progress</button>
+          <button class="ov-subtab" data-filter="waiting_parts" onclick="window.filterOpenWos('waiting_parts')">Awaiting Spares</button>
+        </div>
+      </div>
+      <div id="ov-open-list">${openHtml}</div>
     </div>
 
     <div class="ov-row-3 ov-section">
