@@ -302,7 +302,7 @@
       <label style="display:flex; align-items:center; gap:8px; cursor:pointer;"><input type="checkbox" id="wo-close-now" onchange="window.toggleWoCloseTimes(this.checked)" style="width:auto;"> Already done — log and close now</label>
     </div>
 
-    <div id="wo-close-times" class="row hidden" style="gap:10px; margin-bottom:24px;">
+    <div id="wo-close-times" class="row hidden" style="gap:10px; margin-bottom:14px;">
       <div class="field" style="flex:1; margin-bottom:0;">
         <label class="field-label">Started</label>
         <input type="datetime-local" id="wo-start-time" style="width:100%;">
@@ -310,6 +310,23 @@
       <div class="field" style="flex:1; margin-bottom:0;">
         <label class="field-label">Finished</label>
         <input type="datetime-local" id="wo-end-time" style="width:100%;">
+      </div>
+    </div>
+
+    <div id="wo-close-details" class="hidden">
+      <div class="field">
+        <label class="field-label">Action Taken</label>
+        <textarea id="wo-close-notes" placeholder="What was done..."></textarea>
+      </div>
+      <div class="row" style="gap:10px; margin-bottom:24px;">
+        <div class="field" style="flex:1; margin-bottom:0;">
+          <label class="field-label">Parts Used</label>
+          <input id="wo-close-parts" placeholder="Optional" style="width:100%;">
+        </div>
+        <div class="field" style="flex:1; margin-bottom:0;">
+          <label class="field-label">Technician</label>
+          <input id="wo-close-technician" placeholder="Optional" style="width:100%;">
+        </div>
       </div>
     </div>
     
