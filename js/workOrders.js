@@ -18,6 +18,9 @@ export function openNewWoForm() {
   document.getElementById('wo-type').value = 'breakdown';
   document.getElementById('wo-priority').value = 'P3';
   document.getElementById('wo-schedule-field').classList.add('hidden');
+  document.getElementById('wo-planned-date').value = '';
+  document.getElementById('wo-planned-date-field').classList.add('hidden');
+  document.getElementById('wo-planned-date-toggle').classList.remove('hidden');
   
   document.getElementById('wo-type').onchange = (e) => {
     const isPm = e.target.value === 'pm';
@@ -37,6 +40,13 @@ export function toggleWoCloseTimes(checked) {
     if (!startEl.value) startEl.value = toDatetimeLocalValue(new Date());
     if (!endEl.value) endEl.value = toDatetimeLocalValue(new Date());
   }
+}
+
+export function togglePlannedDateField(which) {
+  const toggleEl = document.getElementById(which + '-planned-date-toggle');
+  const fieldEl = document.getElementById(which + '-planned-date-field');
+  fieldEl.classList.remove('hidden');
+  toggleEl.classList.add('hidden');
 }
 
 function toDatetimeLocalValue(d) {
@@ -260,7 +270,10 @@ export function filterWorkOrders() {
 export function triggerUpdateFlow(id) {
   state.woToUpdate = state.activeWorkOrders.find(w => w.id === id) || (state.woDetailCurrent?.id === id ? state.woDetailCurrent : null);
   if (!state.woToUpdate) return;
+  const hasPlannedDate = !!state.woToUpdate.planned_date;
   document.getElementById('modal-wo-planned-date').value = state.woToUpdate.planned_date || '';
+  document.getElementById('modal-planned-date-field').classList.toggle('hidden', !hasPlannedDate);
+  document.getElementById('modal-planned-date-toggle').classList.toggle('hidden', hasPlannedDate);
   
   document.getElementById('modal-wo-title').innerText = `WO #${state.woToUpdate.id} - ${state.woToUpdate.assets?.name}`;
   document.getElementById('modal-wo-original-desc').innerText = state.woToUpdate.description || "No initial description provided.";

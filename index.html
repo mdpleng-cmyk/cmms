@@ -278,11 +278,6 @@
     </div>
 
     <div class="field">
-      <label class="field-label">Planned Date <span class="card-meta">(optional — defers staleness tracking)</span></label>
-      <input type="date" id="wo-planned-date">
-    </div>
-
-    <div class="field">
       <label class="field-label">Priority</label>
       <select id="wo-priority">
         <option value="">Unset</option>
@@ -330,6 +325,14 @@
       </div>
     </div>
     
+    <div id="wo-planned-date-toggle" style="margin-bottom:14px;">
+      <span style="font-size:12px; color:var(--text-muted); cursor:pointer;" onclick="window.togglePlannedDateField('wo')">+ Set a planned date</span>
+    </div>
+    <div id="wo-planned-date-field" class="field hidden">
+      <label class="field-label">Planned Date <span class="card-meta">(defers staleness tracking)</span></label>
+      <input type="date" id="wo-planned-date">
+    </div>
+
     <div class="row" style="justify-content:flex-end;">
       <button class="ghost" onclick="window.closeNewWoForm()">Cancel</button>
       <button id="btn-create-wo" class="primary" onclick="window.createWorkOrder()">Create WO</button>
@@ -414,11 +417,6 @@
       <div style="font-size:13px; color:var(--text-muted); background:var(--bg); padding:10px; border-radius:6px; margin-bottom:16px; border:1px solid var(--border);" id="modal-wo-original-desc"></div>
       
       <div class="field">
-        <label class="field-label">Planned Date <span class="card-meta">(optional)</span></label>
-        <input type="date" id="modal-wo-planned-date">
-      </div>
-
-      <div class="field">
         <label class="field-label">Action Taken <span style="color:var(--red); display:none;" id="notes-req-star">*</span></label>
         <textarea id="modal-wo-notes" placeholder="What was done on this visit..."></textarea>
       </div>
@@ -433,13 +431,21 @@
         </div>
       </div>
       
-      <div class="row" style="margin-bottom:20px; gap:16px;">
+      <div class="row" style="margin-bottom:14px; gap:16px;">
         <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:13px;">
           <input type="checkbox" id="toggle-spare" onchange="if(this.checked) document.getElementById('toggle-close').checked = false;"> Awaiting Spare
         </label>
         <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:13px;">
           <input type="checkbox" id="toggle-close" onchange="if(this.checked) document.getElementById('toggle-spare').checked = false;"> Work Completed
         </label>
+      </div>
+
+      <div id="modal-planned-date-toggle" style="margin-bottom:14px;">
+        <span style="font-size:12px; color:var(--text-muted); cursor:pointer;" onclick="window.togglePlannedDateField('modal')">+ Set a planned date</span>
+      </div>
+      <div id="modal-planned-date-field" class="field hidden">
+        <label class="field-label">Planned Date</label>
+        <input type="date" id="modal-wo-planned-date">
       </div>
       
       <div class="row" style="justify-content:flex-end;">
