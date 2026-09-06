@@ -171,6 +171,7 @@ button.big { width: 100%; padding: 14px; font-size: 15px; }
 .ov-subtabs { display: flex; gap: 4px; }
 .ov-subtab { font-size: 11px; color: var(--text-muted); background: transparent; border: 1px solid transparent; border-radius: 5px; padding: 4px 9px; cursor: pointer; }
 .ov-subtab.active { color: var(--amber); background: rgba(245,158,11,0.1); border-color: var(--amber-dim); }
+#ov-open-list { max-height: 340px; overflow-y: auto; }
 .ov-open-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 14px; border-bottom: 1px solid #27272a; border-left: 3px solid var(--border); cursor: pointer; transition: background 0.15s; }
 .ov-open-row:last-child { border-bottom: none; }
 .ov-open-row:hover { background: var(--panel-raised); }
