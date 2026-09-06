@@ -48,7 +48,7 @@ window.openNewWoFormForAsset = openNewWoFormForAsset;
 window.raiseWoFromAssetPage = raiseWoFromAssetPage;
 window.toggleWoCloseTimes = toggleWoCloseTimes;
 window.togglePlannedDateField = togglePlannedDateField;
-window.togglePlannedDateField = togglePlannedDateField;
+
 
 window.openManageAsset = openManageAsset;
 window.backToManageList = backToManageList;
