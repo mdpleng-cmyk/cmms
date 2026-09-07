@@ -177,7 +177,7 @@ function renderWorkOrders() {
     <div class="panel wo-card" style="cursor:pointer;" data-search="${wo.id} ${wo.assets?.name || ''} ${wo.description || ''}".toLowerCase() onclick="window.openWoDetailModal(${wo.id})">
       <div class="row" style="margin-bottom:8px;justify-content:space-between">
         <div style="display:flex; gap:6px;">
-          <span class="badge ${wo.type}">${wo.type === 'pm' ? '<i data-lucide="calendar-clock" style="width:12px;"></i>' : '<i data-lucide="wrench" style="width:12px;"></i>'} ${wo.type}</span>
+          <span class="badge ${wo.type}">${wo.type === 'pm' ? '<i data-lucide="calendar-clock" style="width:12px;"></i>' : wo.type === 'other' ? '<i data-lucide="package" style="width:12px;"></i>' : '<i data-lucide="wrench" style="width:12px;"></i>'} ${wo.type}</span>
           <span class="badge ${wo.status}">${wo.status.replace('_',' ')}</span>
         </div>
         <span class="card-meta">#${wo.id}</span>

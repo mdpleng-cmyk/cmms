@@ -41,6 +41,7 @@ button.big { width: 100%; padding: 14px; font-size: 15px; }
 .badge.pm { border: 1px solid var(--border); color: var(--text-muted); background: var(--bg); }
 .badge.breakdown { border: 1px solid rgba(239,68,68,0.3); color: var(--red); background: rgba(239,68,68,0.05); }
 .badge.waiting_parts { color: #c084fc; background: rgba(192,132,252,0.14); }
+.badge.other { color: #60a5fa; background: rgba(96,165,250,0.12); }
 
 .readout-empty { font-size: 14px; color: var(--text-muted); padding: 32px 0; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 12px; }
 .checklist-item { display: flex; align-items: flex-start; gap: 8px; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
@@ -171,7 +172,11 @@ button.big { width: 100%; padding: 14px; font-size: 15px; }
 .ov-subtabs { display: flex; gap: 4px; }
 .ov-subtab { font-size: 11px; color: var(--text-muted); background: transparent; border: 1px solid transparent; border-radius: 5px; padding: 4px 9px; cursor: pointer; }
 .ov-subtab.active { color: var(--amber); background: rgba(245,158,11,0.1); border-color: var(--amber-dim); }
-#ov-open-list { max-height: 340px; overflow-y: auto; }
+#ov-open-list { max-height: 340px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+#ov-open-list::-webkit-scrollbar { width: 6px; }
+#ov-open-list::-webkit-scrollbar-track { background: transparent; }
+#ov-open-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+#ov-open-list::-webkit-scrollbar-thumb:hover { background: var(--panel-raised); }
 .ov-open-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 14px; border-bottom: 1px solid #27272a; border-left: 3px solid var(--border); cursor: pointer; transition: background 0.15s; }
 .ov-open-row:last-child { border-bottom: none; }
 .ov-open-row:hover { background: var(--panel-raised); }
