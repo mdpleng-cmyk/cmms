@@ -104,7 +104,11 @@ button.big { width: 100%; padding: 14px; font-size: 15px; }
 .ov-row-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; align-items: stretch; }
 @media (max-width: 900px) { .ov-row-3 { grid-template-columns: 1fr; } }
 .ov-row-3 .ov-panel { display: flex; flex-direction: column; }
-.ov-row-3 .ov-panel-body { flex: 1; overflow-y: auto; max-height: 260px; }
+.ov-row-3 .ov-panel-body { flex: 1; overflow-y: auto; max-height: 260px; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+.ov-row-3 .ov-panel-body::-webkit-scrollbar { width: 6px; }
+.ov-row-3 .ov-panel-body::-webkit-scrollbar-track { background: transparent; }
+.ov-row-3 .ov-panel-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+.ov-row-3 .ov-panel-body::-webkit-scrollbar-thumb:hover { background: var(--panel-raised); }
 
 .badge.prio-crit { border: 1px solid rgba(239,68,68,0.3); color: var(--red); background: rgba(239,68,68,0.05); }
 .badge.prio-warn { background: rgba(245,158,11,0.15); color: var(--amber); }
