@@ -2,7 +2,7 @@ import { sb } from './store.js';
 import { signIn, signOut, onSignedIn } from './auth.js';
 import { openNewAssetForm, closeNewAssetForm, createAsset, loadAssets, openAssetHistoryModal, closeAssetHistoryModal, renderAssetDropdown, selectAsset, goToSchedule, toggleScheduleItems, switchAssetModalTab, toggleAssetClassFields, onEquipmentTypeChange } from './assets.js';
 import { openNewScheduleForm, closeNewScheduleForm, createSchedule, loadSchedules, addChecklistItem, toggleNewItemUnit, generatePmWoNow } from './schedules.js';
-import { openNewWoForm, closeNewWoForm, createWorkOrder, loadWorkOrders, filterWorkOrders, triggerUpdateFlow, closeUpdateModal, reviewUpdateWo, backToEditWo, confirmSaveWo, toggleChecklistItem, saveReadingValue, openWoDetailModal, closeWoDetailModal, triggerUpdateFromDetail, openNewWoFormForAsset, raiseWoFromAssetPage, toggleWoCloseTimes, togglePlannedDateField } from './workOrders.js';
+import { openNewWoForm, closeNewWoForm, createWorkOrder, loadWorkOrders, filterWorkOrders, triggerUpdateFlow, closeUpdateModal, reviewUpdateWo, backToEditWo, confirmSaveWo, toggleChecklistItem, saveReadingValue, openWoDetailModal, closeWoDetailModal, triggerUpdateFromDetail, openNewWoFormForAsset, raiseWoFromAssetPage, toggleWoCloseTimes, togglePlannedDateField, startEditVisit, cancelEditVisit, saveVisitEdit } from './workOrders.js';
 import { loadManageAssetList, openManageAsset, backToManageList, saveManageCategory, saveManageSpecField, deleteManageSpec, addManageSpec, switchManageMode, createEquipmentType, openManageType, backToTypesList, saveTypeTemplateMeta, toggleNewTypeItemUnit, addTypeTemplateItem, deleteTypeTemplateItem, saveManageAssetField } from './manage.js';
 import { loadOverview } from './overview.js';
 
@@ -48,6 +48,9 @@ window.openNewWoFormForAsset = openNewWoFormForAsset;
 window.raiseWoFromAssetPage = raiseWoFromAssetPage;
 window.toggleWoCloseTimes = toggleWoCloseTimes;
 window.togglePlannedDateField = togglePlannedDateField;
+window.startEditVisit = startEditVisit;
+window.cancelEditVisit = cancelEditVisit;
+window.saveVisitEdit = saveVisitEdit;
 
 
 window.openManageAsset = openManageAsset;
