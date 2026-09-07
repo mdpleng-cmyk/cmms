@@ -255,7 +255,8 @@ async function loadVisitsForWo(woId) {
 
 function renderVisitsList() {
   const box = document.getElementById('wo-detail-visits');
-  const canEdit = state.currentRole === 'admin' || state.currentRole === 'technician';
+  const isPrivileged = state.currentRole === 'admin' || state.currentRole === 'technician';
+  const EDIT_WINDOW_MS = 8 * 3600000;
   if (!currentVisits.length) { box.innerHTML = '<div class="card-meta">No updates logged yet.</div>'; return; }
   box.innerHTML = currentVisits.map(v => {
     if (v.editing) {
@@ -280,7 +281,7 @@ function renderVisitsList() {
       <span class="activity-date">${formatDate(v.visited_at).split(',')[0]}</span>
       <div class="activity-body">
         <p class="activity-title">${v.visit_type.replace('_',' ')}${v.technician ? ' \u00b7 ' + escapeHtml(v.technician) : ''}
-          ${canEdit ? `<i data-lucide="pencil" style="width:11px; margin-left:6px; cursor:pointer; color:var(--text-muted);" onclick="window.startEditVisit(${v.id})"></i>` : ''}
+          ${isPrivileged && (Date.now() - new Date(v.visited_at).getTime()) < EDIT_WINDOW_MS ? `<i data-lucide="pencil" style="width:11px; margin-left:6px; cursor:pointer; color:var(--text-muted);" onclick="window.startEditVisit(${v.id})"></i>` : ''}
         </p>
         ${v.action_taken ? `<p class="activity-meta">${escapeHtml(v.action_taken)}</p>` : ''}
         ${v.parts_used ? `<p class="activity-meta">Parts: ${escapeHtml(v.parts_used)}</p>` : ''}
