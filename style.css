@@ -18,6 +18,7 @@ select, input[type=number], input[type=date], input[type=text], input[type=email
   padding: 9px 10px; font-family: 'Inter', sans-serif; font-size: 14px; width: 100%; transition: border-color 0.2s;
 }
 select:focus, input:focus, textarea:focus { outline: none; border-color: var(--amber); }
+input[type=date], input[type=datetime-local] { color-scheme: dark; }
 textarea { min-height: 70px; resize: vertical; }
 label.field-label { font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 500; color: var(--text-muted); display: block; margin-bottom: 6px; }
 .field { margin-bottom: 14px; }

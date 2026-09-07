@@ -26,9 +26,13 @@ function renderOpenWoList() {
   const todayStart = new Date(); todayStart.setHours(0,0,0,0);
   let filtered = openWoFilter === 'all' ? cachedOpenWOs : cachedOpenWOs.filter(w => w.status === openWoFilter);
   filtered = [...filtered].sort((a, b) => {
+    const pa = priorityRank(a.priority || a.assets?.criticality);
+    const pb = priorityRank(b.priority || b.assets?.criticality);
+    if (pa !== pb) return pa - pb;
     const sa = staleDaysFor(a, cachedLatestVisitByWo[a.id], todayStart);
     const sb = staleDaysFor(b, cachedLatestVisitByWo[b.id], todayStart);
-    return sb - sa;
+    if (sb !== sa) return sb - sa;
+    return new Date(a.opened_at) - new Date(b.opened_at);
   });
   return filtered.length ? filtered.map(wo => {
     const p = wo.priority || wo.assets?.criticality;

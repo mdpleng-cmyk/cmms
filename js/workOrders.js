@@ -240,24 +240,75 @@ export function triggerUpdateFromDetail() {
   if (state.woDetailCurrent) triggerUpdateFlow(state.woDetailCurrent.id);
 }
 
+let currentVisits = [];
+
 async function loadVisitsForWo(woId) {
   const box = document.getElementById('wo-detail-visits');
   box.innerHTML = getLoaderHtml('Loading activity...');
   const { data } = await sb.from('wo_visits')
-    .select('visit_type, action_taken, parts_used, technician, visited_at')
+    .select('id, visit_type, action_taken, parts_used, technician, visited_at')
     .eq('wo_id', woId)
     .order('visited_at', { ascending: false });
-  if (!data || !data.length) { box.innerHTML = '<div class="card-meta">No updates logged yet.</div>'; return; }
-  box.innerHTML = data.map(v => `
+  currentVisits = data || [];
+  renderVisitsList();
+}
+
+function renderVisitsList() {
+  const box = document.getElementById('wo-detail-visits');
+  const canEdit = state.currentRole === 'admin' || state.currentRole === 'technician';
+  if (!currentVisits.length) { box.innerHTML = '<div class="card-meta">No updates logged yet.</div>'; return; }
+  box.innerHTML = currentVisits.map(v => {
+    if (v.editing) {
+      return `
+      <div class="activity-entry">
+        <span class="activity-date">${formatDate(v.visited_at).split(',')[0]}</span>
+        <div class="activity-body">
+          <textarea id="edit-visit-notes-${v.id}" style="margin-bottom:6px;">${escapeHtml(v.action_taken || '')}</textarea>
+          <div class="row" style="gap:8px; margin-bottom:6px;">
+            <input id="edit-visit-parts-${v.id}" placeholder="Parts used" value="${escapeHtml(v.parts_used || '')}" style="flex:1;">
+            <input id="edit-visit-tech-${v.id}" placeholder="Technician" value="${escapeHtml(v.technician || '')}" style="flex:1;">
+          </div>
+          <div class="row" style="gap:8px; margin-bottom:0;">
+            <button class="primary" style="padding:5px 10px; font-size:11px;" onclick="window.saveVisitEdit(${v.id})">Save</button>
+            <button class="ghost" style="padding:5px 10px; font-size:11px;" onclick="window.cancelEditVisit(${v.id})">Cancel</button>
+          </div>
+        </div>
+      </div>`;
+    }
+    return `
     <div class="activity-entry">
       <span class="activity-date">${formatDate(v.visited_at).split(',')[0]}</span>
       <div class="activity-body">
-        <p class="activity-title">${v.visit_type.replace('_',' ')}${v.technician ? ' \u00b7 ' + escapeHtml(v.technician) : ''}</p>
+        <p class="activity-title">${v.visit_type.replace('_',' ')}${v.technician ? ' \u00b7 ' + escapeHtml(v.technician) : ''}
+          ${canEdit ? `<i data-lucide="pencil" style="width:11px; margin-left:6px; cursor:pointer; color:var(--text-muted);" onclick="window.startEditVisit(${v.id})"></i>` : ''}
+        </p>
         ${v.action_taken ? `<p class="activity-meta">${escapeHtml(v.action_taken)}</p>` : ''}
         ${v.parts_used ? `<p class="activity-meta">Parts: ${escapeHtml(v.parts_used)}</p>` : ''}
       </div>
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
+  lucide.createIcons({ root: box });
+}
+
+export function startEditVisit(id) {
+  currentVisits = currentVisits.map(v => ({ ...v, editing: v.id === id }));
+  renderVisitsList();
+}
+
+export function cancelEditVisit(id) {
+  currentVisits = currentVisits.map(v => v.id === id ? { ...v, editing: false } : v);
+  renderVisitsList();
+}
+
+export async function saveVisitEdit(id) {
+  const action_taken = document.getElementById(`edit-visit-notes-${id}`).value.trim() || null;
+  const parts_used = document.getElementById(`edit-visit-parts-${id}`).value.trim() || null;
+  const technician = document.getElementById(`edit-visit-tech-${id}`).value.trim() || null;
+  const { error } = await sb.from('wo_visits').update({ action_taken, parts_used, technician }).eq('id', id);
+  if (error) { toast(error.message, 'err'); return; }
+  currentVisits = currentVisits.map(v => v.id === id ? { ...v, action_taken, parts_used, technician, editing: false } : v);
+  renderVisitsList();
+  toast('Visit updated');
 }
 
 export function filterWorkOrders() {
