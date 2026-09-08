@@ -118,17 +118,26 @@ export async function advanceScheduleForCompletedPm(scheduleId) {
   const nextDueValue = schedule.next_due_at.length <= 10
     ? nextDue.toISOString().slice(0, 10)
     : nextDue.toISOString();
-  const { error } = await sb.from('recurring_schedules')
+  const { error: updateErr } = await sb.from('recurring_schedules')
     .update({ next_due_at: nextDueValue })
     .eq('id', scheduleId)
-    .eq('next_due_at', schedule.next_due_at)
-    .select('id')
+    .eq('next_due_at', schedule.next_due_at);
+  if (updateErr) return { error: updateErr };
+
+  const { data: updated, error: verifyErr } = await sb.from('recurring_schedules')
+    .select('id, next_due_at')
+    .eq('id', scheduleId)
     .single();
-  if (!error) {
+  if (verifyErr) return { error: verifyErr };
+  if (updated.next_due_at !== nextDueValue) {
+    return { error: new Error('Schedule due date did not change') };
+  }
+
+  {
     const cached = state.schedulesCache.find(item => item.id === scheduleId);
     if (cached) cached.next_due_at = nextDueValue;
   }
-  return { error, next_due_at: nextDueValue };
+  return { error: null, next_due_at: nextDueValue };
 }
 
 export async function generatePmWoNow(scheduleId) {
