@@ -106,6 +106,31 @@ export function populateScheduleSelect(id) {
   });
 }
 
+export async function advanceScheduleForCompletedPm(scheduleId) {
+  const { data: schedule, error: loadErr } = await sb.from('recurring_schedules')
+    .select('id, interval_days, next_due_at')
+    .eq('id', scheduleId)
+    .single();
+  if (loadErr) return { error: loadErr };
+
+  const nextDue = new Date(schedule.next_due_at);
+  nextDue.setUTCDate(nextDue.getUTCDate() + schedule.interval_days);
+  const nextDueValue = schedule.next_due_at.length <= 10
+    ? nextDue.toISOString().slice(0, 10)
+    : nextDue.toISOString();
+  const { error } = await sb.from('recurring_schedules')
+    .update({ next_due_at: nextDueValue })
+    .eq('id', scheduleId)
+    .eq('next_due_at', schedule.next_due_at)
+    .select('id')
+    .single();
+  if (!error) {
+    const cached = state.schedulesCache.find(item => item.id === scheduleId);
+    if (cached) cached.next_due_at = nextDueValue;
+  }
+  return { error, next_due_at: nextDueValue };
+}
+
 export async function generatePmWoNow(scheduleId) {
   const schedule = state.schedulesCache.find(s => s.id === scheduleId);
   if (!schedule) { toast('Schedule not found', 'err'); return; }
@@ -154,25 +179,6 @@ export async function generatePmWoNow(scheduleId) {
       }
     }
 
-    const nextDue = new Date(schedule.next_due_at);
-    nextDue.setUTCDate(nextDue.getUTCDate() + schedule.interval_days);
-    const nextDueValue = schedule.next_due_at.length <= 10
-      ? nextDue.toISOString().slice(0, 10)
-      : nextDue.toISOString();
-    const { error: scheduleErr } = await sb.from('recurring_schedules')
-      .update({ next_due_at: nextDueValue })
-      .eq('id', scheduleId)
-      .eq('next_due_at', schedule.next_due_at)
-      .select('id')
-      .single();
-    if (scheduleErr) {
-      await sb.from('wo_checklist_results').delete().eq('wo_id', wo.id);
-      await sb.from('work_orders').delete().eq('id', wo.id);
-      toast('PM work order was not completed: ' + scheduleErr.message, 'err');
-      return;
-    }
-
-    schedule.next_due_at = nextDueValue;
     toast('PM work order generated');
     window.switchTab('wo');
     window.openWoDetailModal(wo.id);

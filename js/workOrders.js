@@ -1,6 +1,6 @@
 import { sb, state, toast, setButtonLoading, getLoaderHtml, escapeHtml, formatDate, priorityMeta } from './store.js';
 import { loadOverview } from './overview.js';
-import { populateScheduleSelect } from './schedules.js';
+import { populateScheduleSelect, loadSchedules, advanceScheduleForCompletedPm } from './schedules.js';
 
 export function openNewWoForm() {
   document.getElementById('modal-new-wo').classList.remove('hidden');
@@ -171,6 +171,17 @@ export async function createWorkOrder() {
       setButtonLoading('btn-create-wo', false);
       return;
     }
+  }
+
+  if (closeNow && type === 'pm') {
+    const { error: scheduleErr } = await advanceScheduleForCompletedPm(schedule_id);
+    if (scheduleErr) {
+      await rollbackCreatedWorkOrder(wo.id);
+      toast('Work order was not completed: ' + scheduleErr.message, 'err');
+      setButtonLoading('btn-create-wo', false);
+      return;
+    }
+    await loadSchedules();
   }
 
   toast('Work order created');
@@ -537,6 +548,22 @@ export async function confirmSaveWo() {
       setButtonLoading('btn-confirm-save', false);
       return;
     }
+  }
+
+  if (newStatus === 'closed' && wo.type === 'pm' && wo.schedule_id) {
+    const { error: scheduleErr } = await advanceScheduleForCompletedPm(wo.schedule_id);
+    if (scheduleErr) {
+      await sb.from('wo_visits').delete().eq('wo_id', wo.id).eq('visit_type', wo.pendingVisitType);
+      await sb.from('work_orders').update({
+        status: wo.status,
+        planned_date: wo.planned_date,
+        closed_at: wo.closed_at,
+      }).eq('id', wo.id);
+      toast('PM close was not completed: ' + scheduleErr.message, 'err');
+      setButtonLoading('btn-confirm-save', false);
+      return;
+    }
+    await loadSchedules();
   }
 
   toast('Work order updated successfully');
