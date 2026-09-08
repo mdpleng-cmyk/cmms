@@ -83,6 +83,12 @@ export function closeNewWoForm() {
   document.getElementById('wo-asset-dropdown').classList.add('hidden');
 }
 
+async function rollbackCreatedWorkOrder(woId) {
+  await sb.from('wo_checklist_results').delete().eq('wo_id', woId);
+  await sb.from('wo_visits').delete().eq('wo_id', woId);
+  await sb.from('work_orders').delete().eq('id', woId);
+}
+
 export async function createWorkOrder() {
   const planned_date = document.getElementById('wo-planned-date').value || null;
   const asset_id = document.getElementById('wo-asset-value').value;
@@ -115,6 +121,16 @@ export async function createWorkOrder() {
     if (type === 'breakdown' && !closeNotes) { toast('Action taken is required to log a completed breakdown.', 'err'); return; }
   }
 
+  let checklistItems = null;
+  if (type === 'pm' && schedule_id) {
+    const { data, error: checklistErr } = await sb.from('checklist_items')
+      .select('id')
+      .eq('schedule_id', schedule_id)
+      .eq('active', true);
+    if (checklistErr) { toast(checklistErr.message, 'err'); return; }
+    checklistItems = data || [];
+  }
+
   setButtonLoading('btn-create-wo', true);
   const payload = {
     asset_id, type, description, priority, planned_date,
@@ -129,7 +145,7 @@ export async function createWorkOrder() {
   if (error) { toast(error.message, 'err'); setButtonLoading('btn-create-wo', false); return; }
 
   if (closeNow) {
-    await sb.from('wo_visits').insert({
+    const { error: visitErr } = await sb.from('wo_visits').insert({
       wo_id: wo.id,
       visit_type: 'closed',
       action_taken: closeNotes || null,
@@ -138,13 +154,22 @@ export async function createWorkOrder() {
       logged_by: state.currentUser.id,
       visited_at: closedAt,
     });
+    if (visitErr) {
+      await rollbackCreatedWorkOrder(wo.id);
+      toast('Work order was not completed: ' + visitErr.message, 'err');
+      setButtonLoading('btn-create-wo', false);
+      return;
+    }
   }
 
-  if (type === 'pm' && schedule_id) {
-    const { data: items } = await sb.from('checklist_items').select('id').eq('schedule_id', schedule_id).eq('active', true);
-    if (items && items.length) {
-      const rows = items.map(i => ({ wo_id: wo.id, item_id: i.id, done: closeNow }));
-      await sb.from('wo_checklist_results').insert(rows);
+  if (checklistItems?.length) {
+    const rows = checklistItems.map(i => ({ wo_id: wo.id, item_id: i.id, done: closeNow }));
+    const { error: checklistErr } = await sb.from('wo_checklist_results').insert(rows);
+    if (checklistErr) {
+      await rollbackCreatedWorkOrder(wo.id);
+      toast('Work order was not completed: ' + checklistErr.message, 'err');
+      setButtonLoading('btn-create-wo', false);
+      return;
     }
   }
 
@@ -294,12 +319,22 @@ export async function saveWoMetaEdit() {
   if (before.priority !== priority) changes.push(`Priority: ${before.priority || 'Unset'} \u2192 ${priority || 'Unset'}`);
   if ((before.description || '') !== description) changes.push('Description updated');
   if (changes.length) {
-    await sb.from('wo_visits').insert({
+    const { error: visitErr } = await sb.from('wo_visits').insert({
       wo_id: before.id,
       visit_type: 'edited',
       action_taken: changes.join('; '),
       logged_by: state.currentUser.id,
     });
+    if (visitErr) {
+      const { error: rollbackErr } = await sb.from('work_orders').update({
+        description: before.description,
+        priority: before.priority,
+      }).eq('id', before.id);
+      toast(rollbackErr
+        ? `Work order changed, but edit history failed: ${visitErr.message}`
+        : `Work order edit rolled back: ${visitErr.message}`, 'err');
+      return;
+    }
   }
 
   state.woDetailCurrent.description = description;
@@ -481,7 +516,7 @@ export async function confirmSaveWo() {
   const { error } = await sb.from('work_orders').update(payload).eq('id', wo.id);
   if (error) { toast(error.message, 'err'); setButtonLoading('btn-confirm-save', false); return; }
 
-  if (wo.pendingNote || wo.pendingParts || wo.pendingTechnician) {
+  if (wo.pendingNote || wo.pendingParts || wo.pendingTechnician || newStatus !== wo.status) {
     const { error: visitErr } = await sb.from('wo_visits').insert({
       wo_id: wo.id,
       visit_type: wo.pendingVisitType,
@@ -490,7 +525,18 @@ export async function confirmSaveWo() {
       technician: wo.pendingTechnician || null,
       logged_by: state.currentUser.id,
     });
-    if (visitErr) toast('Status saved, but visit record failed: ' + visitErr.message, 'err');
+    if (visitErr) {
+      const { error: rollbackErr } = await sb.from('work_orders').update({
+        status: wo.status,
+        planned_date: wo.planned_date,
+        closed_at: wo.closed_at,
+      }).eq('id', wo.id);
+      toast(rollbackErr
+        ? `Status changed, but visit record failed: ${visitErr.message}`
+        : `Status update rolled back: ${visitErr.message}`, 'err');
+      setButtonLoading('btn-confirm-save', false);
+      return;
+    }
   }
 
   toast('Work order updated successfully');

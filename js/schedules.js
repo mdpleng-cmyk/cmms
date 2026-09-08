@@ -1,5 +1,7 @@
 import { sb, state, toast, setButtonLoading, getLoaderHtml, escapeHtml } from './store.js';
 
+const pmGenerationInFlight = new Set();
+
 export function openNewScheduleForm() {
   document.getElementById('new-schedule-form').classList.remove('hidden');
   document.getElementById('sched-asset').innerHTML = state.assetsCache.map(a => `<option value="${a.id}">${escapeHtml(a.name)}</option>`).join('');
@@ -107,25 +109,74 @@ export function populateScheduleSelect(id) {
 export async function generatePmWoNow(scheduleId) {
   const schedule = state.schedulesCache.find(s => s.id === scheduleId);
   if (!schedule) { toast('Schedule not found', 'err'); return; }
+  if (pmGenerationInFlight.has(scheduleId)) return;
+  pmGenerationInFlight.add(scheduleId);
 
-  const { data: wo, error } = await sb.from('work_orders').insert({
-    asset_id: schedule.asset_id,
-    type: 'pm',
-    schedule_id: scheduleId,
-    status: 'open',
-    priority: 'P3',
-    created_by: state.currentUser.id,
-    description: `Manually generated PM: ${schedule.title}`,
-  }).select().single();
-  if (error) { toast(error.message, 'err'); return; }
+  try {
+    const { data: existing, error: existingErr } = await sb.from('work_orders')
+      .select('id')
+      .eq('schedule_id', scheduleId)
+      .in('status', ['open', 'in_progress', 'waiting_parts'])
+      .order('opened_at', { ascending: false })
+      .limit(1);
+    if (existingErr) { toast(existingErr.message, 'err'); return; }
+    if (existing?.length) {
+      toast('An active PM work order already exists for this schedule', 'err');
+      window.switchTab('wo');
+      window.openWoDetailModal(existing[0].id);
+      return;
+    }
 
-  const { data: items } = await sb.from('checklist_items').select('id').eq('schedule_id', scheduleId).eq('active', true);
-  if (items && items.length) {
-    const rows = items.map(i => ({ wo_id: wo.id, item_id: i.id, done: false }));
-    await sb.from('wo_checklist_results').insert(rows);
+    const { data: items, error: itemsErr } = await sb.from('checklist_items')
+      .select('id')
+      .eq('schedule_id', scheduleId)
+      .eq('active', true);
+    if (itemsErr) { toast(itemsErr.message, 'err'); return; }
+
+    const { data: wo, error } = await sb.from('work_orders').insert({
+      asset_id: schedule.asset_id,
+      type: 'pm',
+      schedule_id: scheduleId,
+      status: 'open',
+      priority: 'P3',
+      created_by: state.currentUser.id,
+      description: `Manually generated PM: ${schedule.title}`,
+    }).select().single();
+    if (error) { toast(error.message, 'err'); return; }
+
+    if (items?.length) {
+      const rows = items.map(i => ({ wo_id: wo.id, item_id: i.id, done: false }));
+      const { error: checklistErr } = await sb.from('wo_checklist_results').insert(rows);
+      if (checklistErr) {
+        await sb.from('work_orders').delete().eq('id', wo.id);
+        toast('PM work order was not completed: ' + checklistErr.message, 'err');
+        return;
+      }
+    }
+
+    const nextDue = new Date(schedule.next_due_at);
+    nextDue.setUTCDate(nextDue.getUTCDate() + schedule.interval_days);
+    const nextDueValue = schedule.next_due_at.length <= 10
+      ? nextDue.toISOString().slice(0, 10)
+      : nextDue.toISOString();
+    const { error: scheduleErr } = await sb.from('recurring_schedules')
+      .update({ next_due_at: nextDueValue })
+      .eq('id', scheduleId)
+      .eq('next_due_at', schedule.next_due_at)
+      .select('id')
+      .single();
+    if (scheduleErr) {
+      await sb.from('wo_checklist_results').delete().eq('wo_id', wo.id);
+      await sb.from('work_orders').delete().eq('id', wo.id);
+      toast('PM work order was not completed: ' + scheduleErr.message, 'err');
+      return;
+    }
+
+    schedule.next_due_at = nextDueValue;
+    toast('PM work order generated');
+    window.switchTab('wo');
+    window.openWoDetailModal(wo.id);
+  } finally {
+    pmGenerationInFlight.delete(scheduleId);
   }
-
-  toast('PM work order generated');
-  window.switchTab('wo');
-  window.openWoDetailModal(wo.id);
 }
