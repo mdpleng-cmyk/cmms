@@ -29,6 +29,9 @@ function renderOpenWoList() {
     const pa = priorityRank(a.priority || a.assets?.criticality);
     const pb = priorityRank(b.priority || b.assets?.criticality);
     if (pa !== pb) return pa - pb;
+    const oa = a.type === 'other' ? 1 : 0;
+    const ob = b.type === 'other' ? 1 : 0;
+    if (oa !== ob) return oa - ob;
     const sa = staleDaysFor(a, cachedLatestVisitByWo[a.id], todayStart);
     const sb = staleDaysFor(b, cachedLatestVisitByWo[b.id], todayStart);
     if (sb !== sa) return sb - sa;
@@ -42,7 +45,7 @@ function renderOpenWoList() {
     return `
       <div class="ov-open-row ${isCrit ? 'crit' : ''}" onclick="window.openWoDetailModal(${wo.id})">
         <div style="min-width:0;">
-          <div class="ov-open-asset">${escapeHtml(wo.assets?.name || 'Unknown')} ${wo.assets?.category ? `<span class="badge" style="font-size:9px; vertical-align:2px;">${escapeHtml(wo.assets.category.replace('_',' '))}</span>` : ''}</div>
+          <div class="ov-open-asset ${wo.type === 'other' ? 'other-type' : ''}">${escapeHtml(wo.assets?.name || 'Unknown')} ${wo.assets?.category ? `<span class="badge" style="font-size:9px; vertical-align:2px;">${escapeHtml(wo.assets.category.replace('_',' '))}</span>` : ''}</div>
           <div class="ov-open-desc">${escapeHtml(wo.description || 'No description')}</div>
           <div class="ov-open-sub">${lv ? `<i data-lucide="corner-down-right" style="width:11px; vertical-align:-1px;"></i> ${escapeHtml(lv.action_taken || lv.visit_type)} &middot; ${escapeHtml(lv.technician || 'unassigned')}` : 'No updates yet'}</div>
         </div>

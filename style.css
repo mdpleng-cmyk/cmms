@@ -187,6 +187,7 @@ button.big { width: 100%; padding: 14px; font-size: 15px; }
 .ov-open-row:hover { background: var(--panel-raised); }
 .ov-open-row.crit { border-left-color: var(--red); }
 .ov-open-asset { font-family: 'Oswald', sans-serif; font-size: 14px; font-weight: 600; letter-spacing: 0.01em; color: var(--amber); }
+.ov-open-asset.other-type { color: var(--text-muted); font-weight: 500; }
 .ov-open-desc { font-size: 12.5px; color: var(--text-muted); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 480px; }
 .ov-open-sub { font-size: 11px; color: #71717a; margin-top: 6px; }
 

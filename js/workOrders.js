@@ -200,24 +200,7 @@ export async function openWoDetailModal(id) {
   if (!wo) { toast('Work order not found', 'err'); return; }
   state.woDetailCurrent = wo;
 
-  document.getElementById('wo-detail-header').innerHTML = `
-    <div class="row" style="margin:8px 0;justify-content:space-between">
-      <div style="display:flex; gap:6px;">
-        <span class="badge ${wo.type}">${wo.type}</span>
-        <span class="badge ${wo.status}">${wo.status.replace('_',' ')}</span>
-        <span class="badge ${priorityMeta(wo.priority).cls}">${priorityMeta(wo.priority).label}</span>
-      </div>
-      <span class="card-meta">#${wo.id}</span>
-    </div>
-    <div class="card-title" style="cursor:pointer; display:inline-flex; align-items:center; gap:6px;" onclick="window.closeWoDetailModal(); window.openAssetHistoryModal(${wo.asset_id}, '${escapeHtml(wo.assets?.name || 'Unknown asset').replace(/'/g, "\\'")}')">
-      ${escapeHtml(wo.assets?.name || 'Unknown asset')} <i data-lucide="external-link" style="width:14px; color:var(--text-muted);"></i>
-    </div>
-    <div style="margin:8px 0; font-size:14px; line-height:1.5;">${wo.description ? escapeHtml(wo.description) : '<span class="card-meta">No description provided</span>'}</div>
-    <div class="card-meta">
-      <i data-lucide="clock" style="width:12px;display:inline-block;margin-right:2px;vertical-align:middle;"></i> Opened ${formatDate(wo.opened_at)}
-      ${wo.closed_at ? `<br><i data-lucide="check-circle-2" style="width:12px;display:inline-block;margin-right:2px;vertical-align:middle;margin-top:4px;"></i> Closed ${formatDate(wo.closed_at)}` : ''}
-    </div>
-  `;
+  renderWoDetailHeader(wo, false);
 
   document.getElementById('wo-detail-update-btn').classList.toggle('hidden',
     !(wo.status !== 'closed' && (state.currentRole === 'admin' || state.currentRole === 'technician')));
@@ -229,6 +212,103 @@ export async function openWoDetailModal(id) {
   loadVisitsForWo(wo.id);
 
   lucide.createIcons({ root: document.getElementById('modal-wo-detail') });
+}
+
+function renderWoDetailHeader(wo, editing) {
+  const canEdit = state.currentRole === 'admin' || state.currentRole === 'technician';
+  const el = document.getElementById('wo-detail-header');
+
+  if (editing) {
+    el.innerHTML = `
+      <div class="row" style="margin:8px 0;justify-content:space-between">
+        <div style="display:flex; gap:6px;">
+          <span class="badge ${wo.type}">${wo.type}</span>
+          <span class="badge ${wo.status}">${wo.status.replace('_',' ')}</span>
+        </div>
+        <span class="card-meta">#${wo.id}</span>
+      </div>
+      <div class="card-title">${escapeHtml(wo.assets?.name || 'Unknown asset')}</div>
+      <div class="field" style="margin-top:10px;">
+        <label class="field-label">Priority</label>
+        <select id="edit-wo-priority">
+          <option value="" ${!wo.priority ? 'selected' : ''}>Unset</option>
+          <option value="P1" ${wo.priority === 'P1' ? 'selected' : ''}>P1 &mdash; Critical</option>
+          <option value="P2" ${wo.priority === 'P2' ? 'selected' : ''}>P2 &mdash; High</option>
+          <option value="P3" ${wo.priority === 'P3' ? 'selected' : ''}>P3 &mdash; Normal</option>
+          <option value="P4" ${wo.priority === 'P4' ? 'selected' : ''}>P4 &mdash; Low</option>
+        </select>
+      </div>
+      <div class="field">
+        <label class="field-label">Description</label>
+        <textarea id="edit-wo-description">${escapeHtml(wo.description || '')}</textarea>
+      </div>
+      <div class="row" style="gap:8px; margin-bottom:0;">
+        <button class="primary" style="padding:6px 12px; font-size:12px;" onclick="window.saveWoMetaEdit()">Save</button>
+        <button class="ghost" style="padding:6px 12px; font-size:12px;" onclick="window.cancelWoMetaEdit()">Cancel</button>
+      </div>
+    `;
+    return;
+  }
+
+  el.innerHTML = `
+    <div class="row" style="margin:8px 0;justify-content:space-between">
+      <div style="display:flex; gap:6px;">
+        <span class="badge ${wo.type}">${wo.type}</span>
+        <span class="badge ${wo.status}">${wo.status.replace('_',' ')}</span>
+        <span class="badge ${priorityMeta(wo.priority).cls}">${priorityMeta(wo.priority).label}</span>
+      </div>
+      <span class="card-meta">#${wo.id}</span>
+    </div>
+    <div class="card-title" style="cursor:pointer; display:inline-flex; align-items:center; gap:6px;" onclick="window.closeWoDetailModal(); window.openAssetHistoryModal(${wo.asset_id}, '${escapeHtml(wo.assets?.name || 'Unknown asset').replace(/'/g, "\\'")}')">
+      ${escapeHtml(wo.assets?.name || 'Unknown asset')} <i data-lucide="external-link" style="width:14px; color:var(--text-muted);"></i>
+    </div>
+    <div style="margin:8px 0; font-size:14px; line-height:1.5;">
+      ${wo.description ? escapeHtml(wo.description) : '<span class="card-meta">No description provided</span>'}
+      ${canEdit ? `<i data-lucide="pencil" style="width:12px; margin-left:6px; cursor:pointer; color:var(--text-muted); vertical-align:2px;" onclick="window.startEditWoMeta()"></i>` : ''}
+    </div>
+    <div class="card-meta">
+      <i data-lucide="clock" style="width:12px;display:inline-block;margin-right:2px;vertical-align:middle;"></i> Opened ${formatDate(wo.opened_at)}
+      ${wo.closed_at ? `<br><i data-lucide="check-circle-2" style="width:12px;display:inline-block;margin-right:2px;vertical-align:middle;margin-top:4px;"></i> Closed ${formatDate(wo.closed_at)}` : ''}
+    </div>
+  `;
+  lucide.createIcons({ root: el });
+}
+
+export function startEditWoMeta() {
+  renderWoDetailHeader(state.woDetailCurrent, true);
+}
+
+export function cancelWoMetaEdit() {
+  renderWoDetailHeader(state.woDetailCurrent, false);
+}
+
+export async function saveWoMetaEdit() {
+  const description = document.getElementById('edit-wo-description').value.trim();
+  const priority = document.getElementById('edit-wo-priority').value || null;
+  const before = state.woDetailCurrent;
+
+  const { error } = await sb.from('work_orders').update({ description, priority }).eq('id', before.id);
+  if (error) { toast(error.message, 'err'); return; }
+
+  const changes = [];
+  if (before.priority !== priority) changes.push(`Priority: ${before.priority || 'Unset'} \u2192 ${priority || 'Unset'}`);
+  if ((before.description || '') !== description) changes.push('Description updated');
+  if (changes.length) {
+    await sb.from('wo_visits').insert({
+      wo_id: before.id,
+      visit_type: 'edited',
+      action_taken: changes.join('; '),
+      logged_by: state.currentUser.id,
+    });
+  }
+
+  state.woDetailCurrent.description = description;
+  state.woDetailCurrent.priority = priority;
+  renderWoDetailHeader(state.woDetailCurrent, false);
+  loadVisitsForWo(before.id);
+  toast('Work order updated');
+  loadWorkOrders();
+  loadOverview();
 }
 
 export function closeWoDetailModal() {
