@@ -1,4 +1,4 @@
-import { sb, sbTelemetry, state, escapeHtml, formatDate, priorityMeta } from './store.js';
+import { sb, state, escapeHtml, formatDate } from './store.js';
 
 const PM_DUE_WINDOW_DAYS = 7;
 const STALE_DAYS = 2;
@@ -71,15 +71,11 @@ export async function loadOverview() {
   el.innerHTML = `<div class="readout-empty" style="padding-top:60px;">Loading overview...</div>`;
 
   const todayStart = new Date(); todayStart.setHours(0,0,0,0);
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000);
-
-  const [openRes, schedRes, visitsRes, notesRes, readingsRes, metersRes] = await Promise.all([
+  const [openRes, schedRes, visitsRes, notesRes] = await Promise.all([
     sb.from('work_orders').select('id, type, status, priority, description, opened_at, asset_id, planned_date, assets(name, criticality, category)').in('status', ['open','in_progress','waiting_parts']).order('opened_at', { ascending: true }),
     sb.from('recurring_schedules').select('id, title, next_due_at, active, asset_id, snoozed_until, assets(name)').eq('active', true).order('next_due_at', { ascending: true }),
     sb.from('wo_visits').select('visit_type, action_taken, technician, visited_at, wo_id, work_orders(id, asset_id, description, assets(name))').order('visited_at', { ascending: false }).limit(20),
     sb.from('notes').select('id, text, done, created_at').order('created_at', { ascending: false }),
-    sbTelemetry.from('meter_readings').select('meter_id, reading_value, consumption, recorded_at').gte('recorded_at', thirtyDaysAgo.toISOString()).order('recorded_at', { ascending: false }).limit(2000).then(r => r).catch(() => ({ data: null, error: true })),
-    sbTelemetry.from('meters').select('id, name, unit, meter_type, active').eq('active', true).then(r => r).catch(() => ({ data: null, error: true })),
   ]);
 
   const openWOs = openRes.data || [];
@@ -132,45 +128,6 @@ export async function loadOverview() {
     </div>
   `).join('') : '<div class="card-meta">No recent activity.</div>';
 
-  // ---- Meters: latest reading + 30-day average per meter ----
-  const meterById = {};
-  (metersRes.data || []).forEach(m => { meterById[m.id] = m; });
-  const readings = readingsRes.data || [];
-  const latestByMeter = {};
-  const sumByMeter = {};
-  const countByMeter = {};
-  readings.forEach(r => {
-    if (!latestByMeter[r.meter_id]) latestByMeter[r.meter_id] = r;
-    if (r.consumption != null) {
-      sumByMeter[r.meter_id] = (sumByMeter[r.meter_id] || 0) + r.consumption;
-      countByMeter[r.meter_id] = (countByMeter[r.meter_id] || 0) + 1;
-    }
-  });
-  const meterFetchFailed = readingsRes.error || metersRes.error;
-  const meterIds = Object.keys(latestByMeter).filter(id => meterById[id]).slice(0, 6);
-
-  const meterHtml = meterFetchFailed
-    ? '<div class="card-meta">Could not reach the telemetry project.</div>'
-    : meterIds.length ? meterIds.map(id => {
-        const meter = meterById[id];
-        const latest = latestByMeter[id];
-        const avg = countByMeter[id] ? sumByMeter[id] / countByMeter[id] : null;
-        const val = latest.consumption;
-        let deltaHtml = '';
-        if (avg && val != null) {
-          const pct = Math.round(((val - avg) / avg) * 100);
-          deltaHtml = `<span class="ov-meter-delta ${pct >= 0 ? 'up' : 'down'}">${pct >= 0 ? '+' : ''}${pct}%</span>`;
-        }
-        return `
-        <div style="display:flex; justify-content:space-between; align-items:baseline; padding:7px 0; border-bottom:1px solid var(--border);">
-          <span class="ov-meter-name">${escapeHtml(meter.name)}</span>
-          <span style="text-align:right;">
-            <div style="font-family:'JetBrains Mono',monospace; font-size:13px;">${val != null ? val.toLocaleString() : '\u2014'} ${deltaHtml}</div>
-            ${avg ? `<div class="ov-meter-avg">avg ${avg.toFixed(1)} (30d)</div>` : ''}
-          </span>
-        </div>`;
-      }).join('') : '<div class="card-meta">No readings in the last 30 days.</div>';
-
   // ---- Notes ----
   const notesHtml = notes.length ? notes.map(n => `
     <div class="ov-note-row ${n.done ? 'done' : ''}">
@@ -200,14 +157,10 @@ export async function loadOverview() {
       </div>
     </div>
 
-    <div class="ov-row-3">
+    <div class="ov-row-2-wide">
       <div class="ov-panel">
         <div class="ov-panel-head"><div class="ov-panel-title-row"><div class="ov-icon-badge green"><i data-lucide="activity"></i></div><div class="ov-panel-title">Recent Activity</div></div></div>
         <div class="ov-panel-body">${activityHtml}</div>
-      </div>
-      <div class="ov-panel">
-        <div class="ov-panel-head"><div class="ov-panel-title-row"><div class="ov-icon-badge blue"><i data-lucide="bar-chart-3"></i></div><div class="ov-panel-title">Meter Readings</div></div><div class="ov-panel-meta">telemetry</div></div>
-        <div class="ov-panel-body">${meterHtml}</div>
       </div>
       <div class="ov-panel">
         <div class="ov-panel-head">

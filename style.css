@@ -93,6 +93,37 @@ button.big { width: 100%; padding: 14px; font-size: 15px; }
 .telemetry-page { max-width: 1400px; margin: 0 auto; }
 .telemetry-page-heading { display: flex; justify-content: space-between; align-items: end; gap: 12px; margin-bottom: 14px; }
 .telemetry-page-heading h2 { font-family: 'Oswald', sans-serif; font-size: 24px; margin: 3px 0 0; letter-spacing: .02em; }
+.telemetry-page-heading h1 { margin: 3px 0 0; }
+.telemetry-section { margin-bottom: 22px; }
+.telemetry-section-heading { display: flex; justify-content: space-between; align-items: end; gap: 12px; margin-bottom: 10px; }
+.telemetry-section-heading h2 { font-family: 'Oswald', sans-serif; font-size: 20px; margin: 3px 0 0; letter-spacing: .02em; }
+.telemetry-cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
+.telemetry-status-card { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; min-width: 0; }
+.telemetry-card-label { color: var(--text-muted); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
+.telemetry-card-value { font-family: 'JetBrains Mono', monospace; font-size: 18px; margin: 8px 0 7px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.telemetry-card-meta { color: var(--text-muted); font-size: 10px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.telemetry-status { display: inline-flex; padding: 2px 6px; border-radius: 4px; font-size: 10px; }
+.telemetry-status.current { color: var(--green); background: var(--green-bg); }
+.telemetry-status.stale { color: var(--amber); background: rgba(245,158,11,.14); }
+.telemetry-status.missing { color: var(--red); background: rgba(239,68,68,.12); }
+.telemetry-chart-grid, .telemetry-panel-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.telemetry-chart-title { font-family: 'Oswald', sans-serif; font-size: 16px; font-weight: 600; letter-spacing: .02em; }
+.telemetry-chart-subtitle { color: var(--text-muted); font-size: 11px; margin-top: 3px; }
+.telemetry-chart-empty { min-height: 180px; display: grid; place-items: center; padding: 24px; color: var(--text-muted); font-size: 12px; text-align: center; border: 1px dashed var(--border); margin-top: 12px; }
+.telemetry-controls { display: flex; align-items: end; gap: 8px; flex-wrap: wrap; margin: 12px 0; }
+.telemetry-controls label { color: var(--text-muted); font-size: 11px; display: grid; gap: 5px; flex: 1; min-width: 150px; }
+.telemetry-controls select { width: 100%; }
+.telemetry-controls select[multiple] { min-height: 92px; }
+.energy-ranking { margin-top: 10px; }
+.energy-row { padding: 7px 0; border-bottom: 1px solid var(--border); }
+.energy-row:last-child { border-bottom: none; }
+.energy-row-label { display: flex; justify-content: space-between; gap: 10px; font-size: 12px; margin-bottom: 5px; }
+.energy-row-label span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.energy-row-label b { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 500; white-space: nowrap; }
+.energy-bar { background: var(--bg); height: 6px; border-radius: 4px; overflow: hidden; }
+.energy-bar span { display: block; height: 100%; background: var(--amber); border-radius: inherit; }
+@media (max-width: 900px) { .telemetry-cards, .telemetry-chart-grid, .telemetry-panel-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 600px) { .telemetry-cards, .telemetry-chart-grid, .telemetry-panel-grid { grid-template-columns: 1fr; } .telemetry-section-heading, .telemetry-page-heading { align-items: flex-start; flex-direction: column; } .telemetry-status-card { padding: 10px 12px; } }
 .ov-section-label { display: flex; justify-content: space-between; align-items: baseline; margin: 0 2px 8px; color: var(--text-muted); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
 .ov-section-label span:first-child { color: var(--text); font-family: 'Oswald', sans-serif; font-size: 15px; letter-spacing: .03em; }
 .ov-water-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
