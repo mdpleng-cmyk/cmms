@@ -22,9 +22,14 @@ function priorityRank(p) {
   return { P1: 1, P2: 2, P3: 3, P4: 4 }[p] || 5;
 }
 
+function hasFuturePlannedDate(wo, todayStart) {
+  return !!wo.planned_date && new Date(wo.planned_date + 'T00:00:00') > todayStart;
+}
+
 function renderOpenWoList() {
   const todayStart = new Date(); todayStart.setHours(0,0,0,0);
-  let filtered = openWoFilter === 'all' ? cachedOpenWOs : cachedOpenWOs.filter(w => w.status === openWoFilter);
+  let filtered = cachedOpenWOs.filter(w => !hasFuturePlannedDate(w, todayStart));
+  if (openWoFilter !== 'all') filtered = filtered.filter(w => w.status === openWoFilter);
   filtered = [...filtered].sort((a, b) => {
     const pa = priorityRank(a.priority || a.assets?.criticality);
     const pb = priorityRank(b.priority || b.assets?.criticality);
@@ -42,11 +47,14 @@ function renderOpenWoList() {
     const isCrit = p === 'P1' || p === 'P2';
     const lv = cachedLatestVisitByWo[wo.id];
     const stale = staleDaysFor(wo, lv, todayStart);
+    const hasAsset = wo.asset_id != null;
+    const primaryText = hasAsset ? (wo.assets?.name || 'Unknown asset') : (wo.description || 'No asset');
+    const secondaryText = hasAsset ? (wo.description || 'No description') : 'No asset';
     return `
       <div class="ov-open-row ${isCrit ? 'crit' : ''}" onclick="window.openWoDetailModal(${wo.id})">
         <div style="min-width:0;">
-          <div class="ov-open-asset ${wo.type === 'other' ? 'other-type' : ''}">${escapeHtml(wo.assets?.name || 'Unknown')} ${wo.assets?.category ? `<span class="badge" style="font-size:9px; vertical-align:2px;">${escapeHtml(wo.assets.category.replace('_',' '))}</span>` : ''}</div>
-          <div class="ov-open-desc">${escapeHtml(wo.description || 'No description')}</div>
+          <div class="ov-open-asset ${wo.type === 'other' ? 'other-type' : ''}">${escapeHtml(primaryText)} ${hasAsset && wo.assets?.category ? `<span class="badge" style="font-size:9px; vertical-align:2px;">${escapeHtml(wo.assets.category.replace('_',' '))}</span>` : ''}</div>
+          <div class="ov-open-desc">${escapeHtml(secondaryText)}</div>
           <div class="ov-open-sub">${lv ? `<i data-lucide="corner-down-right" style="width:11px; vertical-align:-1px;"></i> ${escapeHtml(lv.action_taken || lv.visit_type)} &middot; ${escapeHtml(lv.technician || 'unassigned')}` : 'No updates yet'}</div>
         </div>
         <div style="display:flex; flex-direction:column; align-items:flex-end; gap:5px; flex-shrink:0;">
@@ -122,7 +130,7 @@ export async function loadOverview() {
   // ---- Recent activity, collapsed asset + issue + outcome + who ----
   const activityHtml = visits.length ? visits.slice(0, 6).map(v => `
     <div class="ov-activity-row" onclick="window.openWoDetailModal(${v.wo_id})">
-      <b>${escapeHtml(v.work_orders?.assets?.name || 'WO #' + v.wo_id)}</b> &mdash; ${escapeHtml(v.work_orders?.description || v.visit_type)}
+      <b>${escapeHtml(v.work_orders ? (v.work_orders.asset_id == null ? 'No asset' : (v.work_orders.assets?.name || 'Unknown asset')) : 'WO #' + v.wo_id)}</b> &mdash; ${escapeHtml(v.work_orders?.description || v.visit_type)}
       <span class="badge ${v.visit_type === 'closed' ? 'closed' : 'open'}" style="font-size:9px; margin-left:4px;">${v.visit_type.replace('_',' ')}</span>
       <div style="color:var(--text-muted); font-size:11px; margin-top:2px;">${escapeHtml(v.technician || 'unassigned')}</div>
     </div>

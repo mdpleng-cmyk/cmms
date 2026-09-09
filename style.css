@@ -261,6 +261,7 @@ button.big { width: 100%; padding: 14px; font-size: 15px; }
 
 /* Custom Select Component */
 .custom-select-wrapper { position: relative; }
+.wo-inline-warning { margin: -2px 0 14px; padding: 12px; border: 1px solid var(--amber-dim); border-radius: 6px; background: rgba(245,158,11,.08); color: var(--text-muted); font-size: 12px; line-height: 1.5; }
 .custom-select-dropdown { position: absolute; top: calc(100% + 4px); left: 0; right: 0; background: var(--panel-raised); border: 1px solid var(--border); border-radius: var(--radius); max-height: 200px; overflow-y: auto; z-index: 300; box-shadow: 0 10px 20px rgba(0,0,0,0.5); }
 .custom-select-item { padding: 10px 12px; font-size: 14px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.05); }
 .custom-select-item:last-child { border-bottom: none; }

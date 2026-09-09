@@ -265,12 +265,20 @@
       <input type="hidden" id="wo-asset-value">
       <div id="wo-asset-dropdown" class="custom-select-dropdown hidden"></div>
     </div>
+
+    <div id="wo-no-asset-warning" class="wo-inline-warning hidden">
+      <div class="field-label">No asset</div>
+      <div>This work order will be recorded without being linked to a specific asset.</div>
+      <div class="row" style="margin:12px 0 0; justify-content:flex-end;">
+        <button type="button" class="ghost" onclick="window.cancelNoAssetWarning()">Go back</button>
+        <button type="button" class="primary" onclick="window.continueWithoutAsset()">Continue without an asset</button>
+      </div>
+    </div>
     
     <div class="field">
       <label class="field-label">Type</label>
       <select id="wo-type">
         <option value="breakdown">Breakdown / Fix</option>
-        <option value="pm">PM (linked to a schedule)</option>
         <option value="other">Other (procurement, admin, one-off)</option>
       </select>
     </div>
@@ -332,8 +340,9 @@
       <span style="font-size:12px; color:var(--text-muted); cursor:pointer;" onclick="window.togglePlannedDateField('wo')">+ Set a planned date</span>
     </div>
     <div id="wo-planned-date-field" class="field hidden">
-      <label class="field-label">Planned Date <span class="card-meta">(defers staleness tracking)</span></label>
+      <label class="field-label">Planned Date</label>
       <input type="date" id="wo-planned-date">
+      <div class="card-meta" style="margin-top:6px;">This work order will appear in the Work Order Overview on this date.</div>
     </div>
 
     <div class="row" style="justify-content:flex-end;">
@@ -449,6 +458,7 @@
       <div id="modal-planned-date-field" class="field hidden">
         <label class="field-label">Planned Date</label>
         <input type="date" id="modal-wo-planned-date">
+        <div class="card-meta" style="margin-top:6px;">This work order will appear in the Work Order Overview on this date.</div>
       </div>
       
       <div class="row" style="justify-content:flex-end;">

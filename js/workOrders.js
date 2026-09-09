@@ -1,6 +1,9 @@
 import { sb, state, toast, setButtonLoading, getLoaderHtml, escapeHtml, formatDate, priorityMeta } from './store.js';
 import { loadOverview } from './overview.js';
-import { populateScheduleSelect, loadSchedules, advanceScheduleForCompletedPm } from './schedules.js';
+import { loadSchedules, advanceScheduleForCompletedPm } from './schedules.js';
+
+let noAssetSelected = false;
+let noAssetWarningOpen = false;
 
 export function openNewWoForm() {
   document.getElementById('modal-new-wo').classList.remove('hidden');
@@ -17,16 +20,12 @@ export function openNewWoForm() {
   document.getElementById('wo-close-technician').value = '';
   document.getElementById('wo-type').value = 'breakdown';
   document.getElementById('wo-priority').value = 'P3';
-  document.getElementById('wo-schedule-field').classList.add('hidden');
   document.getElementById('wo-planned-date').value = '';
   document.getElementById('wo-planned-date-field').classList.add('hidden');
   document.getElementById('wo-planned-date-toggle').classList.remove('hidden');
-  
-  document.getElementById('wo-type').onchange = (e) => {
-    const isPm = e.target.value === 'pm';
-    document.getElementById('wo-schedule-field').classList.toggle('hidden', !isPm);
-    if (isPm) populateScheduleSelect('wo-schedule');
-  };
+  noAssetSelected = false;
+  noAssetWarningOpen = false;
+  document.getElementById('wo-no-asset-warning').classList.add('hidden');
 
   refreshAssetStatusCache();
 }
@@ -72,6 +71,7 @@ async function refreshAssetStatusCache() {
   const { data } = await sb.from('work_orders').select('asset_id, type').in('status', ['open','in_progress','waiting_parts']);
   const cache = {};
   (data || []).forEach(w => {
+    if (w.asset_id == null) return;
     cache[w.asset_id] = cache[w.asset_id] || { hasBreakdown: false };
     if (w.type === 'breakdown') cache[w.asset_id].hasBreakdown = true;
   });
@@ -81,6 +81,29 @@ async function refreshAssetStatusCache() {
 export function closeNewWoForm() { 
   document.getElementById('modal-new-wo').classList.add('hidden'); 
   document.getElementById('wo-asset-dropdown').classList.add('hidden');
+  document.getElementById('wo-no-asset-warning').classList.add('hidden');
+}
+
+export function logWithoutAsset() {
+  noAssetSelected = true;
+  document.getElementById('wo-asset-value').value = '';
+  document.getElementById('wo-asset-search').value = 'No asset';
+  document.getElementById('wo-asset-dropdown').classList.add('hidden');
+}
+
+export function clearNoAssetSelection() {
+  noAssetSelected = false;
+}
+
+export function cancelNoAssetWarning() {
+  noAssetWarningOpen = false;
+  document.getElementById('wo-no-asset-warning').classList.add('hidden');
+}
+
+export function continueWithoutAsset() {
+  noAssetWarningOpen = false;
+  document.getElementById('wo-no-asset-warning').classList.add('hidden');
+  createWorkOrder(true);
 }
 
 async function rollbackCreatedWorkOrder(woId) {
@@ -89,17 +112,20 @@ async function rollbackCreatedWorkOrder(woId) {
   await sb.from('work_orders').delete().eq('id', woId);
 }
 
-export async function createWorkOrder() {
+export async function createWorkOrder(skipNoAssetWarning = false) {
   const planned_date = document.getElementById('wo-planned-date').value || null;
-  const asset_id = document.getElementById('wo-asset-value').value;
+  const asset_id = document.getElementById('wo-asset-value').value || null;
   const type = document.getElementById('wo-type').value;
-  const schedule_id = type === 'pm' ? document.getElementById('wo-schedule').value : null;
   const description = document.getElementById('wo-description').value.trim();
   const closeNow = document.getElementById('wo-close-now').checked;
   const priority = document.getElementById('wo-priority').value || null;
 
-  if (!asset_id) { toast('Please search and select an asset', 'err'); return; }
-  if (type === 'pm' && !schedule_id) { toast('Select a PM schedule, or switch type to Breakdown', 'err'); return; }
+  if (!asset_id && !noAssetSelected) { toast('Please search and select an asset, or choose Log without an asset', 'err'); return; }
+  if (!asset_id && !skipNoAssetWarning) {
+    noAssetWarningOpen = true;
+    document.getElementById('wo-no-asset-warning').classList.remove('hidden');
+    return;
+  }
 
   let openedAt = new Date().toISOString();
   let closedAt = closeNow ? new Date().toISOString() : null;
@@ -121,20 +147,10 @@ export async function createWorkOrder() {
     if (type === 'breakdown' && !closeNotes) { toast('Action taken is required to log a completed breakdown.', 'err'); return; }
   }
 
-  let checklistItems = null;
-  if (type === 'pm' && schedule_id) {
-    const { data, error: checklistErr } = await sb.from('checklist_items')
-      .select('id')
-      .eq('schedule_id', schedule_id)
-      .eq('active', true);
-    if (checklistErr) { toast(checklistErr.message, 'err'); return; }
-    checklistItems = data || [];
-  }
-
   setButtonLoading('btn-create-wo', true);
   const payload = {
     asset_id, type, description, priority, planned_date,
-    schedule_id: schedule_id || null,
+    schedule_id: null,
     created_by: state.currentUser.id,
     status: closeNow ? 'closed' : 'open',
     opened_at: openedAt,
@@ -162,28 +178,6 @@ export async function createWorkOrder() {
     }
   }
 
-  if (checklistItems?.length) {
-    const rows = checklistItems.map(i => ({ wo_id: wo.id, item_id: i.id, done: closeNow }));
-    const { error: checklistErr } = await sb.from('wo_checklist_results').insert(rows);
-    if (checklistErr) {
-      await rollbackCreatedWorkOrder(wo.id);
-      toast('Work order was not completed: ' + checklistErr.message, 'err');
-      setButtonLoading('btn-create-wo', false);
-      return;
-    }
-  }
-
-  if (closeNow && type === 'pm') {
-    const { error: scheduleErr } = await advanceScheduleForCompletedPm(schedule_id, wo.closed_at, wo.id);
-    if (scheduleErr) {
-      await rollbackCreatedWorkOrder(wo.id);
-      toast('Work order was not completed: ' + scheduleErr.message, 'err');
-      setButtonLoading('btn-create-wo', false);
-      return;
-    }
-    await loadSchedules();
-  }
-
   toast('Work order created');
   loadOverview();
   closeNewWoForm();
@@ -209,7 +203,9 @@ function renderWorkOrders() {
   const list = document.getElementById('wo-list');
   if (!state.activeWorkOrders.length) { list.innerHTML = '<div class="readout-empty"><i data-lucide="inbox" style="width:32px;height:32px;"></i> No work orders match.</div>'; lucide.createIcons(); return; }
 
-  list.innerHTML = state.activeWorkOrders.map(wo => `
+  list.innerHTML = state.activeWorkOrders.map(wo => {
+    const assetName = wo.asset_id == null ? 'No asset' : (wo.assets?.name || 'Unknown asset');
+    return `
     <div class="panel wo-card" style="cursor:pointer;" data-search="${wo.id} ${wo.assets?.name || ''} ${wo.description || ''}".toLowerCase() onclick="window.openWoDetailModal(${wo.id})">
       <div class="row" style="margin-bottom:8px;justify-content:space-between">
         <div style="display:flex; gap:6px;">
@@ -218,11 +214,13 @@ function renderWorkOrders() {
         </div>
         <span class="card-meta">#${wo.id}</span>
       </div>
-      <div class="card-title">${escapeHtml(wo.assets?.name || 'Unknown asset')} <span class="badge ${priorityMeta(wo.priority).cls}" style="font-size:9px;">${priorityMeta(wo.priority).label}</span></div>
+      <div class="card-title">${escapeHtml(assetName)} <span class="badge ${priorityMeta(wo.priority).cls}" style="font-size:9px;">${priorityMeta(wo.priority).label}</span></div>
       <div style="margin:6px 0; font-size:13.5px; line-height:1.5; color:var(--text-muted); overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;">${wo.description ? escapeHtml(wo.description) : 'No description provided'}</div>
+      ${wo.planned_date ? `<div class="card-meta"><i data-lucide="calendar-clock" style="width:12px;display:inline-block;margin-right:2px;vertical-align:middle;"></i> Planned ${escapeHtml(wo.planned_date)}</div>` : ''}
       <div class="card-meta"><i data-lucide="clock" style="width:12px;display:inline-block;margin-right:2px;vertical-align:middle;"></i> Opened ${formatDate(wo.opened_at)}</div>
     </div>
-  `).join('');
+  `;
+  }).join('');
   
   lucide.createIcons();
 }
@@ -253,6 +251,7 @@ export async function openWoDetailModal(id) {
 function renderWoDetailHeader(wo, editing) {
   const canEdit = state.currentRole === 'admin' || state.currentRole === 'technician';
   const el = document.getElementById('wo-detail-header');
+  const assetName = wo.asset_id == null ? 'No asset' : (wo.assets?.name || 'Unknown asset');
 
   if (editing) {
     el.innerHTML = `
@@ -263,7 +262,7 @@ function renderWoDetailHeader(wo, editing) {
         </div>
         <span class="card-meta">#${wo.id}</span>
       </div>
-      <div class="card-title">${escapeHtml(wo.assets?.name || 'Unknown asset')}</div>
+      <div class="card-title">${escapeHtml(assetName)}</div>
       <div class="field" style="margin-top:10px;">
         <label class="field-label">Priority</label>
         <select id="edit-wo-priority">
@@ -295,9 +294,11 @@ function renderWoDetailHeader(wo, editing) {
       </div>
       <span class="card-meta">#${wo.id}</span>
     </div>
-    <div class="card-title" style="cursor:pointer; display:inline-flex; align-items:center; gap:6px;" onclick="window.closeWoDetailModal(); window.openAssetHistoryModal(${wo.asset_id}, '${escapeHtml(wo.assets?.name || 'Unknown asset').replace(/'/g, "\\'")}')">
-      ${escapeHtml(wo.assets?.name || 'Unknown asset')} <i data-lucide="external-link" style="width:14px; color:var(--text-muted);"></i>
-    </div>
+    ${wo.asset_id == null
+      ? `<div class="card-title">No asset</div>`
+      : `<div class="card-title" style="cursor:pointer; display:inline-flex; align-items:center; gap:6px;" onclick="window.closeWoDetailModal(); window.openAssetHistoryModal(${wo.asset_id}, '${escapeHtml(assetName).replace(/'/g, "\\'")}')">
+          ${escapeHtml(assetName)} <i data-lucide="external-link" style="width:14px; color:var(--text-muted);"></i>
+        </div>`}
     <div style="margin:8px 0; font-size:14px; line-height:1.5;">
       ${wo.description ? escapeHtml(wo.description) : '<span class="card-meta">No description provided</span>'}
       ${canEdit ? `<i data-lucide="pencil" style="width:12px; margin-left:6px; cursor:pointer; color:var(--text-muted); vertical-align:2px;" onclick="window.startEditWoMeta()"></i>` : ''}
@@ -453,7 +454,8 @@ export function triggerUpdateFlow(id) {
   document.getElementById('modal-planned-date-field').classList.toggle('hidden', !hasPlannedDate);
   document.getElementById('modal-planned-date-toggle').classList.toggle('hidden', hasPlannedDate);
   
-  document.getElementById('modal-wo-title').innerText = `WO #${state.woToUpdate.id} - ${state.woToUpdate.assets?.name}`;
+  const updateAssetName = state.woToUpdate.asset_id == null ? 'No asset' : (state.woToUpdate.assets?.name || 'Unknown asset');
+  document.getElementById('modal-wo-title').innerText = `WO #${state.woToUpdate.id} - ${updateAssetName}`;
   document.getElementById('modal-wo-original-desc').innerText = state.woToUpdate.description || "No initial description provided.";
   
   document.getElementById('modal-wo-notes').value = '';

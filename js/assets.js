@@ -1,5 +1,5 @@
 import { sb, state, toast, setButtonLoading, getLoaderHtml, escapeHtml, formatDate } from './store.js';
-import { populateScheduleSelect, loadSchedules } from './schedules.js';
+import { loadSchedules } from './schedules.js';
 import { getAssetStatus, getAllWatchItemsForAsset } from './assetDetailHelpers.js';
 import { getAssetSpecs } from './assetSpecs.js';
 import { renderAssetGlyph } from './assetGlyphs.js';
@@ -288,7 +288,10 @@ export function renderAssetDropdown(filter = '') {
   const filtered = state.assetsCache.filter(a => a.name.toLowerCase().includes(term));
   
   if (!filtered.length) {
-    dropdownList.innerHTML = '<div style="padding:10px 12px; font-size:13px; color:var(--text-muted);">No assets found.</div>';
+    dropdownList.innerHTML = term
+      ? `<div style="padding:10px 12px; font-size:13px; color:var(--text-muted);">No matching asset found</div>
+         <button type="button" class="custom-select-item" style="width:100%; text-align:left; color:var(--amber);" onclick="window.logWithoutAsset()">+ Log without an asset</button>`
+      : '';
     return;
   }
   
@@ -308,7 +311,6 @@ export function selectAsset(id, name) {
   document.getElementById('wo-asset-value').value = id;
   document.getElementById('wo-asset-search').value = name;
   document.getElementById('wo-asset-dropdown').classList.add('hidden');
-  if (document.getElementById('wo-type').value === 'pm') populateScheduleSelect('wo-schedule');
 
   const prioritySel = document.getElementById('wo-priority');
   const asset = state.assetsCache.find(a => a.id === id);
