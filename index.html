@@ -255,7 +255,8 @@
       <div class="eyebrow">New Work Order</div>
       <button class="ghost" style="padding:4px; margin:-4px;" onclick="window.closeNewWoForm()"><i data-lucide="x" style="width:16px; color:var(--text-muted);"></i></button>
     </div>
-    
+
+    <div id="wo-create-form-content">
     <div class="field custom-select-wrapper">
       <label class="field-label">Asset</label>
       <div style="position:relative;">
@@ -349,6 +350,9 @@
       <button class="ghost" onclick="window.closeNewWoForm()">Cancel</button>
       <button id="btn-create-wo" class="primary" onclick="window.createWorkOrder()">Create WO</button>
     </div>
+    </div>
+
+    <div id="wo-create-success" class="wo-create-success hidden" aria-live="polite"></div>
   </div>
 </div>
 

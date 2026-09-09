@@ -4,9 +4,13 @@ import { loadSchedules, advanceScheduleForCompletedPm } from './schedules.js';
 
 let noAssetSelected = false;
 let noAssetWarningOpen = false;
+let createdWoConfirmation = null;
 
 export function openNewWoForm() {
   document.getElementById('modal-new-wo').classList.remove('hidden');
+  document.getElementById('wo-create-form-content').classList.remove('hidden');
+  document.getElementById('wo-create-success').classList.add('hidden');
+  createdWoConfirmation = null;
   document.getElementById('wo-asset-value').value = '';
   document.getElementById('wo-asset-search').value = '';
   document.getElementById('wo-description').value = '';
@@ -157,7 +161,10 @@ export async function createWorkOrder(skipNoAssetWarning = false) {
     closed_at: closedAt
   };
 
-  const { data: wo, error } = await sb.from('work_orders').insert(payload).select().single();
+  const { data: wo, error } = await sb.from('work_orders')
+    .insert(payload)
+    .select('id, asset_id, type, status, description, priority, opened_at, closed_at, assets(name)')
+    .single();
   if (error) { toast(error.message, 'err'); setButtonLoading('btn-create-wo', false); return; }
 
   if (closeNow) {
@@ -178,11 +185,49 @@ export async function createWorkOrder(skipNoAssetWarning = false) {
     }
   }
 
+  createdWoConfirmation = wo;
+  renderCreatedWoConfirmation(wo);
   toast('Work order created');
   loadOverview();
-  closeNewWoForm();
   setButtonLoading('btn-create-wo', false);
   loadWorkOrders();
+}
+
+function renderCreatedWoConfirmation(wo) {
+  const assetName = wo.asset_id == null ? 'No asset' : (wo.assets?.name || 'Unknown asset');
+  const typeName = wo.type === 'breakdown' ? 'Breakdown / Fix' : wo.type === 'other' ? 'Other' : wo.type;
+  const timingRows = wo.status === 'closed'
+    ? `<div><dt>Started</dt><dd>${formatDate(wo.opened_at)}</dd></div>
+       <div><dt>Finished</dt><dd>${formatDate(wo.closed_at)}</dd></div>`
+    : `<div><dt>Created</dt><dd>${formatDate(wo.opened_at)}</dd></div>`;
+  const successEl = document.getElementById('wo-create-success');
+  successEl.innerHTML = `
+    <div class="eyebrow">Work Order Created</div>
+    <div class="wo-create-success-id">WO #${wo.id}</div>
+    ${wo.description ? `<div class="wo-create-success-description">${escapeHtml(wo.description)}</div>` : ''}
+    <dl class="wo-create-success-details">
+      <div><dt>Asset</dt><dd>${escapeHtml(assetName)}</dd></div>
+      <div><dt>Type</dt><dd>${escapeHtml(typeName)}</dd></div>
+      <div><dt>Priority</dt><dd>${escapeHtml(wo.priority || 'Unset')}</dd></div>
+      <div><dt>Status</dt><dd>${escapeHtml(wo.status.replace('_', ' '))}</dd></div>
+      ${timingRows}
+    </dl>
+    <div class="row" style="justify-content:flex-end; margin:18px 0 0;">
+      <button class="ghost" onclick="window.viewCreatedWorkOrder()">View Work Order</button>
+      <button class="primary" onclick="window.closeNewWoForm()">Done</button>
+    </div>
+  `;
+  document.getElementById('wo-create-form-content').classList.add('hidden');
+  successEl.classList.remove('hidden');
+  lucide.createIcons({ root: successEl });
+}
+
+export function viewCreatedWorkOrder() {
+  if (!createdWoConfirmation) return;
+  const woId = createdWoConfirmation.id;
+  closeNewWoForm();
+  window.switchTab('wo');
+  openWoDetailModal(woId);
 }
 
 export async function loadWorkOrders() {
