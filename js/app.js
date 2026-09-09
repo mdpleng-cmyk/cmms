@@ -5,6 +5,7 @@ import { openNewScheduleForm, closeNewScheduleForm, createSchedule, loadSchedule
 import { openNewWoForm, closeNewWoForm, createWorkOrder, loadWorkOrders, filterWorkOrders, triggerUpdateFlow, closeUpdateModal, reviewUpdateWo, backToEditWo, confirmSaveWo, toggleChecklistItem, saveReadingValue, openWoDetailModal, closeWoDetailModal, triggerUpdateFromDetail, openNewWoFormForAsset, raiseWoFromAssetPage, toggleWoCloseTimes, togglePlannedDateField, startEditVisit, cancelEditVisit, saveVisitEdit, startEditWoMeta, cancelWoMetaEdit, saveWoMetaEdit } from './workOrders.js';
 import { loadManageAssetList, openManageAsset, backToManageList, saveManageCategory, saveManageSpecField, deleteManageSpec, addManageSpec, switchManageMode, createEquipmentType, openManageType, backToTypesList, saveTypeTemplateMeta, toggleNewTypeItemUnit, addTypeTemplateItem, deleteTypeTemplateItem, saveManageAssetField } from './manage.js';
 import { loadOverview } from './overview.js';
+import { loadTelemetry } from './telemetry.js';
 
 // Bind to Window so HTML onclicks work
 window.signIn = signIn;
@@ -75,9 +76,10 @@ window.saveManageAssetField = saveManageAssetField;
 
 // Tab Logic
 window.switchTab = function(tab) {
-  ['overview','wo','assets','schedules','manage'].forEach(t => document.getElementById('tab-' + t).classList.toggle('hidden', t !== tab));
+  ['overview','telemetry','wo','assets','schedules','manage'].forEach(t => document.getElementById('tab-' + t).classList.toggle('hidden', t !== tab));
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
   if (tab === 'overview') loadOverview();
+  if (tab === 'telemetry') loadTelemetry();
   if (tab === 'wo') loadWorkOrders();
   if (tab === 'assets') loadAssets(true);
   if (tab === 'schedules') loadSchedules();

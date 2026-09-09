@@ -89,6 +89,27 @@ button.big { width: 100%; padding: 14px; font-size: 15px; }
 
 /* Overview dashboard — desktop-dense, separate from the mobile-first .wrap styling */
 .ov-wrap { max-width: 1400px; margin: 0 auto; padding: 18px 20px 60px; }
+.ov-water-section { margin-bottom: 14px; }
+.telemetry-page { max-width: 1400px; margin: 0 auto; }
+.telemetry-page-heading { display: flex; justify-content: space-between; align-items: end; gap: 12px; margin-bottom: 14px; }
+.telemetry-page-heading h2 { font-family: 'Oswald', sans-serif; font-size: 24px; margin: 3px 0 0; letter-spacing: .02em; }
+.ov-section-label { display: flex; justify-content: space-between; align-items: baseline; margin: 0 2px 8px; color: var(--text-muted); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
+.ov-section-label span:first-child { color: var(--text); font-family: 'Oswald', sans-serif; font-size: 15px; letter-spacing: .03em; }
+.ov-water-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+@media (max-width: 900px) { .ov-water-grid { grid-template-columns: 1fr; } }
+.water-chart { margin: 0; min-width: 0; padding: 14px; }
+.water-chart-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.water-chart-title { font-family: 'Oswald', sans-serif; font-size: 15px; font-weight: 600; letter-spacing: .02em; }
+.water-chart-subtitle { color: var(--text-muted); font-size: 11px; margin-top: 3px; }
+.water-chart-latest { color: var(--text-muted); font-family: 'JetBrains Mono', monospace; font-size: 10px; text-align: right; line-height: 1.6; }
+.water-chart-legend { display: flex; flex-wrap: wrap; gap: 10px; margin: 12px 0 2px 58px; color: var(--text-muted); font-size: 11px; }
+.water-legend-item { display: inline-flex; align-items: center; gap: 5px; }
+.water-legend-item i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.water-chart-svg { display: block; width: 100%; height: auto; overflow: visible; }
+.water-grid-line { stroke: var(--border); stroke-width: 1; opacity: .55; }
+.water-axis-label { fill: var(--text-muted); font-family: 'JetBrains Mono', monospace; font-size: 10px; }
+.water-point { cursor: crosshair; stroke: var(--panel); stroke-width: 2; }
+.water-chart-empty { min-height: 180px; display: grid; place-items: center; padding: 24px; color: var(--text-muted); font-size: 12px; text-align: center; border: 1px dashed var(--border); margin-top: 14px; }
 .ov-kpi-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 16px; }
 @media (max-width: 900px) { .ov-kpi-row { grid-template-columns: repeat(2, 1fr); } }
 .ov-kpi { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; }

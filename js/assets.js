@@ -271,7 +271,7 @@ export function toggleScheduleItems(scheduleId) {
 export async function goToSchedule(scheduleId) {
   closeAssetHistoryModal();
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === 'schedules'));
-  ['wo','assets','schedules'].forEach(t => document.getElementById('tab-' + t).classList.toggle('hidden', t !== 'schedules'));
+  ['wo','assets','schedules','telemetry'].forEach(t => document.getElementById('tab-' + t).classList.toggle('hidden', t !== 'schedules'));
   await loadSchedules();
   const el = document.getElementById('schedule-card-' + scheduleId);
   if (el) {
