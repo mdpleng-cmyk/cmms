@@ -163,50 +163,14 @@ export async function generatePmWoNow(scheduleId) {
   pmGenerationInFlight.add(scheduleId);
 
   try {
-    const { data: existing, error: existingErr } = await sb.from('work_orders')
-      .select('id')
-      .eq('schedule_id', scheduleId)
-      .in('status', ['open', 'in_progress', 'waiting_parts'])
-      .order('opened_at', { ascending: false })
-      .limit(1);
-    if (existingErr) { toast(existingErr.message, 'err'); return; }
-    if (existing?.length) {
-      toast('An active PM work order already exists for this schedule', 'err');
-      window.switchTab('wo');
-      window.openWoDetailModal(existing[0].id);
-      return;
-    }
-
-    const { data: items, error: itemsErr } = await sb.from('checklist_items')
-      .select('id')
-      .eq('schedule_id', scheduleId)
-      .eq('active', true);
-    if (itemsErr) { toast(itemsErr.message, 'err'); return; }
-
-    const { data: wo, error } = await sb.from('work_orders').insert({
-      asset_id: schedule.asset_id,
-      type: 'pm',
-      schedule_id: scheduleId,
-      status: 'open',
-      priority: 'P3',
-      created_by: state.currentUser.id,
-      description: `Manually generated PM: ${schedule.title}`,
-    }).select().single();
+    const { data, error } = await sb.rpc('generate_pm_work_order', { p_schedule_id: scheduleId });
     if (error) { toast(error.message, 'err'); return; }
-
-    if (items?.length) {
-      const rows = items.map(i => ({ wo_id: wo.id, item_id: i.id, done: false }));
-      const { error: checklistErr } = await sb.from('wo_checklist_results').insert(rows);
-      if (checklistErr) {
-        await sb.from('work_orders').delete().eq('id', wo.id);
-        toast('PM work order was not completed: ' + checklistErr.message, 'err');
-        return;
-      }
-    }
+    const wo = Array.isArray(data) ? data[0] : data;
+    if (!wo?.wo_id) { toast('PM work order generation returned no work order', 'err'); return; }
 
     toast('PM work order generated');
     window.switchTab('wo');
-    window.openWoDetailModal(wo.id);
+    window.openWoDetailModal(wo.wo_id);
   } finally {
     pmGenerationInFlight.delete(scheduleId);
   }

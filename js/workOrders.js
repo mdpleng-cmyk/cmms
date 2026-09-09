@@ -528,8 +528,10 @@ export function reviewUpdateWo() {
   const isClosed = document.getElementById('toggle-close').checked;
   const isWaiting = document.getElementById('toggle-spare').checked;
   
-  if (isClosed && state.woToUpdate.type === 'breakdown' && !note) {
-    toast('Resolution notes are required to close a breakdown.', 'err');
+  if (isClosed && (state.woToUpdate.type === 'breakdown' || state.woToUpdate.type === 'pm') && !note) {
+    toast(state.woToUpdate.type === 'pm'
+      ? 'Action Taken is required to close a PM work order.'
+      : 'Resolution notes are required to close a breakdown.', 'err');
     document.getElementById('modal-wo-notes').focus();
     return;
   }
@@ -567,6 +569,34 @@ export async function confirmSaveWo() {
   setButtonLoading('btn-confirm-save', true);
   const wo = state.woToUpdate;
   const newStatus = wo.pendingStatus;
+
+  if (newStatus === 'closed' && wo.type === 'pm') {
+    const { data, error } = await sb.rpc('complete_pm_work_order', {
+      p_wo_id: wo.id,
+      p_action_taken: wo.pendingNote,
+      p_parts_used: wo.pendingParts || null,
+      p_technician: wo.pendingTechnician || null,
+    });
+    if (error) { toast(error.message, 'err'); setButtonLoading('btn-confirm-save', false); return; }
+
+    const completion = Array.isArray(data) ? data[0] : data;
+    if (!completion?.wo_id) {
+      toast('PM completion returned no work order', 'err');
+      setButtonLoading('btn-confirm-save', false);
+      return;
+    }
+
+    toast(completion.recurrence_advanced
+      ? 'PM work order completed and recurrence advanced'
+      : 'PM work order completed; schedule is disabled, so recurrence was not advanced');
+    await loadSchedules();
+    closeUpdateModal();
+    closeWoDetailModal();
+    setButtonLoading('btn-confirm-save', false);
+    loadWorkOrders();
+    loadOverview();
+    return;
+  }
 
   const payload = { status: newStatus, planned_date: wo.pendingPlannedDate };
   if (newStatus === 'closed') payload.closed_at = new Date().toISOString();
