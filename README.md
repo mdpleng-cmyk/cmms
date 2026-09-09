@@ -64,7 +64,7 @@ equipment_type_pm_template_items   id, template_id→equipment_type_pm_templates
 
 **WO Detail metadata editing**: description and priority are editable inline in the WO Detail header (pencil icon). This does NOT touch `wo_status_history`. If either value actually changed, it writes a `wo_visits` row with `visit_type='edited'` and a plain-language diff (e.g. `"Priority: P3 → P1; Description updated"`) — keeps a trace without repurposing the status-audit trail for non-status changes.
 
-**Manual PM generation**: each PM schedule card in the PMs tab has a "Generate WO Now" button (`generatePmWoNow()` in `schedules.js`) — same insert shape any future automatic due-date trigger should reuse. No automatic trigger exists yet.
+**Manual PM generation**: each PM schedule card in the PMs tab has a "Generate WO Now" button (`generatePmWoNow()` in `schedules.js`). Generation creates the PM work order and checklist results but does **not** advance `next_due_at`. When the PM WO is completed, `advanceScheduleForCompletedPm()` calculates `next_due_at` from the authoritative persisted `work_orders.closed_at` timestamp plus `interval_days`; this is used by both the "Already done" close flow and the WO update modal. The frontend keeps a session-level completion guard keyed by WO ID, but race-proof exactly-once behavior still requires database constraints/transactional RPCs. No automatic PM generation trigger exists yet.
 
 **PM snooze**: `recurring_schedules.snoozed_until`. Shared across all users (not per-viewer). Snoozing only affects Overview's PM Due display — never touches `next_due_at`, so the real schedule is untouched. Snoozed items still show, in a separate "Snoozed:" line, not hidden entirely.
 
@@ -100,7 +100,7 @@ Overview's "Meter Readings" panel reads live from the **separate** telemetry/met
     │                              timeline (inline-editable within 8h), checklist (check+reading),
     │                              backdated close with full visit capture, planned-date toggle,
     │                              asset-status cache
-    ├── schedules.js              — recurring schedule CRUD, checklist items, "Generate WO Now" per schedule
+    ├── schedules.js              — recurring schedule CRUD, checklist items, manual PM generation, and completion-anchored recurrence advancement
     ├── manage.js                 — Manage tab, two modes: Assets (name/location/department/criticality/
     │                              category/specs — NOT reachable from the Asset Profile modal, by design)
     │                              and Equipment Types (create a class, define its PM template + checklist)

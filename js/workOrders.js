@@ -174,7 +174,7 @@ export async function createWorkOrder() {
   }
 
   if (closeNow && type === 'pm') {
-    const { error: scheduleErr } = await advanceScheduleForCompletedPm(schedule_id);
+    const { error: scheduleErr } = await advanceScheduleForCompletedPm(schedule_id, wo.closed_at, wo.id);
     if (scheduleErr) {
       await rollbackCreatedWorkOrder(wo.id);
       toast('Work order was not completed: ' + scheduleErr.message, 'err');
@@ -527,6 +527,25 @@ export async function confirmSaveWo() {
   const { error } = await sb.from('work_orders').update(payload).eq('id', wo.id);
   if (error) { toast(error.message, 'err'); setButtonLoading('btn-confirm-save', false); return; }
 
+  let completedAt = null;
+  if (newStatus === 'closed' && wo.type === 'pm' && wo.schedule_id) {
+    const { data: savedWo, error: closedAtErr } = await sb.from('work_orders')
+      .select('closed_at')
+      .eq('id', wo.id)
+      .single();
+    if (closedAtErr || !savedWo?.closed_at) {
+      await sb.from('work_orders').update({
+        status: wo.status,
+        planned_date: wo.planned_date,
+        closed_at: wo.closed_at,
+      }).eq('id', wo.id);
+      toast('PM close was not completed: could not verify closed_at', 'err');
+      setButtonLoading('btn-confirm-save', false);
+      return;
+    }
+    completedAt = savedWo.closed_at;
+  }
+
   if (wo.pendingNote || wo.pendingParts || wo.pendingTechnician || newStatus !== wo.status) {
     const { error: visitErr } = await sb.from('wo_visits').insert({
       wo_id: wo.id,
@@ -551,7 +570,7 @@ export async function confirmSaveWo() {
   }
 
   if (newStatus === 'closed' && wo.type === 'pm' && wo.schedule_id) {
-    const { error: scheduleErr } = await advanceScheduleForCompletedPm(wo.schedule_id);
+    const { error: scheduleErr } = await advanceScheduleForCompletedPm(wo.schedule_id, completedAt, wo.id);
     if (scheduleErr) {
       await sb.from('wo_visits').delete().eq('wo_id', wo.id).eq('visit_type', wo.pendingVisitType);
       await sb.from('work_orders').update({

@@ -1,6 +1,7 @@
 import { sb, state, toast, setButtonLoading, getLoaderHtml, escapeHtml } from './store.js';
 
 const pmGenerationInFlight = new Set();
+const pmCompletionHandled = new Set();
 
 export function openNewScheduleForm() {
   document.getElementById('new-schedule-form').classList.remove('hidden');
@@ -106,30 +107,45 @@ export function populateScheduleSelect(id) {
   });
 }
 
-export async function advanceScheduleForCompletedPm(scheduleId) {
+export async function advanceScheduleForCompletedPm(scheduleId, completedAt, completionKey) {
+  if (!completedAt || Number.isNaN(new Date(completedAt).getTime())) {
+    return { error: new Error('PM completion timestamp is required') };
+  }
+  if (completionKey && pmCompletionHandled.has(completionKey)) {
+    return { error: null, alreadyHandled: true };
+  }
+  if (completionKey) pmCompletionHandled.add(completionKey);
+
   const { data: schedule, error: loadErr } = await sb.from('recurring_schedules')
-    .select('id, interval_days, next_due_at')
+    .select('id, interval_days')
     .eq('id', scheduleId)
     .single();
-  if (loadErr) return { error: loadErr };
+  if (loadErr) {
+    if (completionKey) pmCompletionHandled.delete(completionKey);
+    return { error: loadErr };
+  }
 
-  const nextDue = new Date(schedule.next_due_at);
+  const nextDue = new Date(completedAt);
   nextDue.setUTCDate(nextDue.getUTCDate() + schedule.interval_days);
-  const nextDueValue = schedule.next_due_at.length <= 10
-    ? nextDue.toISOString().slice(0, 10)
-    : nextDue.toISOString();
+  const nextDueValue = nextDue.toISOString();
   const { error: updateErr } = await sb.from('recurring_schedules')
     .update({ next_due_at: nextDueValue })
-    .eq('id', scheduleId)
-    .eq('next_due_at', schedule.next_due_at);
-  if (updateErr) return { error: updateErr };
+    .eq('id', scheduleId);
+  if (updateErr) {
+    if (completionKey) pmCompletionHandled.delete(completionKey);
+    return { error: updateErr };
+  }
 
   const { data: updated, error: verifyErr } = await sb.from('recurring_schedules')
     .select('id, next_due_at')
     .eq('id', scheduleId)
     .single();
-  if (verifyErr) return { error: verifyErr };
-  if (updated.next_due_at !== nextDueValue) {
+  if (verifyErr) {
+    if (completionKey) pmCompletionHandled.delete(completionKey);
+    return { error: verifyErr };
+  }
+  if (new Date(updated.next_due_at).getTime() !== nextDue.getTime()) {
+    if (completionKey) pmCompletionHandled.delete(completionKey);
     return { error: new Error('Schedule due date did not change') };
   }
 
