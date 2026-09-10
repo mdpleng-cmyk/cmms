@@ -251,7 +251,6 @@ function renderWorkOrders() {
   list.innerHTML = state.activeWorkOrders.map(wo => {
     const assetName = wo.asset_id == null ? 'No asset' : (wo.assets?.name || 'Unknown asset');
     return `
-    <div class="panel wo-card" style="cursor:pointer;" data-search="${wo.id} ${wo.assets?.name || ''} ${wo.description || ''}".toLowerCase() onclick="window.openWoDetailModal(${wo.id})">
     <div class="panel wo-card" style="cursor:pointer;" data-search="${`${wo.id} ${wo.assets?.name || ''} ${wo.description || ''}`.toLowerCase()}" onclick="window.openWoDetailModal(${wo.id})">
       <div class="row" style="margin-bottom:8px;justify-content:space-between">
         <div style="display:flex; gap:6px;">
