@@ -48,8 +48,7 @@ export function closeNewScheduleForm() { document.getElementById('new-schedule-f
 // Called by onchange on #sched-asset. Disables the date picker and shows a note
 // when an equipment-type (class) target is selected, because the due date is
 // calculated automatically per asset.
-export function onPmTargetChange() {
-// calculated automatically per asset. Also shows a preview of which assets will
+// This also shows a preview of which assets will
 // receive schedules.
 export async function onPmTargetChange() {
   const val      = document.getElementById('sched-asset').value;
@@ -175,14 +174,12 @@ export async function loadSchedules() {
   const list = document.getElementById('schedule-list');
   list.innerHTML = getLoaderHtml('Loading schedules...');
   
-  const { data, error } = await sb.from('recurring_schedules').select('id, title, interval_days, next_due_at, active, asset_id, assets(name)').order('next_due_at');
   const { data, error } = await sb.from('recurring_schedules').select('id, title, interval_days, next_due_at, active, asset_id, assets(name, equipment_types(name))').order('next_due_at');
   state.schedulesCache = data || [];
   
   if (error) { list.innerHTML = `<div class="readout-empty">${error.message}</div>`; return; }
   if (!state.schedulesCache.length) { list.innerHTML = '<div class="readout-empty"><i data-lucide="calendar-clock" style="width:32px;height:32px;"></i> No PM schedules yet.</div>'; lucide.createIcons(); return; }
 
-  list.innerHTML = state.schedulesCache.map(s => `
   list.innerHTML = state.schedulesCache.map(s => {
     const typeName = s.assets?.equipment_types?.name;
     return `
@@ -209,7 +206,6 @@ export async function loadSchedules() {
           <button class="ghost" onclick="window.addChecklistItem(${s.id})" style="border:1px solid var(--border);"><i data-lucide="plus" style="width:14px;"></i></button>
         </div>` : ''}
     </div>
-  `).join('');
   `;
   }).join('');
   lucide.createIcons();
