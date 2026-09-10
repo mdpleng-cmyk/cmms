@@ -49,9 +49,46 @@ button.big { width: 100%; padding: 14px; font-size: 15px; }
 .checklist-item:last-child { border-bottom: none; }
 .checklist-item.done { color: var(--text-muted); text-decoration: line-through; }
 
-.tab-nav { display: flex; gap: 4px; border-bottom: 1px solid var(--border); padding: 0 14px; background: var(--panel); position: sticky; top: 0; z-index: 10; }
-.tab-btn { flex: 1; background: transparent; border: none; border-radius: 0; padding: 14px 4px; color: var(--text-muted); border-bottom: 2px solid transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; }
-.tab-btn.active { color: var(--amber); border-bottom-color: var(--amber); }
+.tab-nav {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--border);
+  padding: 0 14px;
+  background: var(--panel);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.tab-nav::-webkit-scrollbar {
+  display: none;
+}
+.tab-btn {
+  flex: 1 0 auto;
+  white-space: nowrap;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 14px 12px;
+  color: var(--text-muted);
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  -webkit-tap-highlight-color: transparent;
+}
+.tab-btn i, .tab-btn svg {
+  flex-shrink: 0;
+}
+.tab-btn.active {
+  color: var(--amber);
+  border-bottom-color: var(--amber);
+}
 
 .modal-tabs { display: flex; gap: 18px; border-bottom: 1px solid var(--border); margin-bottom: 14px; }
 .modal-tab-btn { background: transparent; border: none; border-radius: 0; padding: 0 0 8px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); border-bottom: 2px solid transparent; cursor: pointer; }

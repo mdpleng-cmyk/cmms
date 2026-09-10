@@ -2,6 +2,7 @@ import { sb, state, setButtonLoading, toast } from './store.js';
 import { loadAssets } from './assets.js';
 import { loadWorkOrders } from './workOrders.js';
 import { loadOverview } from './overview.js';
+import { startRealtime, stopRealtime } from './realtime.js';
 
 export async function signIn() {
   setButtonLoading('btn-login', true);
@@ -21,6 +22,7 @@ export async function signIn() {
 }
 
 export async function signOut() {
+  await stopRealtime();
   await sb.auth.signOut();
   state.currentUser = null; 
   state.currentRole = null;
@@ -47,4 +49,5 @@ export async function onSignedIn(user) {
   await loadOverview();
   await loadAssets();
   await loadWorkOrders();
+  startRealtime();
 }

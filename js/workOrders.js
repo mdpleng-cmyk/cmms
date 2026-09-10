@@ -5,6 +5,8 @@ import { loadSchedules, advanceScheduleForCompletedPm } from './schedules.js';
 let noAssetSelected = false;
 let noAssetWarningOpen = false;
 let createdWoConfirmation = null;
+const checklistInFlight = new Set();
+let remoteUpdatePendingForWoId = null;
 
 export function openNewWoForm() {
   document.getElementById('modal-new-wo').classList.remove('hidden');
@@ -271,6 +273,7 @@ function renderWorkOrders() {
 }
 
 export async function openWoDetailModal(id) {
+  hideRemoteUpdateBanner();
   let wo = state.activeWorkOrders.find(w => w.id === id);
   if (!wo) {
     const { data } = await sb.from('work_orders').select('id, type, status, description, opened_at, closed_at, asset_id, schedule_id, priority, planned_date, assets(name)').eq('id', id).single();
@@ -290,6 +293,134 @@ export async function openWoDetailModal(id) {
   else document.getElementById('wo-detail-checklist').classList.add('hidden');
   loadVisitsForWo(wo.id);
 
+  lucide.createIcons({ root: document.getElementById('modal-wo-detail') });
+}
+
+export function isWoDetailDirty() {
+  // 1. Update/Close modal is open
+  const updateModal = document.getElementById('modal-update-wo');
+  if (updateModal && !updateModal.classList.contains('hidden')) {
+    return true;
+  }
+
+  // 2. Inline WO description/priority edit is active
+  if (document.getElementById('edit-wo-description')) {
+    return true;
+  }
+
+  // 3. Any visit inline edit is active
+  if (Array.isArray(currentVisits) && currentVisits.some(v => v.editing)) {
+    return true;
+  }
+
+  // 4. Any checklist write is in flight
+  if (checklistInFlight && checklistInFlight.size > 0) {
+    return true;
+  }
+
+  // 5. Any checklist reading input has an unsaved value or is focused
+  const activeEl = document.activeElement;
+  if (activeEl && activeEl.matches && activeEl.matches('#wo-detail-checklist input[type="number"]')) {
+    return true;
+  }
+  const readingInputs = document.querySelectorAll('#wo-detail-checklist input[data-prev-value]');
+  for (const input of readingInputs) {
+    const prev = (input.dataset.prevValue ?? '').trim();
+    const current = input.value.trim();
+    if (current !== prev) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+export function showRemoteUpdateBanner() {
+  const b1 = document.getElementById('wo-detail-remote-banner');
+  if (b1) {
+    b1.classList.remove('hidden');
+    lucide.createIcons({ root: b1 });
+  }
+  const b2 = document.getElementById('wo-update-remote-banner');
+  if (b2) {
+    b2.classList.remove('hidden');
+    lucide.createIcons({ root: b2 });
+  }
+}
+
+export function hideRemoteUpdateBanner() {
+  remoteUpdatePendingForWoId = null;
+  const b1 = document.getElementById('wo-detail-remote-banner');
+  if (b1) b1.classList.add('hidden');
+  const b2 = document.getElementById('wo-update-remote-banner');
+  if (b2) b2.classList.add('hidden');
+}
+
+export async function reloadLatestWoDetail() {
+  const currentId = state.woDetailCurrent?.id;
+  if (!currentId) return;
+
+  if (isWoDetailDirty()) {
+    const ok = window.confirm('Discard your unsaved changes and load the latest version?');
+    if (!ok) return;
+  }
+
+  const updateModal = document.getElementById('modal-update-wo');
+  if (updateModal && !updateModal.classList.contains('hidden')) {
+    closeUpdateModal();
+  }
+
+  if (document.getElementById('edit-wo-description')) {
+    cancelWoMetaEdit();
+  }
+
+  if (Array.isArray(currentVisits)) {
+    currentVisits = currentVisits.map(v => ({ ...v, editing: false }));
+  }
+
+  hideRemoteUpdateBanner();
+  await performWoDetailRefresh(currentId);
+}
+
+export async function refreshOpenWoDetail() {
+  const currentId = state.woDetailCurrent?.id;
+  if (!currentId) return;
+
+  if (isWoDetailDirty()) {
+    remoteUpdatePendingForWoId = currentId;
+    showRemoteUpdateBanner();
+    return;
+  }
+
+  await performWoDetailRefresh(currentId);
+}
+
+async function performWoDetailRefresh(currentId) {
+  if (!currentId || state.woDetailCurrent?.id !== currentId) return;
+
+  const { data: wo, error } = await sb.from('work_orders')
+    .select('id, type, status, description, opened_at, closed_at, asset_id, schedule_id, priority, planned_date, assets(name)')
+    .eq('id', currentId)
+    .single();
+  if (error || !wo || state.woDetailCurrent?.id !== currentId) return;
+
+  // Race check: if user started editing while fetch was in flight, do not apply
+  if (isWoDetailDirty()) {
+    remoteUpdatePendingForWoId = currentId;
+    showRemoteUpdateBanner();
+    return;
+  }
+
+  hideRemoteUpdateBanner();
+  state.woDetailCurrent = wo;
+  state.activeWorkOrders = state.activeWorkOrders.map(item => item.id === wo.id ? { ...item, ...wo } : item);
+  renderWoDetailHeader(wo, false);
+  document.getElementById('wo-detail-update-btn').classList.toggle('hidden',
+    !(wo.status !== 'closed' && (state.currentRole === 'admin' || state.currentRole === 'technician')));
+
+  if (wo.type === 'pm' && wo.schedule_id) loadChecklistForWo(wo.id);
+  else document.getElementById('wo-detail-checklist').classList.add('hidden');
+  loadVisitsForWo(wo.id);
   lucide.createIcons({ root: document.getElementById('modal-wo-detail') });
 }
 
@@ -364,6 +495,9 @@ export function startEditWoMeta() {
 
 export function cancelWoMetaEdit() {
   renderWoDetailHeader(state.woDetailCurrent, false);
+  if (remoteUpdatePendingForWoId === state.woDetailCurrent?.id && !isWoDetailDirty()) {
+    refreshOpenWoDetail();
+  }
 }
 
 export async function saveWoMetaEdit() {
@@ -400,6 +534,7 @@ export async function saveWoMetaEdit() {
   state.woDetailCurrent.priority = priority;
   renderWoDetailHeader(state.woDetailCurrent, false);
   loadVisitsForWo(before.id);
+  hideRemoteUpdateBanner();
   toast('Work order updated');
   loadWorkOrders();
   loadOverview();
@@ -408,6 +543,7 @@ export async function saveWoMetaEdit() {
 export function closeWoDetailModal() {
   document.getElementById('modal-wo-detail').classList.add('hidden');
   state.woDetailCurrent = null;
+  hideRemoteUpdateBanner();
 }
 
 export function triggerUpdateFromDetail() {
@@ -473,6 +609,9 @@ export function startEditVisit(id) {
 export function cancelEditVisit(id) {
   currentVisits = currentVisits.map(v => v.id === id ? { ...v, editing: false } : v);
   renderVisitsList();
+  if (remoteUpdatePendingForWoId === state.woDetailCurrent?.id && !isWoDetailDirty()) {
+    refreshOpenWoDetail();
+  }
 }
 
 export async function saveVisitEdit(id) {
@@ -483,6 +622,7 @@ export async function saveVisitEdit(id) {
   if (error) { toast(error.message, 'err'); return; }
   currentVisits = currentVisits.map(v => v.id === id ? { ...v, action_taken, parts_used, technician, editing: false } : v);
   renderVisitsList();
+  if (!isWoDetailDirty()) hideRemoteUpdateBanner();
   toast('Visit updated');
 }
 
@@ -521,6 +661,9 @@ export function triggerUpdateFlow(id) {
 export function closeUpdateModal() {
   document.getElementById('modal-update-wo').classList.add('hidden');
   state.woToUpdate = null;
+  if (remoteUpdatePendingForWoId === state.woDetailCurrent?.id && !isWoDetailDirty()) {
+    refreshOpenWoDetail();
+  }
 }
 
 export function reviewUpdateWo() {
@@ -680,21 +823,23 @@ async function loadChecklistForWo(woId) {
   if (!box) return;
   if (!data || !data.length) { box.classList.add('hidden'); return; }
   box.classList.remove('hidden');
-  const readOnly = state.currentRole === 'viewer';
-  box.innerHTML = `<div class="eyebrow" style="margin:14px 0 8px;">Checklist</div><div style="background:var(--bg); border:1px solid var(--border); border-radius:6px; padding:0 12px;">` +
+  const isClosed = state.woDetailCurrent?.status === 'closed';
+  const readOnly = state.currentRole === 'viewer' || isClosed;
+  box.innerHTML = `<div class="eyebrow" style="margin:14px 0 8px;">Checklist${isClosed ? ' <span class="card-meta" style="font-weight:normal; text-transform:none;">(Completed &amp; Locked)</span>' : ''}</div><div style="background:var(--bg); border:1px solid var(--border); border-radius:6px; padding:0 12px;">` +
     data.map(r => {
       const item = r.checklist_items;
       if (item.item_type === 'reading') {
+        const valStr = (r.result_value != null && !Number.isNaN(Number(r.result_value))) ? String(r.result_value) : '';
         return `
         <div class="checklist-item">
           <span style="flex:1;">${escapeHtml(item.description)}</span>
-          <input type="number" step="any" value="${r.result_value ?? ''}" placeholder="value" style="width:80px;"
+          <input type="number" step="any" value="${escapeHtml(valStr)}" data-prev-value="${escapeHtml(valStr)}" placeholder="value" style="width:80px;"
             ${readOnly ? 'disabled' : ''} onchange="window.saveReadingValue(${r.id}, this)">
           <span class="card-meta" style="margin-left:4px;">${escapeHtml(item.unit || '')}</span>
         </div>`;
       }
       return `
-      <label class="checklist-item ${r.done ? 'done' : ''}" style="cursor:pointer;">
+      <label class="checklist-item ${r.done ? 'done' : ''}" style="${readOnly ? 'cursor:default;' : 'cursor:pointer;'}">
         <input type="checkbox" ${r.done ? 'checked' : ''} ${readOnly ? 'disabled' : ''} onchange="window.toggleChecklistItem(${r.id}, this)">
         <span>${escapeHtml(item.description)}</span>
       </label>`;
@@ -702,13 +847,101 @@ async function loadChecklistForWo(woId) {
 }
 
 export async function toggleChecklistItem(resultId, checkboxEl) {
+  const isClosed = state.woDetailCurrent?.status === 'closed';
+  if (isClosed || state.currentRole === 'viewer') {
+    toast('Checklist cannot be modified on a closed work order', 'err');
+    checkboxEl.checked = !checkboxEl.checked;
+    return;
+  }
+
+  if (checklistInFlight.has(resultId)) {
+    checkboxEl.checked = !checkboxEl.checked;
+    return;
+  }
+  checklistInFlight.add(resultId);
+
   const done = checkboxEl.checked;
-  checkboxEl.closest('label').classList.toggle('done', done);
-  await sb.from('wo_checklist_results').update({ done, result_check: done, done_at: done ? new Date().toISOString() : null }).eq('id', resultId);
+  const prevChecked = !done;
+  const label = checkboxEl.closest('label');
+
+  if (label) label.classList.toggle('done', done);
+  checkboxEl.disabled = true;
+
+  try {
+    const { error } = await sb.from('wo_checklist_results').update({
+      done,
+      result_check: done,
+      done_at: done ? new Date().toISOString() : null
+    }).eq('id', resultId);
+
+    if (error) {
+      checkboxEl.checked = prevChecked;
+      if (label) label.classList.toggle('done', prevChecked);
+      toast(error.message || 'Failed to update checklist item', 'err');
+    } else {
+      if (!isWoDetailDirty()) hideRemoteUpdateBanner();
+    }
+  } catch (err) {
+    checkboxEl.checked = prevChecked;
+    if (label) label.classList.toggle('done', prevChecked);
+    toast(err.message || 'Failed to update checklist item', 'err');
+  } finally {
+    const currentClosed = state.woDetailCurrent?.status === 'closed';
+    if (state.currentRole !== 'viewer' && !currentClosed) {
+      checkboxEl.disabled = false;
+    }
+    checklistInFlight.delete(resultId);
+  }
 }
 
 export async function saveReadingValue(resultId, inputEl) {
+  const isClosed = state.woDetailCurrent?.status === 'closed';
+  const prevValue = inputEl.dataset.prevValue ?? '';
+  if (isClosed || state.currentRole === 'viewer') {
+    toast('Checklist cannot be modified on a closed work order', 'err');
+    inputEl.value = prevValue;
+    return;
+  }
+
+  if (checklistInFlight.has(resultId)) {
+    inputEl.value = prevValue;
+    return;
+  }
+
   const raw = inputEl.value.trim();
   const value = raw === '' ? null : parseFloat(raw);
-  await sb.from('wo_checklist_results').update({ result_value: value, done: value !== null, done_at: value !== null ? new Date().toISOString() : null }).eq('id', resultId);
+
+  if (raw !== '' && Number.isNaN(value)) {
+    toast('Please enter a valid number', 'err');
+    inputEl.value = prevValue;
+    return;
+  }
+
+  checklistInFlight.add(resultId);
+  inputEl.disabled = true;
+
+  try {
+    const { error } = await sb.from('wo_checklist_results').update({
+      result_value: value,
+      done: value !== null,
+      done_at: value !== null ? new Date().toISOString() : null
+    }).eq('id', resultId);
+
+    if (error) {
+      inputEl.value = prevValue;
+      toast(error.message || 'Failed to save reading', 'err');
+    } else {
+      inputEl.dataset.prevValue = value != null ? String(value) : '';
+      if (!isWoDetailDirty()) hideRemoteUpdateBanner();
+    }
+  } catch (err) {
+    inputEl.value = prevValue;
+    toast(err.message || 'Failed to save reading', 'err');
+  } finally {
+    const currentClosed = state.woDetailCurrent?.status === 'closed';
+    if (state.currentRole !== 'viewer' && !currentClosed) {
+      inputEl.disabled = false;
+    }
+    checklistInFlight.delete(resultId);
+  }
 }

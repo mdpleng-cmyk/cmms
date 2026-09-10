@@ -368,6 +368,13 @@
       <div class="eyebrow">Work Order</div>
       <button class="ghost" style="padding:4px; margin:-4px;" onclick="window.closeWoDetailModal()"><i data-lucide="x" style="width:16px; color:var(--text-muted);"></i></button>
     </div>
+    <div id="wo-detail-remote-banner" class="wo-inline-warning hidden" style="margin:8px 0 12px; display:flex; align-items:center; justify-content:space-between; gap:12px;">
+      <div style="display:flex; align-items:center; gap:8px;">
+        <i data-lucide="alert-circle" style="width:16px; height:16px; color:var(--amber); flex-shrink:0;"></i>
+        <span>Work order updated by another user.</span>
+      </div>
+      <button type="button" class="primary" style="padding:4px 10px; font-size:12px; white-space:nowrap;" onclick="window.reloadLatestWoDetail()">Reload Latest</button>
+    </div>
     <div id="wo-detail-header"></div>
     <div id="wo-detail-checklist" class="hidden"></div>
     <div class="eyebrow" style="margin:16px 0 8px;">Activity</div>
@@ -430,6 +437,13 @@
 <!-- Update Work Order Modal -->
 <div id="modal-update-wo" class="modal-overlay hidden">
   <div class="modal-box">
+    <div id="wo-update-remote-banner" class="wo-inline-warning hidden" style="margin:0 0 14px; display:flex; align-items:center; justify-content:space-between; gap:12px;">
+      <div style="display:flex; align-items:center; gap:8px;">
+        <i data-lucide="alert-circle" style="width:16px; height:16px; color:var(--amber); flex-shrink:0;"></i>
+        <span>Work order updated by another user.</span>
+      </div>
+      <button type="button" class="primary" style="padding:4px 10px; font-size:12px; white-space:nowrap;" onclick="window.reloadLatestWoDetail()">Reload Latest</button>
+    </div>
     
     <!-- Step 1: Input -->
     <div id="update-step-input">
