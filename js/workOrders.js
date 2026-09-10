@@ -252,6 +252,7 @@ function renderWorkOrders() {
     const assetName = wo.asset_id == null ? 'No asset' : (wo.assets?.name || 'Unknown asset');
     return `
     <div class="panel wo-card" style="cursor:pointer;" data-search="${wo.id} ${wo.assets?.name || ''} ${wo.description || ''}".toLowerCase() onclick="window.openWoDetailModal(${wo.id})">
+    <div class="panel wo-card" style="cursor:pointer;" data-search="${`${wo.id} ${wo.assets?.name || ''} ${wo.description || ''}`.toLowerCase()}" onclick="window.openWoDetailModal(${wo.id})">
       <div class="row" style="margin-bottom:8px;justify-content:space-between">
         <div style="display:flex; gap:6px;">
           <span class="badge ${wo.type}">${wo.type === 'pm' ? '<i data-lucide="calendar-clock" style="width:12px;"></i>' : wo.type === 'other' ? '<i data-lucide="package" style="width:12px;"></i>' : '<i data-lucide="wrench" style="width:12px;"></i>'} ${wo.type}</span>
@@ -349,7 +350,9 @@ function renderWoDetailHeader(wo, editing) {
       ${canEdit ? `<i data-lucide="pencil" style="width:12px; margin-left:6px; cursor:pointer; color:var(--text-muted); vertical-align:2px;" onclick="window.startEditWoMeta()"></i>` : ''}
     </div>
     <div class="card-meta">
+      ${wo.type === 'pm' && wo.schedule_id ? `<i data-lucide="calendar-clock" style="width:12px;display:inline-block;margin-right:2px;vertical-align:middle;"></i> ${escapeHtml((state.schedulesCache.find(s => s.id === wo.schedule_id))?.title || 'PM Schedule #' + wo.schedule_id)}<br>` : ''}
       <i data-lucide="clock" style="width:12px;display:inline-block;margin-right:2px;vertical-align:middle;"></i> Opened ${formatDate(wo.opened_at)}
+      ${wo.planned_date ? `<br><i data-lucide="calendar" style="width:12px;display:inline-block;margin-right:2px;vertical-align:middle;margin-top:4px;"></i> Planned ${escapeHtml(wo.planned_date)}` : ''}
       ${wo.closed_at ? `<br><i data-lucide="check-circle-2" style="width:12px;display:inline-block;margin-right:2px;vertical-align:middle;margin-top:4px;"></i> Closed ${formatDate(wo.closed_at)}` : ''}
     </div>
   `;

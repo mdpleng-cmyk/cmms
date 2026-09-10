@@ -49,16 +49,34 @@ export function closeNewScheduleForm() { document.getElementById('new-schedule-f
 // when an equipment-type (class) target is selected, because the due date is
 // calculated automatically per asset.
 export function onPmTargetChange() {
+// calculated automatically per asset. Also shows a preview of which assets will
+// receive schedules.
+export async function onPmTargetChange() {
   const val      = document.getElementById('sched-asset').value;
   const dueInput = document.getElementById('sched-due');
   const dueNote  = document.getElementById('sched-due-note');
+  const preview  = document.getElementById('sched-target-preview');
   const isClass  = val.startsWith('type:');
   dueInput.disabled = isClass;
   if (isClass) {
     dueInput.value = '';
     dueNote.classList.remove('hidden');
+
+    // Show asset preview for this class.
+    const typeId = parseInt(val.slice(5), 10);
+    preview.innerHTML = 'Loading assets…';
+    preview.classList.remove('hidden');
+    const { data: assets } = await sb.from('assets').select('name').eq('equipment_type_id', typeId).order('name');
+    if (assets && assets.length) {
+      preview.innerHTML = `<strong>Schedules will be created for ${assets.length} asset${assets.length !== 1 ? 's' : ''}:</strong> ` +
+        assets.map(a => escapeHtml(a.name)).join(', ');
+    } else {
+      preview.innerHTML = 'No assets found for this equipment type.';
+    }
   } else {
     dueNote.classList.add('hidden');
+    preview.classList.add('hidden');
+    preview.innerHTML = '';
   }
 }
 
@@ -158,12 +176,16 @@ export async function loadSchedules() {
   list.innerHTML = getLoaderHtml('Loading schedules...');
   
   const { data, error } = await sb.from('recurring_schedules').select('id, title, interval_days, next_due_at, active, asset_id, assets(name)').order('next_due_at');
+  const { data, error } = await sb.from('recurring_schedules').select('id, title, interval_days, next_due_at, active, asset_id, assets(name, equipment_types(name))').order('next_due_at');
   state.schedulesCache = data || [];
   
   if (error) { list.innerHTML = `<div class="readout-empty">${error.message}</div>`; return; }
   if (!state.schedulesCache.length) { list.innerHTML = '<div class="readout-empty"><i data-lucide="calendar-clock" style="width:32px;height:32px;"></i> No PM schedules yet.</div>'; lucide.createIcons(); return; }
 
   list.innerHTML = state.schedulesCache.map(s => `
+  list.innerHTML = state.schedulesCache.map(s => {
+    const typeName = s.assets?.equipment_types?.name;
+    return `
     <div class="panel" id="schedule-card-${s.id}">
       <div class="row" style="justify-content:space-between; margin-bottom:2px;">
         <div class="card-title" style="margin:0;">${escapeHtml(s.title)}</div>
@@ -171,6 +193,7 @@ export async function loadSchedules() {
       </div>
       <div class="card-meta">
         <i data-lucide="server" style="width:12px; display:inline-block; vertical-align:-2px;"></i> ${s.assets?.name || ''} &middot; 
+        <i data-lucide="server" style="width:12px; display:inline-block; vertical-align:-2px;"></i> ${s.assets?.name || ''}${typeName ? ` <span class="badge" style="font-size:9px; vertical-align:1px;">${escapeHtml(typeName)}</span>` : ''} &middot; 
         <i data-lucide="rotate-cw" style="width:12px; display:inline-block; vertical-align:-2px;"></i> ${s.interval_days}d &middot; 
         Due: ${s.next_due_at}
       </div>
@@ -187,6 +210,8 @@ export async function loadSchedules() {
         </div>` : ''}
     </div>
   `).join('');
+  `;
+  }).join('');
   lucide.createIcons();
   for (const s of state.schedulesCache) loadChecklistItems(s.id);
 }
