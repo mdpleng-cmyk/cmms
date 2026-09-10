@@ -132,10 +132,14 @@
       </div>
       <div id="new-schedule-form" class="panel hidden">
         <div class="eyebrow" style="margin-bottom:12px;">New PM Schedule</div>
-        <div class="field"><label class="field-label">Asset</label><select id="sched-asset"></select></div>
+        <div class="field"><label class="field-label">PM Target</label><select id="sched-asset" onchange="window.onPmTargetChange()"></select></div>
         <div class="field"><label class="field-label">Title</label><input id="sched-title" placeholder="e.g. 6-Month General PM"></div>
         <div class="field"><label class="field-label">Interval (days)</label><input id="sched-interval" type="number" value="180"></div>
-        <div class="field"><label class="field-label">First due date</label><input id="sched-due" type="date"></div>
+        <div class="field">
+          <label class="field-label">First due date</label>
+          <input id="sched-due" type="date">
+          <div id="sched-due-note" class="card-meta hidden" style="margin-top:4px;">Auto-calculated per asset: each asset's creation date + interval days.</div>
+        </div>
         <div class="row">
           <button id="btn-create-schedule" class="primary" onclick="window.createSchedule()">Create</button>
           <button class="ghost" onclick="window.closeNewScheduleForm()">Cancel</button>

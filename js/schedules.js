@@ -3,25 +3,150 @@ import { sb, state, toast, setButtonLoading, getLoaderHtml, escapeHtml } from '.
 const pmGenerationInFlight = new Set();
 const pmCompletionHandled = new Set();
 
-export function openNewScheduleForm() {
+export async function openNewScheduleForm() {
   document.getElementById('new-schedule-form').classList.remove('hidden');
-  document.getElementById('sched-asset').innerHTML = state.assetsCache.map(a => `<option value="${a.id}">${escapeHtml(a.name)}</option>`).join('');
+
+  // Fetch assets with their equipment type in one query — fresh, not from cache,
+  // so newly added assets/types are always reflected.
+  const { data: assets } = await sb
+    .from('assets')
+    .select('id, name, equipment_type_id, equipment_types(id, name)')
+    .order('name');
+
+  // Build: one entry per unique equipment type (classes), then one entry per
+  // standalone asset (equipment_type_id IS NULL).
+  const typeMap = new Map();   // type_id → type name
+  const standalones = [];
+
+  for (const a of (assets || [])) {
+    if (a.equipment_type_id != null && a.equipment_types) {
+      if (!typeMap.has(a.equipment_type_id)) {
+        typeMap.set(a.equipment_type_id, a.equipment_types.name);
+      }
+    } else if (a.equipment_type_id == null) {
+      standalones.push(a);
+    }
+  }
+
+  // Types sorted alphabetically, then standalones (already name-ordered from DB).
+  const sortedTypes = [...typeMap.entries()].sort((a, b) => a[1].localeCompare(b[1]));
+
+  const options = [
+    ...sortedTypes.map(([id, name]) => `<option value="type:${id}">${escapeHtml(name)}</option>`),
+    ...standalones.map(a => `<option value="asset:${a.id}">${escapeHtml(a.name)}</option>`),
+  ];
+
+  document.getElementById('sched-asset').innerHTML =
+    options.length ? options.join('') : '<option value="">No assets available</option>';
+
+  // Set initial field state to match the first option.
+  onPmTargetChange();
 }
+
 export function closeNewScheduleForm() { document.getElementById('new-schedule-form').classList.add('hidden'); }
 
-export async function createSchedule() {
-  const asset_id = document.getElementById('sched-asset').value;
-  const title = document.getElementById('sched-title').value.trim();
-  const interval_days = parseInt(document.getElementById('sched-interval').value, 10);
-  const next_due_at = document.getElementById('sched-due').value;
+// Called by onchange on #sched-asset. Disables the date picker and shows a note
+// when an equipment-type (class) target is selected, because the due date is
+// calculated automatically per asset.
+export function onPmTargetChange() {
+  const val      = document.getElementById('sched-asset').value;
+  const dueInput = document.getElementById('sched-due');
+  const dueNote  = document.getElementById('sched-due-note');
+  const isClass  = val.startsWith('type:');
+  dueInput.disabled = isClass;
+  if (isClass) {
+    dueInput.value = '';
+    dueNote.classList.remove('hidden');
+  } else {
+    dueNote.classList.add('hidden');
+  }
+}
 
-  if (!asset_id || !title || !interval_days || !next_due_at) { toast('Fill all required fields', 'err'); return; }
+export async function createSchedule() {
+  const targetValue   = document.getElementById('sched-asset').value;
+  const title         = document.getElementById('sched-title').value.trim();
+  const interval_days = parseInt(document.getElementById('sched-interval').value, 10);
+
+  if (!targetValue || !title || !interval_days) { toast('Fill all required fields', 'err'); return; }
+
+  // ── Standalone asset path ─────────────────────────────────────────────────
+  // Value is "asset:<id>" (new form) or a plain id (defensive fallback).
+  if (!targetValue.startsWith('type:')) {
+    const asset_id    = targetValue.startsWith('asset:') ? targetValue.slice(6) : targetValue;
+    const next_due_at = document.getElementById('sched-due').value;
+    if (!next_due_at) { toast('Fill all required fields', 'err'); return; }
+
+    setButtonLoading('btn-create-schedule', true);
+    const { error } = await sb.from('recurring_schedules').insert({ asset_id, title, interval_days, next_due_at });
+    if (error) { toast(error.message, 'err'); setButtonLoading('btn-create-schedule', false); return; }
+
+    toast('Schedule created');
+    closeNewScheduleForm();
+    document.getElementById('sched-title').value = '';
+    setButtonLoading('btn-create-schedule', false);
+    loadSchedules();
+    return;
+  }
+
+  // ── Equipment-type (class) path ───────────────────────────────────────────
+  const type_id = parseInt(targetValue.slice(5), 10);
+
+  // 1. Fetch every asset belonging to this equipment type.
+  const { data: assets, error: assetsErr } = await sb
+    .from('assets')
+    .select('id, name, created_at')
+    .eq('equipment_type_id', type_id)
+    .order('name');
+
+  if (assetsErr) { toast(assetsErr.message, 'err'); return; }
+  if (!assets || !assets.length) { toast('No assets found for this equipment type', 'err'); return; }
+
+  // 2. Bulk-check for duplicates.
+  // Duplicate rule:
+  // - same asset (asset_id)
+  // - same PM title (title)
+  // - same interval_days
+  // Checklist differences are NOT considered.
+  const assetIds = assets.map(a => a.id);
+  const { data: existing } = await sb
+    .from('recurring_schedules')
+    .select('asset_id')
+    .in('asset_id', assetIds)
+    .eq('title', title)
+    .eq('interval_days', interval_days);
+
+  const alreadyHave = new Set((existing || []).map(s => s.asset_id));
+  const toCreate    = assets.filter(a => !alreadyHave.has(a.id));
+  const skipped     = assets.length - toCreate.length;
+
+  if (!toCreate.length) {
+    toast(`0 schedules created, ${skipped} skipped (already exist)`);
+    return;
+  }
+
+  // 3. Build insert rows. next_due_at = created_at::date + interval_days,
+  //    matching the stamp trigger rule. UTC date is used to align with the
+  //    Postgres ::date cast (Supabase default timezone is UTC).
+  const rows = toCreate.map(asset => {
+    const c   = new Date(asset.created_at);
+    const y   = c.getUTCFullYear();
+    const mo  = String(c.getUTCMonth() + 1).padStart(2, '0');
+    const d   = String(c.getUTCDate()).padStart(2, '0');
+    const base = new Date(`${y}-${mo}-${d}T00:00:00Z`);
+    base.setUTCDate(base.getUTCDate() + interval_days);
+    return { asset_id: asset.id, title, interval_days, next_due_at: base.toISOString().slice(0, 10) };
+  });
 
   setButtonLoading('btn-create-schedule', true);
-  const { error } = await sb.from('recurring_schedules').insert({ asset_id, title, interval_days, next_due_at });
-  if (error) { toast(error.message, 'err'); setButtonLoading('btn-create-schedule', false); return; }
-  
-  toast('Schedule created');
+  const { error: insertErr } = await sb.from('recurring_schedules').insert(rows);
+  if (insertErr) { toast(insertErr.message, 'err'); setButtonLoading('btn-create-schedule', false); return; }
+
+  // 4. Report result.
+  const created = toCreate.length;
+  const parts   = [`${created} schedule${created !== 1 ? 's' : ''} created`];
+  if (skipped) parts.push(`${skipped} skipped (already exist${skipped !== 1 ? '' : 's'})`);
+  toast(parts.join(', '));
+
   closeNewScheduleForm();
   document.getElementById('sched-title').value = '';
   setButtonLoading('btn-create-schedule', false);
