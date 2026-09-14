@@ -68,7 +68,7 @@ AS $$
 BEGIN
   IF TG_OP = 'INSERT' THEN
     INSERT INTO public.checklist_items (schedule_id, description, item_type, unit, sort_order, template_item_id, section, tool)
-    SELECT rs.id, NEW.description, NEW.item_type, NEW.unit, NEW.sort_order, NEW.id, NEW.section, NEW.tool
+    SELECT rs.id, NEW.description, NEW.item_type, NEW.unit, COALESCE(NEW.sort_order, 1), NEW.id, NEW.section, NEW.tool
     FROM public.recurring_schedules rs
     WHERE rs.pm_template_id = NEW.template_id
       AND rs.active = true;
@@ -98,3 +98,4 @@ END;
 $$;
 
 COMMIT;
+

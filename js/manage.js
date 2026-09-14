@@ -263,22 +263,35 @@ export async function addTypeTemplateItem() {
     const templateId = await getOrCreateTemplateId();
     if (!templateId) { toast('Save the template above first', 'err'); return; }
 
-    const { error } = await sb.from('equipment_type_pm_template_items').insert({
+    const nextSortOrder = (cachedTemplateItems && cachedTemplateItems.length)
+      ? Math.max(...cachedTemplateItems.map(i => i.sort_order || 0)) + 1
+      : 1;
+
+    const payload = {
       template_id: templateId,
       description,
       item_type,
       unit,
       section,
-      tool
-    });
-    if (error) { toast(error.message, 'err'); return; }
+      tool,
+      sort_order: nextSortOrder
+    };
+    console.log('Inserting into equipment_type_pm_template_items:', payload);
+
+    const { data, error } = await sb.from('equipment_type_pm_template_items').insert(payload).select();
+    if (error) {
+      console.error('Supabase insert error details:', error);
+      toast(`${error.message}${error.details ? ` (${error.details})` : ''}`, 'err');
+      return;
+    }
+    console.log('Successfully inserted item:', data);
     if (descEl) descEl.value = '';
     if (unitInput) unitInput.value = '';
     if (toolInput) toolInput.value = '';
     toast('Task added — synced to every linked machine');
     await refreshTypeTemplateItems();
   } catch (err) {
-    console.error('addTypeTemplateItem error:', err);
+    console.error('addTypeTemplateItem caught exception:', err);
     toast(err.message || 'Failed to add item', 'err');
   }
 }
