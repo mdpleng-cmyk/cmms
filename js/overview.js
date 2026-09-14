@@ -49,17 +49,44 @@ function renderOpenWoList() {
     const stale = staleDaysFor(wo, lv, todayStart);
     const hasAsset = wo.asset_id != null;
     const primaryText = hasAsset ? (wo.assets?.name || 'Unknown asset') : (wo.description || 'No asset');
-    const secondaryText = hasAsset ? (wo.description || 'No description') : 'No asset';
+    const secondaryText = hasAsset ? (wo.description || 'No description') : null;
+
+    // Severity left-border class: P1/P2 → critical, 5+ days stale → warning
+    const sevClass = isCrit ? 'sev-critical' : stale >= 5 ? 'sev-warning' : '';
+
+    // Status badge (soft, no uppercase — styled via #ov-open-list .badge in CSS)
+    const statusBadge = `<span class="badge ${wo.status}">${wo.status.replace('_', ' ')}</span>`;
+
+    // Category tag — border-only mono chip
+    const catTag = hasAsset && wo.assets?.category
+      ? `<span class="ov-wo-tag">${escapeHtml(wo.assets.category.replace('_', ' '))}</span>`
+      : '';
+
+    // Last-action log excerpt (truncated to 120 chars) or visit-type fallback
+    const logHtml = lv && lv.action_taken
+      ? `<div class="ov-wo-log">${escapeHtml(lv.action_taken.slice(0, 120))}${lv.action_taken.length > 120 ? '…' : ''} — <b>${escapeHtml(lv.technician || 'unassigned')}</b></div>`
+      : lv
+        ? `<div class="ov-open-sub" style="margin-top:4px;"><i data-lucide="corner-down-right" style="width:11px; vertical-align:-1px;"></i> ${escapeHtml(lv.visit_type)} · ${escapeHtml(lv.technician || 'unassigned')}</div>`
+        : '';
+
+    // Stale age indicator in side column (replaces the old stale badge)
+    const staleHtml = stale
+      ? `<div class="ov-wo-stale ${stale >= 5 ? 'crit' : ''}"><i data-lucide="clock" style="width:12px; height:12px;"></i>${stale}d${!lv ? ', no reply' : ' stale'}</div>`
+      : '';
+
     return `
-      <div class="ov-open-row ${isCrit ? 'crit' : ''}" onclick="window.openWoDetailModal(${wo.id})">
-        <div style="min-width:0;">
-          <div class="ov-open-asset ${wo.type === 'other' ? 'other-type' : ''}">${escapeHtml(primaryText)} ${hasAsset && wo.assets?.category ? `<span class="badge" style="font-size:9px; vertical-align:2px;">${escapeHtml(wo.assets.category.replace('_',' '))}</span>` : ''}</div>
-          <div class="ov-open-desc">${escapeHtml(secondaryText)}</div>
-          <div class="ov-open-sub">${lv ? `<i data-lucide="corner-down-right" style="width:11px; vertical-align:-1px;"></i> ${escapeHtml(lv.action_taken || lv.visit_type)} &middot; ${escapeHtml(lv.technician || 'unassigned')}` : 'No updates yet'}</div>
+      <div class="ov-open-row ${sevClass}" onclick="window.openWoDetailModal(${wo.id})">
+        <div style="min-width:0; flex:1;">
+          <div style="display:flex; align-items:center; gap:7px; flex-wrap:wrap;">
+            <span class="ov-open-asset${wo.type === 'other' ? ' other-type' : ''}">${escapeHtml(primaryText)}</span>
+            ${catTag}
+            ${statusBadge}
+          </div>
+          ${secondaryText ? `<div class="ov-open-desc">${escapeHtml(secondaryText)}</div>` : ''}
+          ${logHtml}
         </div>
         <div style="display:flex; flex-direction:column; align-items:flex-end; gap:5px; flex-shrink:0;">
-          ${stale ? `<span class="badge" style="font-size:9px; background:rgba(239,68,68,.12); color:var(--red);">No update ${stale}d</span>` : ''}
-          <span class="badge ${wo.status}" style="font-size:9px;">${wo.status.replace('_',' ')}</span>
+          ${staleHtml}
         </div>
       </div>`;
   }).join('') : '<div class="card-meta" style="padding:14px;">Nothing here.</div>';
@@ -106,46 +133,82 @@ export async function loadOverview() {
   const activeItems = dueItems.filter(s => !s.snoozed_until || new Date(s.snoozed_until) <= now);
   const snoozedItems = dueItems.filter(s => s.snoozed_until && new Date(s.snoozed_until) > now);
 
-  const pmHtml = activeItems.length ? activeItems.map(s => {
-    const label = s.days < 0 ? `${Math.abs(s.days)}d overdue` : s.days === 0 ? 'Due today' : `Due in ${s.days}d`;
-    const cls = s.days < 0 ? 'over' : s.days === 0 ? 'soon' : '';
+  // ---- PM due — hero card for overdue, list rows for upcoming ----
+  let pmHtml = '';
+  if (!activeItems.length) {
+    pmHtml = `<div class="ov-pm-list-row" style="color:var(--ov-text-muted); font-size:12px;">Nothing due in the next ${PM_DUE_WINDOW_DAYS} days.</div>`;
+  } else {
+    let startIdx = 0;
+    // First overdue item gets hero treatment
+    if (activeItems[0].days < 0) {
+      const h = activeItems[0];
+      const absDays = Math.abs(h.days);
+      pmHtml += `
+        <div class="ov-pm-hero">
+          <div class="ov-pm-hero-top">
+            <div>
+              <div class="ov-pm-hero-asset">${escapeHtml(h.assets?.name || 'Unknown asset')}</div>
+              <div class="ov-pm-hero-cycle">${escapeHtml(h.title)}</div>
+            </div>
+            <div class="ov-pm-hero-overdue">${absDays}d overdue</div>
+          </div>
+          <div class="ov-pm-snooze">
+            <button class="ov-pm-btn" onclick="window.snoozeSchedule(${h.id}, 1)">+1h</button>
+            <button class="ov-pm-btn" onclick="window.snoozeSchedule(${h.id}, 4)">+4h</button>
+            <button class="ov-pm-btn" onclick="window.snoozeSchedule(${h.id}, 24)">+1d</button>
+          </div>
+        </div>`;
+      startIdx = 1;
+    }
+    // Remaining items as list rows (including any additional overdue ones)
+    pmHtml += activeItems.slice(startIdx).map(s => {
+      const label = s.days < 0 ? `${Math.abs(s.days)}d overdue` : s.days === 0 ? 'Due today' : `Due in ${s.days}d`;
+      const dueCls = s.days < 0 ? 'over' : s.days === 0 ? 'soon' : '';
+      return `
+        <div class="ov-pm-list-row">
+          <span>${escapeHtml(s.assets?.name || 'Unknown')} &mdash; ${escapeHtml(s.title)}</span>
+          <span class="ov-pm-list-due ${dueCls}">${label}</span>
+        </div>`;
+    }).join('');
+  }
+
+  const snoozedHtml = snoozedItems.length
+    ? `<div class="ov-pm-snoozed">Snoozed: ${snoozedItems.map(s => `${escapeHtml(s.title)} (until ${formatDate(s.snoozed_until)})`).join(', ')}</div>`
+    : '';
+
+  // ---- Recent activity ----
+  const activityHtml = visits.length ? visits.slice(0, 6).map(v => {
+    const assetName = v.work_orders
+      ? (v.work_orders.asset_id == null ? 'No asset' : (v.work_orders.assets?.name || 'Unknown asset'))
+      : 'WO #' + v.wo_id;
+    const desc = v.work_orders?.description || v.visit_type;
+    // Chip type: closed → green, waiting_parts → purple, everything else → amber update
+    const chipCls = v.visit_type === 'closed' ? 'closed' : v.visit_type === 'waiting_parts' ? 'waiting' : 'update';
+    const chipLabel = v.visit_type.replace('_', ' ');
     return `
-      <div style="padding:8px 0; border-bottom:1px solid var(--border);">
-        <div style="font-size:13px; color:var(--text);">${escapeHtml(s.title)} &mdash; ${escapeHtml(s.assets?.name || '')}</div>
-        <div class="ov-pm-due-days ${cls}" style="padding:0;">${label}</div>
-        ${s.days <= 0 ? `
-          <div class="ov-snooze-row">
-            <span class="ov-snooze-btn" onclick="window.snoozeSchedule(${s.id}, 1)">Snooze 1h</span>
-            <span class="ov-snooze-btn" onclick="window.snoozeSchedule(${s.id}, 4)">4h</span>
-            <span class="ov-snooze-btn" onclick="window.snoozeSchedule(${s.id}, 24)">1d</span>
-          </div>` : ''}
+      <div class="ov-activity-row" onclick="window.openWoDetailModal(${v.wo_id})">
+        <div style="min-width:0; flex:1;">
+          <div class="ov-activity-title"><b>${escapeHtml(assetName)}</b> &mdash; ${escapeHtml(desc)}</div>
+          <div class="ov-activity-meta">${escapeHtml(v.technician || 'unassigned')}</div>
+        </div>
+        <span class="ov-activity-chip ${chipCls}">${escapeHtml(chipLabel)}</span>
       </div>`;
-  }).join('') : '<div class="card-meta">Nothing due in the next ' + PM_DUE_WINDOW_DAYS + ' days.</div>';
+  }).join('') : `<div class="ov-pm-list-row" style="color:var(--ov-text-muted); font-size:12px;">No recent activity.</div>`;
 
-  const snoozedHtml = snoozedItems.length ? `
-    <div class="ov-snoozed-list">
-      Snoozed: ${snoozedItems.map(s => `${escapeHtml(s.title)} (until ${formatDate(s.snoozed_until)})`).join(', ')}
-    </div>` : '';
-
-  // ---- Recent activity, collapsed asset + issue + outcome + who ----
-  const activityHtml = visits.length ? visits.slice(0, 6).map(v => `
-    <div class="ov-activity-row" onclick="window.openWoDetailModal(${v.wo_id})">
-      <b>${escapeHtml(v.work_orders ? (v.work_orders.asset_id == null ? 'No asset' : (v.work_orders.assets?.name || 'Unknown asset')) : 'WO #' + v.wo_id)}</b> &mdash; ${escapeHtml(v.work_orders?.description || v.visit_type)}
-      <span class="badge ${v.visit_type === 'closed' ? 'closed' : 'open'}" style="font-size:9px; margin-left:4px;">${v.visit_type.replace('_',' ')}</span>
-      <div style="color:var(--text-muted); font-size:11px; margin-top:2px;">${escapeHtml(v.technician || 'unassigned')}</div>
-    </div>
-  `).join('') : '<div class="card-meta">No recent activity.</div>';
-
-  // ---- Notes ----
-  const notesHtml = notes.length ? notes.map(n => `
-    <div class="ov-note-row ${n.done ? 'done' : ''}">
-      <input type="checkbox" ${n.done ? 'checked' : ''} onchange="window.toggleNoteDone(${n.id}, this.checked)" style="margin-top:2px;">
+  // ---- Notes — split into open / done groups ----
+  const openNotes = notes.filter(n => !n.done);
+  const doneNotes  = notes.filter(n =>  n.done);
+  const noteGroup = (arr, checked) => arr.map(n => `
+    <label class="ov-note-item${checked ? ' done' : ''}">
+      <input type="checkbox" ${checked ? 'checked' : ''} onchange="window.toggleNoteDone(${n.id}, this.checked)">
       <span>${escapeHtml(n.text)}</span>
-    </div>
-  `).join('') : '<div class="card-meta">No notes yet.</div>';
+    </label>`).join('');
+  const notesHtml = !notes.length
+    ? `<div style="color:var(--ov-text-muted); font-size:12px; padding:4px 0;">No notes yet.</div>`
+    : `${openNotes.length  ? `<div class="ov-note-group-label">open</div>${noteGroup(openNotes, false)}`   : ''}
+       ${doneNotes.length  ? `<div class="ov-note-group-label">done</div>${noteGroup(doneNotes, true)}`    : ''}`;
 
   el.innerHTML = `
-
     <div class="ov-row-2-wide">
       <div class="ov-panel">
         <div class="ov-panel-head">
@@ -161,29 +224,28 @@ export async function loadOverview() {
       </div>
       <div class="ov-panel">
         <div class="ov-panel-head"><div class="ov-panel-title-row"><div class="ov-icon-badge amber"><i data-lucide="calendar-clock"></i></div><div class="ov-panel-title">PM Due</div></div></div>
-        <div class="ov-panel-body">${pmHtml}${snoozedHtml}</div>
+        <div style="padding-top:10px; padding-bottom:6px;">${pmHtml}${snoozedHtml}</div>
       </div>
     </div>
 
     <div class="ov-row-2-wide">
       <div class="ov-panel">
         <div class="ov-panel-head"><div class="ov-panel-title-row"><div class="ov-icon-badge green"><i data-lucide="activity"></i></div><div class="ov-panel-title">Recent Activity</div></div></div>
-        <div class="ov-panel-body">${activityHtml}</div>
+        <div style="padding-bottom:6px;">${activityHtml}</div>
       </div>
       <div class="ov-panel">
-        <div class="ov-panel-head">
-          <div class="ov-panel-title-row"><div class="ov-icon-badge purple"><i data-lucide="bell"></i></div><div class="ov-panel-title">Reminders</div></div>
-        </div>
+        <div class="ov-panel-head"><div class="ov-panel-title-row"><div class="ov-icon-badge purple"><i data-lucide="bell"></i></div><div class="ov-panel-title">Reminders</div></div></div>
         <div class="ov-panel-body">
-          <div class="row" style="margin-bottom:8px; gap:6px;">
-            <input id="new-note-text" placeholder="Add a note..." style="flex:1; font-size:12px; padding:6px 8px;">
-            <button class="ghost" style="padding:6px 10px; font-size:11px; border:1px solid var(--border);" onclick="window.addNote()">+</button>
+          <div style="display:flex; gap:6px; margin-bottom:10px;">
+            <input id="new-note-text" class="ov-note-input" placeholder="Add a note…" style="flex:1;" onkeydown="if(event.key==='Enter') window.addNote()">
+            <button class="ov-pm-btn" onclick="window.addNote()">+</button>
           </div>
           ${notesHtml}
         </div>
       </div>
     </div>
   `;
+
 
   lucide.createIcons({ root: el });
 }

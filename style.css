@@ -2,6 +2,48 @@
   --bg: #09090b; --panel: #18181b; --panel-raised: #27272a; --border: #3f3f46;
   --text: #fafafa; --text-muted: #a1a1aa; --amber: #f59e0b; --amber-dim: #78350f;
   --green: #10b981; --green-bg: rgba(16, 185, 129, 0.14); --red: #ef4444; --radius: 8px;
+
+  /* ── Overview design tokens (from cmms-dashboard-final.html mockup) ─────────
+     Prefixed --ov-* so they are purely additive. Existing tokens are untouched.
+     Font tokens require IBM Plex Sans/Mono to be imported in index.html (next step).
+  ─────────────────────────────────────────────────────────────────────────── */
+
+  /* Backgrounds */
+  --ov-bg-page:         #0B0B0D;
+  --ov-bg-panel:        #151519;
+  --ov-bg-panel-raised: #1B1B20;
+
+  /* Borders */
+  --ov-border:          #26262B;   /* subtler than --border (#3f3f46) */
+  --ov-border-strong:   #35353C;
+
+  /* Text — three-tier hierarchy */
+  --ov-text-primary:    #ECECEE;   /* slightly dimmer than --text (#fafafa) */
+  --ov-text-secondary:  #9B9BA2;   /* new mid tier, between primary and muted */
+  --ov-text-muted:      #5C5C63;   /* much darker than --text-muted (#a1a1aa) */
+
+  /* Accent (amber) */
+  --ov-accent:          #F5A300;
+  --ov-accent-dim:      rgba(245, 163, 0, 0.13);
+  --ov-accent-text-on-dim: #F7B733; /* slightly brighter for readability on dim bg */
+
+  /* Status colours */
+  --ov-progress:        #5B9DFF;
+  --ov-progress-dim:    rgba(91, 157, 255, 0.13);
+  --ov-waiting:         #B98AFC;
+  --ov-waiting-dim:     rgba(185, 138, 252, 0.13);
+  --ov-critical:        #FF5A5F;
+  --ov-critical-dim:    rgba(255, 90, 95, 0.13);
+  --ov-success:         #4ADE80;   /* lime-green, differs from --green (#10b981) */
+  --ov-success-dim:     rgba(74, 222, 128, 0.13);
+
+  /* Typography — scoped to Overview; fonts load after index.html update */
+  --ov-font-ui:   'IBM Plex Sans', -apple-system, 'Segoe UI', sans-serif;
+  --ov-font-data: 'IBM Plex Mono', 'SF Mono', monospace;
+
+  /* Geometry */
+  --ov-radius:    8px;             /* same as --radius; owned independently */
+  --ov-radius-panel: 10px;         /* panels in mockup use 10px vs 8px elsewhere */
 }
 * { box-sizing: border-box; }
 body { background: var(--bg); color: var(--text); font-family: 'Inter', -apple-system, sans-serif; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
@@ -49,6 +91,9 @@ button.big { width: 100%; padding: 14px; font-size: 15px; }
 .checklist-item:last-child { border-bottom: none; }
 .checklist-item.done { color: var(--text-muted); text-decoration: line-through; }
 
+.tab-nav { display: flex; gap: 4px; border-bottom: 1px solid var(--border); padding: 0 14px; background: var(--panel); position: sticky; top: 0; z-index: 10; }
+.tab-btn { flex: 1; background: transparent; border: none; border-radius: 0; padding: 14px 4px; color: var(--text-muted); border-bottom: 2px solid transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; }
+.tab-btn.active { color: var(--amber); border-bottom-color: var(--amber); }
 .tab-nav {
   display: flex;
   gap: 4px;
@@ -295,6 +340,89 @@ button.big { width: 100%; padding: 14px; font-size: 15px; }
 .ov-note-row { display: flex; align-items: flex-start; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 12.5px; }
 .ov-note-row:last-child { border-bottom: none; }
 .ov-note-row.done span { color: var(--text-muted); text-decoration: line-through; }
+
+
+/* ── Open Work Orders panel — visual redesign using --ov-* tokens ───────────
+   .ov-panel / .ov-panel-head / .ov-panel-title apply to all overview panels
+   (they are already overview-only classes, so this is safe).
+   Badge overrides are scoped to #ov-open-list to be non-breaking.
+──────────────────────────────────────────────────────────────────────────── */
+.ov-panel { background: var(--ov-bg-panel); border-color: var(--ov-border); border-radius: var(--ov-radius-panel); }
+.ov-panel-head { border-bottom-color: var(--ov-border); }
+.ov-panel-title { font-family: var(--ov-font-ui); font-size: 14.5px; font-weight: 600; letter-spacing: 0; }
+.ov-panel-body { background: var(--ov-bg-panel); }
+
+.ov-subtab { font-family: var(--ov-font-ui); font-size: 12.5px; color: var(--ov-text-secondary); }
+.ov-subtab.active { background: var(--ov-accent-dim); color: var(--ov-accent-text-on-dim); border-color: transparent; }
+
+/* WO rows */
+.ov-open-row { border-left: 2px solid var(--ov-border); border-bottom-color: var(--ov-border); }
+.ov-open-row.sev-critical { border-left-color: var(--ov-critical); background: linear-gradient(90deg, rgba(255,90,95,0.05), transparent 40%); }
+.ov-open-row.sev-warning { border-left-color: var(--ov-accent); }
+.ov-open-row:hover { background: var(--ov-bg-panel-raised); }
+
+/* WO row text */
+.ov-open-asset { font-family: var(--ov-font-ui); font-size: 13.5px; font-weight: 600; color: var(--ov-text-primary); letter-spacing: 0; }
+.ov-open-asset.other-type { color: var(--ov-text-secondary); font-weight: 500; }
+.ov-open-desc { color: var(--ov-text-secondary); }
+
+/* Category tag — border-only mono chip */
+.ov-wo-tag { font-family: var(--ov-font-data); font-size: 10.5px; color: var(--ov-text-muted); border: 1px solid var(--ov-border-strong); border-radius: 4px; padding: 1px 5px; }
+
+/* Last-action log excerpt */
+.ov-wo-log { color: var(--ov-text-muted); margin-top: 6px; font-size: 12px; padding-left: 10px; border-left: 2px solid var(--ov-border-strong); line-height: 1.5; font-family: var(--ov-font-ui); }
+.ov-wo-log b { color: var(--ov-text-secondary); font-weight: 500; }
+
+/* Stale age indicator */
+.ov-wo-stale { font-size: 11.5px; color: var(--ov-text-muted); display: flex; align-items: center; gap: 4px; white-space: nowrap; font-family: var(--ov-font-data); }
+.ov-wo-stale.crit { color: var(--ov-critical); }
+
+/* ── PM Due panel ── */
+/* Hero card for the most overdue item */
+.ov-pm-hero { background: var(--ov-critical-dim); border: 1px solid rgba(255,90,95,0.3); border-radius: 8px; padding: 12px 14px; margin: 0 14px 4px; }
+.ov-pm-hero-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.ov-pm-hero-asset { font-weight: 600; font-size: 13.5px; font-family: var(--ov-font-ui); color: var(--ov-text-primary); }
+.ov-pm-hero-cycle { color: var(--ov-text-secondary); font-size: 12px; margin-top: 2px; font-family: var(--ov-font-ui); }
+.ov-pm-hero-overdue { color: var(--ov-critical); font-family: var(--ov-font-data); font-size: 11.5px; font-weight: 500; white-space: nowrap; }
+.ov-pm-snooze { display: flex; gap: 6px; margin-top: 10px; }
+.ov-pm-btn { background: transparent; border: 1px solid var(--ov-border-strong); color: var(--ov-text-primary); font-size: 11.5px; padding: 5px 10px; border-radius: 5px; cursor: pointer; font-family: var(--ov-font-data); }
+.ov-pm-btn:hover { background: var(--ov-bg-panel-raised); }
+/* Regular list rows */
+.ov-pm-list-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border-top: 1px solid var(--ov-border); font-size: 13px; color: var(--ov-text-primary); font-family: var(--ov-font-ui); }
+.ov-pm-list-row:first-child { border-top: none; }
+.ov-pm-list-due { font-family: var(--ov-font-data); font-size: 11.5px; color: var(--ov-text-secondary); white-space: nowrap; margin-left: 12px; }
+.ov-pm-list-due.soon { color: var(--ov-accent-text-on-dim); }
+.ov-pm-list-due.over { color: var(--ov-critical); }
+/* Snoozed footer */
+.ov-pm-snoozed { margin: 8px 14px 0; padding-top: 8px; border-top: 1px dashed var(--ov-border); font-size: 11px; color: var(--ov-text-muted); font-family: var(--ov-font-data); }
+
+/* ── Recent Activity panel ── */
+.ov-activity-row { display: flex; justify-content: space-between; align-items: center; padding: 11px 14px; border-top: 1px solid var(--ov-border); gap: 12px; cursor: pointer; transition: background 0.12s; }
+.ov-activity-row:first-child { border-top: none; }
+.ov-activity-row:hover { background: var(--ov-bg-panel-raised); }
+.ov-activity-title { font-size: 13px; font-family: var(--ov-font-ui); color: var(--ov-text-primary); }
+.ov-activity-title b { font-weight: 600; }
+.ov-activity-meta { color: var(--ov-text-muted); font-size: 11.5px; margin-top: 2px; font-family: var(--ov-font-ui); }
+.ov-activity-chip { font-size: 10.5px; font-weight: 600; padding: 2px 7px; border-radius: 5px; flex-shrink: 0; font-family: var(--ov-font-ui); white-space: nowrap; }
+.ov-activity-chip.closed { background: var(--ov-success-dim); color: var(--ov-success); }
+.ov-activity-chip.update { background: var(--ov-accent-dim); color: var(--ov-accent-text-on-dim); }
+.ov-activity-chip.waiting { background: var(--ov-waiting-dim); color: var(--ov-waiting); }
+
+/* ── Reminders panel ── */
+.ov-note-input { width: 100%; background: var(--ov-bg-panel-raised); border: 1px solid var(--ov-border-strong); border-radius: 6px; padding: 8px 10px; color: var(--ov-text-primary); font-family: var(--ov-font-ui); font-size: 12.5px; transition: border-color 0.15s; }
+.ov-note-input:focus { outline: none; border-color: var(--ov-accent); }
+.ov-note-input::placeholder { color: var(--ov-text-muted); }
+.ov-note-group-label { font-size: 11px; color: var(--ov-text-muted); margin: 10px 0 4px; font-family: var(--ov-font-data); letter-spacing: 0; text-transform: none; }
+.ov-note-item { display: flex; gap: 9px; align-items: flex-start; padding: 6px 0; font-size: 12.5px; font-family: var(--ov-font-ui); color: var(--ov-text-primary); cursor: pointer; }
+.ov-note-item input[type=checkbox] { margin-top: 3px; accent-color: var(--ov-accent); flex-shrink: 0; }
+.ov-note-item.done span { color: var(--ov-text-muted); text-decoration: line-through; }
+
+/* Badge overrides — scoped to open list only */
+#ov-open-list .badge { font-family: var(--ov-font-ui); font-size: 10.5px; border-radius: 5px; text-transform: none; letter-spacing: 0; font-weight: 600; padding: 3px 8px; }
+#ov-open-list .badge.open { background: var(--ov-accent-dim); color: var(--ov-accent-text-on-dim); }
+#ov-open-list .badge.in_progress { background: var(--ov-progress-dim); color: var(--ov-progress); }
+#ov-open-list .badge.waiting_parts { background: var(--ov-waiting-dim); color: var(--ov-waiting); }
+#ov-open-list .badge.closed { background: var(--ov-success-dim); color: var(--ov-success); }
 
 /* Custom Select Component */
 .custom-select-wrapper { position: relative; }
