@@ -125,25 +125,140 @@ export async function deleteTypeTemplateItem(itemId) {
 }
 
 let currentManageAssetId = null;
+let cachedManageAssets = [];
+let manageAssetFilter = 'all';
+
+export function setManageAssetFilter(filter) {
+  manageAssetFilter = filter;
+  document.querySelectorAll('[data-manage-filter]').forEach(b => {
+    b.classList.toggle('active', b.dataset.manageFilter === filter);
+  });
+  renderManageAssetTable();
+}
+
+export function filterManageAssets() {
+  renderManageAssetTable();
+}
+
+export function renderManageAssetTable() {
+  const container = document.getElementById('manage-asset-list');
+  const countEl = document.getElementById('manage-asset-count');
+  if (!container) return;
+
+  const search = (document.getElementById('manage-asset-search')?.value || '').trim().toLowerCase();
+
+  let list = cachedManageAssets || [];
+  if (manageAssetFilter === 'p1-p2') {
+    list = list.filter(a => a.criticality === 'P1' || a.criticality === 'P2');
+  } else if (manageAssetFilter === 'down') {
+    list = list.filter(a => a.status === 'down');
+  }
+
+  if (search) {
+    list = list.filter(a =>
+      (a.name && a.name.toLowerCase().includes(search)) ||
+      (a.category && a.category.toLowerCase().includes(search)) ||
+      (a.location && a.location.toLowerCase().includes(search)) ||
+      (a.department && a.department.toLowerCase().includes(search)) ||
+      (a.criticality && a.criticality.toLowerCase().includes(search))
+    );
+  }
+
+  if (countEl) {
+    countEl.textContent = `${list.length} ${list.length === 1 ? 'asset' : 'assets'}`;
+  }
+
+  if (!list.length) {
+    container.innerHTML = `
+      <div class="manage-table-panel">
+        <div class="empty-note" style="padding:40px; text-align:center; color:var(--ov-text-muted); font-size:12.5px;">No assets match your search or filter.</div>
+      </div>`;
+    return;
+  }
+
+  const rows = list.map(a => {
+    const dotCls = a.status === 'down' ? 'down' : a.status === 'maintenance' ? 'maintenance' : '';
+    const dotTitle = a.status === 'down' ? 'Down (Open breakdown)' : a.status === 'maintenance' ? 'Under maintenance (Open PM)' : 'Running';
+    const critCls = a.criticality ? `crit-${a.criticality.toLowerCase()}` : '';
+    const catFormatted = a.category ? escapeHtml(a.category.replace('_', ' ')) : '—';
+    const locFormatted = a.location ? escapeHtml(a.location) : '—';
+    const deptFormatted = a.department ? escapeHtml(a.department) : '—';
+    const catTag = a.category ? `<span class="asset-class">${escapeHtml(a.category.toUpperCase().replace(/_/g, ''))}</span>` : '';
+
+    return `
+      <tr onclick="window.openManageAsset(${a.id}, '${escapeHtml(a.name).replace(/'/g, "\\'")}')">
+        <td>
+          <div class="asset-cell">
+            <span class="status-dot ${dotCls}" title="${dotTitle}"></span>
+            <span class="asset-name">${escapeHtml(a.name)}</span>
+            ${catTag}
+          </div>
+        </td>
+        <td class="muted-cell">${catFormatted}</td>
+        <td class="muted-cell">${locFormatted}</td>
+        <td class="muted-cell">${deptFormatted}</td>
+        <td>${a.criticality ? `<span class="crit ${critCls}">${escapeHtml(a.criticality)}</span>` : '<span class="card-meta">—</span>'}</td>
+        <td class="row-actions" title="Edit asset">&#8942;</td>
+      </tr>`;
+  }).join('');
+
+  container.innerHTML = `
+    <div class="manage-table-panel">
+      <div class="manage-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Asset</th>
+              <th>Category</th>
+              <th>Location</th>
+              <th>Department</th>
+              <th>Criticality</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+}
 
 export async function loadManageAssetList() {
   const list = document.getElementById('manage-asset-list');
   list.innerHTML = getLoaderHtml('Loading assets...');
 
-  const { data, error } = await sb.from('assets').select('id, name, location, category').order('name');
-  if (error) { list.innerHTML = `<div class="readout-empty">${error.message}</div>`; return; }
-  if (!data || !data.length) { list.innerHTML = '<div class="readout-empty">No assets yet.</div>'; return; }
+  const [assetsRes, breakdownWosRes, pmWosRes] = await Promise.all([
+    sb.from('assets').select('id, name, location, department, criticality, category').order('name'),
+    sb.from('work_orders').select('asset_id').eq('type', 'breakdown').in('status', ['open', 'in_progress']),
+    sb.from('work_orders').select('asset_id').eq('type', 'pm').in('status', ['open', 'in_progress']),
+  ]);
 
-  list.innerHTML = data.map(a => `
-    <div class="panel" style="cursor:pointer;" onclick="window.openManageAsset(${a.id}, '${escapeHtml(a.name).replace(/'/g, "\\'")}')">
-      <div class="row" style="justify-content:space-between; margin-bottom:0;">
-        <div class="card-title" style="margin:0;">${escapeHtml(a.name)}</div>
-        <span class="card-meta">${a.category ? escapeHtml(a.category).replace('_',' ') : 'uncategorized'}</span>
-      </div>
-      <div class="card-meta">${a.location || 'No location set'}</div>
-    </div>
-  `).join('');
+  if (assetsRes.error) {
+    list.innerHTML = `<div class="readout-empty">${assetsRes.error.message}</div>`;
+    return;
+  }
+  if (!assetsRes.data || !assetsRes.data.length) {
+    list.innerHTML = '<div class="readout-empty">No assets yet.</div>';
+    const countEl = document.getElementById('manage-asset-count');
+    if (countEl) countEl.textContent = '0 assets';
+    return;
+  }
+
+  const downSet = new Set((breakdownWosRes.data || []).map(w => w.asset_id));
+  const pmSet = new Set((pmWosRes.data || []).map(w => w.asset_id));
+
+  cachedManageAssets = (assetsRes.data || []).map(a => ({
+    ...a,
+    status: downSet.has(a.id) ? 'down' : pmSet.has(a.id) ? 'maintenance' : 'running'
+  }));
+
+  renderManageAssetTable();
 }
+
+window.setManageAssetFilter = setManageAssetFilter;
+window.filterManageAssets = filterManageAssets;
+
 
 export async function openManageAsset(assetId, assetName) {
   currentManageAssetId = assetId;

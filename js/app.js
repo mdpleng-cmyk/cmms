@@ -1,9 +1,9 @@
 import { sb } from './store.js';
 import { signIn, signOut, onSignedIn } from './auth.js';
-import { openNewAssetForm, closeNewAssetForm, createAsset, loadAssets, openAssetHistoryModal, closeAssetHistoryModal, renderAssetDropdown, selectAsset, goToSchedule, toggleScheduleItems, switchAssetModalTab, toggleAssetClassFields, onEquipmentTypeChange } from './assets.js';
+import { openNewAssetForm, closeNewAssetForm, createAsset, loadAssets, openAssetHistoryModal, closeAssetHistoryModal, renderAssetDropdown, selectAsset, goToSchedule, toggleScheduleItems, switchAssetModalTab, toggleAssetClassFields, onEquipmentTypeChange, setAssetTabFilter, filterAssetsTab } from './assets.js';
 import { openNewScheduleForm, closeNewScheduleForm, createSchedule, loadSchedules, addChecklistItem, toggleNewItemUnit, generatePmWoNow, onPmTargetChange } from './schedules.js';
 import { openNewWoForm, closeNewWoForm, createWorkOrder, loadWorkOrders, filterWorkOrders, triggerUpdateFlow, closeUpdateModal, reviewUpdateWo, backToEditWo, confirmSaveWo, toggleChecklistItem, saveReadingValue, openWoDetailModal, closeWoDetailModal, triggerUpdateFromDetail, openNewWoFormForAsset, raiseWoFromAssetPage, toggleWoCloseTimes, togglePlannedDateField, startEditVisit, cancelEditVisit, saveVisitEdit, startEditWoMeta, cancelWoMetaEdit, saveWoMetaEdit, logWithoutAsset, clearNoAssetSelection, cancelNoAssetWarning, continueWithoutAsset, viewCreatedWorkOrder, reloadLatestWoDetail } from './workOrders.js';
-import { loadManageAssetList, openManageAsset, backToManageList, saveManageCategory, saveManageSpecField, deleteManageSpec, addManageSpec, switchManageMode, createEquipmentType, openManageType, backToTypesList, saveTypeTemplateMeta, toggleNewTypeItemUnit, addTypeTemplateItem, deleteTypeTemplateItem, saveManageAssetField } from './manage.js';
+import { loadManageAssetList, openManageAsset, backToManageList, saveManageCategory, saveManageSpecField, deleteManageSpec, addManageSpec, switchManageMode, createEquipmentType, openManageType, backToTypesList, saveTypeTemplateMeta, toggleNewTypeItemUnit, addTypeTemplateItem, deleteTypeTemplateItem, saveManageAssetField, setManageAssetFilter, filterManageAssets } from './manage.js';
 import { loadOverview } from './overview.js';
 import { loadTelemetry } from './telemetry.js';
 
@@ -22,6 +22,8 @@ window.toggleScheduleItems = toggleScheduleItems;
 window.switchAssetModalTab = switchAssetModalTab;
 window.toggleAssetClassFields = toggleAssetClassFields;
 window.onEquipmentTypeChange = onEquipmentTypeChange;
+window.setAssetTabFilter = setAssetTabFilter;
+window.filterAssetsTab = filterAssetsTab;
 
 window.openNewScheduleForm = openNewScheduleForm;
 window.closeNewScheduleForm = closeNewScheduleForm;
@@ -80,6 +82,8 @@ window.toggleNewTypeItemUnit = toggleNewTypeItemUnit;
 window.addTypeTemplateItem = addTypeTemplateItem;
 window.deleteTypeTemplateItem = deleteTypeTemplateItem;
 window.saveManageAssetField = saveManageAssetField;
+window.setManageAssetFilter = setManageAssetFilter;
+window.filterManageAssets = filterManageAssets;
 
 // Tab Logic
 window.switchTab = function(tab) {
