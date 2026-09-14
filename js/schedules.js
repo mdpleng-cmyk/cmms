@@ -13,31 +13,34 @@ export async function openNewScheduleForm() {
     .select('id, name, equipment_type_id, equipment_types(id, name)')
     .order('name');
 
-  // Build: one entry per unique equipment type (classes), then one entry per
-  // standalone asset (equipment_type_id IS NULL).
-  const typeMap = new Map();   // type_id → type name
-  const standalones = [];
-
+  // Build classes and individual asset options
+  const typeMap = new Map();
   for (const a of (assets || [])) {
     if (a.equipment_type_id != null && a.equipment_types) {
       if (!typeMap.has(a.equipment_type_id)) {
         typeMap.set(a.equipment_type_id, a.equipment_types.name);
       }
-    } else if (a.equipment_type_id == null) {
-      standalones.push(a);
     }
   }
 
-  // Types sorted alphabetically, then standalones (already name-ordered from DB).
   const sortedTypes = [...typeMap.entries()].sort((a, b) => a[1].localeCompare(b[1]));
 
-  const options = [
-    ...sortedTypes.map(([id, name]) => `<option value="type:${id}">${escapeHtml(name)}</option>`),
-    ...standalones.map(a => `<option value="asset:${a.id}">${escapeHtml(a.name)}</option>`),
-  ];
+  const classOptions = sortedTypes.map(([id, name]) => `<option value="type:${id}">All ${escapeHtml(name)} Units (Class)</option>`);
+  const assetOptions = (assets || []).map(a => {
+    const typeLabel = a.equipment_types?.name ? ` [${a.equipment_types.name}]` : '';
+    return `<option value="asset:${a.id}">${escapeHtml(a.name)}${typeLabel}</option>`;
+  });
+
+  const html = [];
+  if (classOptions.length) {
+    html.push(`<optgroup label="Equipment Classes (All units in class)">${classOptions.join('')}</optgroup>`);
+  }
+  if (assetOptions.length) {
+    html.push(`<optgroup label="Individual Assets (Specific unit only)">${assetOptions.join('')}</optgroup>`);
+  }
 
   document.getElementById('sched-asset').innerHTML =
-    options.length ? options.join('') : '<option value="">No assets available</option>';
+    html.length ? html.join('') : '<option value="">No assets available</option>';
 
   // Set initial field state to match the first option.
   onPmTargetChange();
@@ -48,8 +51,6 @@ export function closeNewScheduleForm() { document.getElementById('new-schedule-f
 // Called by onchange on #sched-asset. Disables the date picker and shows a note
 // when an equipment-type (class) target is selected, because the due date is
 // calculated automatically per asset.
-// This also shows a preview of which assets will
-// receive schedules.
 export async function onPmTargetChange() {
   const val      = document.getElementById('sched-asset').value;
   const dueInput = document.getElementById('sched-due');
@@ -76,6 +77,12 @@ export async function onPmTargetChange() {
     dueNote.classList.add('hidden');
     preview.classList.add('hidden');
     preview.innerHTML = '';
+    const intervalVal = parseInt(document.getElementById('sched-interval')?.value, 10) || 30;
+    if (!dueInput.value) {
+      const d = new Date();
+      d.setDate(d.getDate() + intervalVal);
+      dueInput.value = d.toISOString().split('T')[0];
+    }
   }
 }
 

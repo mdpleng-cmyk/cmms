@@ -616,6 +616,7 @@ export async function openManageAsset(assetId, assetName) {
 
   document.getElementById('manage-add-spec-row').classList.toggle('hidden', !canWrite);
   await refreshManageSpecs(canWrite);
+  await loadAssetSchedules(assetId);
 }
 
 export async function saveManageAssetField(field, value) {
@@ -682,4 +683,371 @@ export async function addManageSpec() {
   document.getElementById('manage-new-spec-value').value = '';
   document.getElementById('manage-new-spec-unit').value = '';
   refreshManageSpecs(true);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Single-Asset PM Routines Management
+// ─────────────────────────────────────────────────────────────────────────────
+
+let currentAssetScheduleId = null;
+let cachedAssetSchedules = [];
+let cachedAssetScheduleItems = [];
+
+export async function loadAssetSchedules(assetId, selectId = null) {
+  const { data: schedules, error } = await sb.from('recurring_schedules')
+    .select('*')
+    .eq('asset_id', assetId)
+    .eq('active', true)
+    .order('interval_days', { ascending: true })
+    .order('id', { ascending: true });
+
+  if (error) console.error('loadAssetSchedules error:', error);
+  cachedAssetSchedules = schedules || [];
+
+  if (selectId && cachedAssetSchedules.some(s => s.id === selectId)) {
+    currentAssetScheduleId = selectId;
+  } else if (cachedAssetSchedules.length > 0) {
+    currentAssetScheduleId = cachedAssetSchedules[0].id;
+  } else {
+    currentAssetScheduleId = null;
+  }
+
+  renderAssetScheduleTabs();
+  syncActiveAssetScheduleUI();
+}
+
+function renderAssetScheduleTabs() {
+  const bar = document.getElementById('manage-asset-schedules-bar');
+  if (!bar) return;
+
+  const isCreatingNew = currentAssetScheduleId === null && cachedAssetSchedules.length > 0;
+
+  const tabsHtml = cachedAssetSchedules.map(s => {
+    const isActive = s.id === currentAssetScheduleId;
+    const isCustom = !s.pm_template_id;
+    return `
+      <button type="button" class="pm-template-tab ${isActive ? 'active' : ''}" onclick="window.selectAssetSchedule(${s.id})">
+        <i data-lucide="${isCustom ? 'wrench' : 'calendar-clock'}" style="width:13px; ${isCustom ? 'color:var(--blue);' : ''}"></i>
+        <span>${escapeHtml(s.title)}</span>
+        <span class="tab-interval">${s.interval_days}d</span>
+      </button>
+    `;
+  }).join('');
+
+  const newTabHtml = `
+    <button type="button" class="pm-template-tab ${isCreatingNew ? 'active' : ''}" onclick="window.startNewAssetSchedule()" style="${isCreatingNew ? '' : 'border-style:dashed; color:var(--text-muted);'}">
+      <i data-lucide="plus" style="width:13px; color:var(--green);"></i>
+      <span>${isCreatingNew ? 'New Routine (Unsaved)' : 'Add PM Routine'}</span>
+    </button>
+  `;
+
+  bar.innerHTML = tabsHtml + newTabHtml;
+  lucide.createIcons({ root: bar });
+}
+
+function syncActiveAssetScheduleUI() {
+  const activeSched = cachedAssetSchedules.find(s => s.id === currentAssetScheduleId);
+  const assetName = document.getElementById('manage-asset-title')?.textContent || '';
+  const titleInput = document.getElementById('asset-sched-title');
+  const intervalInput = document.getElementById('asset-sched-interval');
+  const dueInput = document.getElementById('asset-sched-due');
+  const reminderInput = document.getElementById('asset-sched-reminder');
+  const deleteBtn = document.getElementById('btn-delete-asset-sched');
+  const eyebrow = document.getElementById('asset-sched-eyebrow');
+  const meta = document.getElementById('asset-sched-meta');
+
+  if (activeSched) {
+    if (eyebrow) eyebrow.textContent = `PM Routine: ${activeSched.title}`;
+    if (meta) {
+      meta.textContent = activeSched.pm_template_id
+        ? 'This routine is linked from the equipment class template. Tasks added below will be preserved specifically for this unit.'
+        : 'This routine is custom scheduled specifically for this unit.';
+    }
+    if (titleInput) titleInput.value = activeSched.title || '';
+    if (intervalInput) intervalInput.value = activeSched.interval_days || 30;
+    if (dueInput) dueInput.value = activeSched.next_due_at || '';
+    if (reminderInput) reminderInput.value = activeSched.reminder_days_before || '';
+    if (deleteBtn) deleteBtn.classList.remove('hidden');
+    refreshAssetScheduleItems();
+  } else {
+    if (eyebrow) eyebrow.textContent = 'Create New PM Routine';
+    if (meta) meta.textContent = 'Configure a new recurring PM routine specifically for this machine.';
+    if (titleInput) {
+      titleInput.value = '';
+      titleInput.placeholder = assetName ? `e.g. ${assetName} · Daily Filter Inspection` : 'e.g. Daily Filter Inspection';
+    }
+    if (intervalInput) intervalInput.value = 30;
+    
+    // Default due date = today + 30 days
+    const nextDate = new Date();
+    nextDate.setDate(nextDate.getDate() + 30);
+    if (dueInput) dueInput.value = nextDate.toISOString().split('T')[0];
+
+    if (reminderInput) reminderInput.value = '';
+    if (deleteBtn) deleteBtn.classList.add('hidden');
+    const itemsBox = document.getElementById('asset-sched-items');
+    if (itemsBox) {
+      itemsBox.innerHTML = '<div class="card-meta" style="text-align:center; padding:24px 0;">Save this new PM routine above first, then add checklist items below.</div>';
+    }
+  }
+}
+
+export function selectAssetSchedule(scheduleId) {
+  currentAssetScheduleId = scheduleId;
+  renderAssetScheduleTabs();
+  syncActiveAssetScheduleUI();
+}
+
+export function startNewAssetSchedule() {
+  currentAssetScheduleId = null;
+  renderAssetScheduleTabs();
+  syncActiveAssetScheduleUI();
+  const titleInput = document.getElementById('asset-sched-title');
+  if (titleInput) titleInput.focus();
+}
+
+export async function saveAssetScheduleMeta() {
+  if (!currentManageAssetId) {
+    toast('Please select an asset first', 'err');
+    return;
+  }
+  const title = document.getElementById('asset-sched-title')?.value.trim() || '';
+  const intervalRaw = document.getElementById('asset-sched-interval')?.value.trim() || '';
+  const interval_days = parseInt(intervalRaw, 10);
+  const next_due_at = document.getElementById('asset-sched-due')?.value || null;
+  const reminderRaw = document.getElementById('asset-sched-reminder')?.value.trim() || '';
+  const reminder_days_before = reminderRaw ? parseInt(reminderRaw, 10) : null;
+
+  if (!title) { toast('Routine title required', 'err'); return; }
+  if (!interval_days || Number.isNaN(interval_days)) { toast('Valid interval (days) required', 'err'); return; }
+  if (!next_due_at) { toast('Next due date required', 'err'); return; }
+
+  setButtonLoading('btn-save-asset-sched', true);
+
+  try {
+    let savedId = currentAssetScheduleId;
+    if (currentAssetScheduleId) {
+      const { error } = await sb.from('recurring_schedules').update({
+        title,
+        interval_days,
+        next_due_at,
+        reminder_days_before
+      }).eq('id', currentAssetScheduleId);
+      if (error) { toast(error.message, 'err'); setButtonLoading('btn-save-asset-sched', false); return; }
+      toast('PM routine updated for this unit');
+    } else {
+      const { data, error } = await sb.from('recurring_schedules').insert({
+        asset_id: currentManageAssetId,
+        title,
+        interval_days,
+        next_due_at,
+        reminder_days_before,
+        pm_template_id: null
+      }).select('id').single();
+      if (error) { toast(error.message, 'err'); setButtonLoading('btn-save-asset-sched', false); return; }
+      savedId = data.id;
+      toast('New PM routine created for this unit!');
+    }
+
+    const saveBtn = document.getElementById('btn-save-asset-sched');
+    if (saveBtn) {
+      saveBtn.disabled = false;
+      saveBtn.innerHTML = '<i data-lucide="check" style="width:14px;"></i> Saved!';
+      lucide.createIcons({ root: saveBtn });
+      setTimeout(() => {
+        saveBtn.innerHTML = 'Save Routine';
+      }, 2000);
+    }
+    await loadAssetSchedules(currentManageAssetId, savedId);
+  } catch (err) {
+    setButtonLoading('btn-save-asset-sched', false);
+    console.error('saveAssetScheduleMeta error:', err);
+    toast(err.message || 'Failed to save schedule', 'err');
+  }
+}
+
+export async function deleteAssetSchedule() {
+  if (!currentAssetScheduleId) return;
+  const sched = cachedAssetSchedules.find(s => s.id === currentAssetScheduleId);
+  const schedTitle = sched?.title || 'this PM routine';
+
+  const proceed = confirm(`Are you sure you want to delete the PM routine "${schedTitle}" for this unit?\n\nThis will remove the schedule and its checklist items.`);
+  if (!proceed) return;
+
+  setButtonLoading('btn-delete-asset-sched', true, '<i data-lucide="loader-2" class="spin" style="width:12px;"></i> Deleting...');
+
+  try {
+    // Check if work orders exist for this schedule
+    const { data: woCount } = await sb.from('work_orders').select('id').eq('schedule_id', currentAssetScheduleId).limit(1);
+    if (woCount && woCount.length > 0) {
+      // Soft disable instead of hard deleting to protect work order foreign key constraint
+      const { error } = await sb.from('recurring_schedules').update({ active: false }).eq('id', currentAssetScheduleId);
+      if (error) throw error;
+      toast(`PM routine "${schedTitle}" disabled (historical Work Orders preserved)`);
+    } else {
+      // Hard delete items and schedule
+      await sb.from('checklist_items').delete().eq('schedule_id', currentAssetScheduleId);
+      const { error } = await sb.from('recurring_schedules').delete().eq('id', currentAssetScheduleId);
+      if (error) throw error;
+      toast(`PM routine "${schedTitle}" deleted`);
+    }
+
+    setButtonLoading('btn-delete-asset-sched', false);
+    await loadAssetSchedules(currentManageAssetId);
+  } catch (err) {
+    setButtonLoading('btn-delete-asset-sched', false);
+    console.error('deleteAssetSchedule error:', err);
+    toast(err.message || 'Failed to delete schedule', 'err');
+  }
+}
+
+export function toggleNewAssetItemUnit() {
+  const isReading = document.getElementById('new-asset-item-type').value === 'reading';
+  document.getElementById('new-asset-item-unit').style.display = isReading ? '' : 'none';
+}
+
+export async function refreshAssetScheduleItems() {
+  const box = document.getElementById('asset-sched-items');
+  if (!box) return;
+  if (!currentAssetScheduleId) {
+    box.innerHTML = '<div class="card-meta" style="text-align:center; padding:24px 0;">Save this new PM routine above first, then add checklist items below.</div>';
+    return;
+  }
+  const { data, error } = await sb.from('checklist_items')
+    .select('id, description, item_type, unit, section, tool, sort_order, template_item_id')
+    .eq('schedule_id', currentAssetScheduleId)
+    .eq('active', true)
+    .order('sort_order');
+  if (error) {
+    console.error('refreshAssetScheduleItems error:', error);
+    box.innerHTML = `<div class="card-meta" style="color:var(--red);">Error loading items: ${escapeHtml(error.message)}</div>`;
+    return;
+  }
+  cachedAssetScheduleItems = data || [];
+  renderAssetScheduleItems();
+}
+
+function renderAssetScheduleItems() {
+  const box = document.getElementById('asset-sched-items');
+  if (!cachedAssetScheduleItems.length) { box.innerHTML = '<div class="card-meta" style="padding:16px 0; text-align:center;">No checklist items yet for this schedule.</div>'; return; }
+
+  const sectionMap = new Map();
+  cachedAssetScheduleItems.forEach(i => {
+    const sec = (i.section && i.section.trim()) ? i.section.trim() : 'General';
+    if (!sectionMap.has(sec)) sectionMap.set(sec, []);
+    sectionMap.get(sec).push(i);
+  });
+
+  box.innerHTML = Array.from(sectionMap.entries()).map(([secName, items]) => `
+    <div style="margin-bottom:14px; background:var(--bg); border:1px solid var(--border); border-radius:8px; overflow:hidden;">
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 12px; background:rgba(255,255,255,0.03); border-bottom:1px solid var(--border);">
+        <span style="font-size:11.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; color:var(--text-muted);">
+          <i data-lucide="folder" style="width:12px; display:inline-block; vertical-align:-1px; margin-right:4px;"></i> ${escapeHtml(secName)} (${items.length})
+        </span>
+        <button class="ghost" style="padding:2px 8px; font-size:11px; border:1px solid var(--border);" onclick="window.prefillAssetItemSection('${escapeHtml(secName)}')">
+          <i data-lucide="plus" style="width:11px;"></i> Add to section
+        </button>
+      </div>
+      <div style="padding:0 10px;">
+        ${items.map(i => {
+          const isInherited = !!i.template_item_id;
+          return `
+            <div class="checklist-item" style="padding:8px 0; display:flex; justify-content:space-between; align-items:center; gap:8px;">
+              <div style="display:flex; align-items:center; gap:8px; flex:1; min-width:0;">
+                <i data-lucide="${i.item_type === 'reading' ? 'gauge' : 'check-square'}" style="width:14px; color:var(--text-muted); flex-shrink:0;"></i>
+                <div style="min-width:0;">
+                  <div style="font-size:13px; color:var(--text);">${escapeHtml(i.description)} ${i.item_type === 'reading' ? `<span class="card-meta">(${escapeHtml(i.unit || '')})</span>` : ''}</div>
+                  <div style="display:flex; gap:6px; align-items:center; margin-top:2px;">
+                    ${i.tool ? `<span class="pm-tool-chip">🔧 ${escapeHtml(i.tool)}</span>` : ''}
+                    ${isInherited ? `<span class="badge" style="font-size:9px; padding:1px 5px;">Class Template</span>` : `<span class="badge open" style="font-size:9px; padding:1px 5px;">Custom for Unit</span>`}
+                  </div>
+                </div>
+              </div>
+              <button class="ghost" style="padding:4px 8px; border:1px solid var(--border); color:var(--red);" onclick="window.deleteAssetScheduleItem(${i.id})">
+                <i data-lucide="trash-2" style="width:13px;"></i>
+              </button>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    </div>
+  `).join('');
+
+  lucide.createIcons({ root: box });
+}
+
+export function prefillAssetItemSection(secName) {
+  const secInput = document.getElementById('new-asset-item-section');
+  if (secInput) secInput.value = secName;
+  const descInput = document.getElementById('new-asset-item-desc');
+  if (descInput) descInput.focus();
+}
+
+export async function addAssetScheduleItem() {
+  const descEl = document.getElementById('new-asset-item-desc');
+  const description = descEl ? descEl.value.trim() : '';
+  if (!description) {
+    toast('Please enter a task description', 'err');
+    if (descEl) descEl.focus();
+    return;
+  }
+  const sectionInput = document.getElementById('new-asset-item-section');
+  const section = sectionInput ? sectionInput.value.trim() || null : null;
+  const toolInput = document.getElementById('new-asset-item-tool');
+  const tool = toolInput ? toolInput.value.trim() || null : null;
+  const item_type = document.getElementById('new-asset-item-type').value;
+  const unitInput = document.getElementById('new-asset-item-unit');
+  const unit = item_type === 'reading' ? (unitInput ? unitInput.value.trim() : null) : null;
+  if (item_type === 'reading' && !unit) { toast('Enter a unit for readings', 'err'); return; }
+
+  setButtonLoading('btn-add-asset-item', true);
+
+  try {
+    const scheduleId = currentAssetScheduleId;
+    if (!scheduleId) {
+      toast('Save the PM routine above first', 'err');
+      setButtonLoading('btn-add-asset-item', false, '<i data-lucide="plus" style="width:14px;"></i> Add Item');
+      return;
+    }
+
+    const nextSortOrder = (cachedAssetScheduleItems && cachedAssetScheduleItems.length)
+      ? Math.max(...cachedAssetScheduleItems.map(i => i.sort_order || 0)) + 1
+      : 1;
+
+    const payload = {
+      schedule_id: scheduleId,
+      description,
+      item_type,
+      unit,
+      section,
+      tool,
+      sort_order: nextSortOrder,
+      template_item_id: null
+    };
+
+    const { error } = await sb.from('checklist_items').insert(payload);
+    if (error) {
+      toast(error.message, 'err');
+      setButtonLoading('btn-add-asset-item', false, '<i data-lucide="plus" style="width:14px;"></i> Add Item');
+      return;
+    }
+
+    if (descEl) descEl.value = '';
+    if (unitInput) unitInput.value = '';
+    if (toolInput) toolInput.value = '';
+    toast('Task added to this machine');
+    setButtonLoading('btn-add-asset-item', false, '<i data-lucide="plus" style="width:14px;"></i> Add Item');
+    await refreshAssetScheduleItems();
+  } catch (err) {
+    setButtonLoading('btn-add-asset-item', false, '<i data-lucide="plus" style="width:14px;"></i> Add Item');
+    console.error('addAssetScheduleItem error:', err);
+    toast(err.message || 'Failed to add item', 'err');
+  }
+}
+
+export async function deleteAssetScheduleItem(itemId) {
+  const { error } = await sb.from('checklist_items').delete().eq('id', itemId);
+  if (error) { toast(error.message, 'err'); return; }
+  toast('Task removed from this schedule');
+  refreshAssetScheduleItems();
 }

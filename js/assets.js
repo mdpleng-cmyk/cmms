@@ -321,26 +321,45 @@ export async function openAssetHistoryModal(assetId, assetName) {
   if (schedRes.error) {
     schedContainer.innerHTML = `<div class="card-meta" style="color:var(--red);">${schedRes.error.message}</div>`;
   } else if (!schedRes.data || !schedRes.data.length) {
-    schedContainer.innerHTML = '<div class="card-meta">No PM schedules for this asset.</div>';
+    schedContainer.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <div class="card-meta">No PM schedules for this asset.</div>
+        <button class="ghost" style="padding:4px 8px; font-size:11px; border:1px solid var(--border);" onclick="window.manageAssetPmRoutines(${assetId}, '${escapeHtml(asset.name).replace(/'/g, "\\'")}')">
+          <i data-lucide="plus" style="width:12px; color:var(--green);"></i> Add PM Routine
+        </button>
+      </div>`;
   } else {
     const scheduleIds = schedRes.data.map(s => s.id);
     const { data: items } = await sb.from('checklist_items')
-      .select('id, schedule_id, description, item_type, unit')
+      .select('id, schedule_id, description, item_type, unit, section, tool, sort_order')
       .in('schedule_id', scheduleIds)
       .eq('active', true)
-      .order('added_at');
+      .order('sort_order', { ascending: true })
+      .order('id', { ascending: true });
     const itemsBySchedule = {};
     (items || []).forEach(i => {
       (itemsBySchedule[i.schedule_id] = itemsBySchedule[i.schedule_id] || []).push(i);
     });
 
-    schedContainer.innerHTML = schedRes.data.map(s => {
+    const headerHtml = `
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; padding-bottom:8px; border-bottom:1px solid var(--border);">
+        <span class="card-meta" style="font-weight:600;">${schedRes.data.length} PM Routine${schedRes.data.length !== 1 ? 's' : ''} Configured</span>
+        <button class="ghost" style="padding:4px 8px; font-size:11px; border:1px solid var(--border); display:inline-flex; align-items:center; gap:4px;" onclick="window.manageAssetPmRoutines(${assetId}, '${escapeHtml(asset.name).replace(/'/g, "\\'")}')">
+          <i data-lucide="settings" style="width:12px;"></i> Manage Routines &amp; Tasks &rarr;
+        </button>
+      </div>
+    `;
+
+    schedContainer.innerHTML = headerHtml + schedRes.data.map(s => {
       const its = itemsBySchedule[s.id] || [];
       const lastPm = lastPmBySchedule[s.id];
       const itemsHtml = its.length ? its.map(i => `
-        <div class="checklist-item" style="padding:6px 0;">
-          <i data-lucide="${i.item_type === 'reading' ? 'gauge' : 'minus'}" style="width:12px; color:var(--text-muted); margin-top:2px;"></i>
-          <span>${escapeHtml(i.description)}${i.item_type === 'reading' ? ` <span class="card-meta">(${escapeHtml(i.unit)})</span>` : ''}</span>
+        <div class="checklist-item" style="padding:6px 0; display:flex; justify-content:space-between; align-items:center; gap:8px;">
+          <div style="display:flex; align-items:center; gap:6px;">
+            <i data-lucide="${i.item_type === 'reading' ? 'gauge' : 'minus'}" style="width:12px; color:var(--text-muted); margin-top:2px;"></i>
+            <span>${escapeHtml(i.description)}${i.item_type === 'reading' ? ` <span class="card-meta">(${escapeHtml(i.unit || '')})</span>` : ''}</span>
+          </div>
+          ${i.tool ? `<span class="pm-tool-chip" style="font-size:10.5px; padding:1px 6px;">🔧 ${escapeHtml(i.tool)}</span>` : ''}
         </div>
       `).join('') : '<div class="card-meta" style="padding:6px 0;">No checklist items yet.</div>';
 
@@ -350,7 +369,7 @@ export async function openAssetHistoryModal(assetId, assetName) {
           <span style="font-size:13px;">${escapeHtml(s.title)} <span class="card-meta">&middot; every ${s.interval_days}d &middot; due ${s.next_due_at}${lastPm ? ` &middot; last PM ${formatDate(lastPm.closed_at).split(',')[0]}` : ''}</span></span>
           <div style="display:flex; align-items:center; gap:6px;">
             <i data-lucide="chevron-down" id="sched-chevron-${s.id}" style="width:14px; color:var(--text-muted); transition:transform 0.2s;"></i>
-            <button class="ghost" style="padding:4px 8px; font-size:11px; border:1px solid var(--border);" onclick="event.stopPropagation(); window.goToSchedule(${s.id})">Edit &rarr;</button>
+            <button class="ghost" style="padding:4px 8px; font-size:11px; border:1px solid var(--border);" onclick="event.stopPropagation(); window.goToSchedule(${s.id})">PM Board &rarr;</button>
           </div>
         </div>
         <div id="sched-items-${s.id}" class="hidden" style="margin-top:8px; padding-left:4px;">${itemsHtml}</div>
@@ -358,6 +377,13 @@ export async function openAssetHistoryModal(assetId, assetName) {
     }).join('');
   }
   lucide.createIcons({ root: document.getElementById('asset-page') });
+}
+
+export function manageAssetPmRoutines(assetId, assetName) {
+  closeAssetHistoryModal();
+  window.switchTab('manage');
+  window.switchManageMode('assets');
+  window.openManageAsset(assetId, assetName);
 }
 
 export function closeAssetHistoryModal() {

@@ -224,6 +224,52 @@
               <button class="ghost" style="border:1px solid var(--border);" onclick="window.addManageSpec()"><i data-lucide="plus" style="width:14px;"></i></button>
             </div>
           </div>
+
+          <!-- Single Asset PM Routines Section -->
+          <div style="display:flex; justify-content:space-between; align-items:center; margin:24px 0 10px; flex-wrap:wrap; gap:8px;">
+            <div class="card-title" style="margin:0; font-size:16px;">PM Routines</div>
+            <button class="ghost" id="btn-new-asset-sched" style="border:1px solid var(--border); padding:4px 10px; font-size:12px; display:inline-flex; align-items:center; gap:5px;" onclick="window.startNewAssetSchedule()">
+              <i data-lucide="plus" style="width:13px; color:var(--green);"></i> New PM Routine
+            </button>
+          </div>
+
+          <!-- Asset Schedules Tabs Bar -->
+          <div id="manage-asset-schedules-bar" class="pm-template-tabs" style="margin-bottom:14px;"></div>
+
+          <div class="panel" id="panel-asset-sched-settings">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+              <div class="eyebrow" id="asset-sched-eyebrow" style="margin:0;">PM Routine Settings</div>
+              <button id="btn-delete-asset-sched" class="ghost hidden" style="color:var(--red); padding:3px 8px; font-size:11.5px; border:1px solid var(--border); display:inline-flex; align-items:center; gap:4px;" onclick="window.deleteAssetSchedule()">
+                <i data-lucide="trash-2" style="width:12px;"></i> Delete Routine
+              </button>
+            </div>
+            <div class="card-meta" id="asset-sched-meta" style="margin-bottom:12px;">Scheduled routine specifically for this machine.</div>
+            <div class="field"><label class="field-label">Title</label><input id="asset-sched-title" placeholder="e.g. Daily Infeed Check" style="width:100%;"></div>
+            <div class="row" style="gap:10px;">
+              <div class="field" style="flex:1;"><label class="field-label">Interval (days)</label><input id="asset-sched-interval" type="number" value="30" style="width:100%;"></div>
+              <div class="field" style="flex:1;"><label class="field-label">Next Due Date</label><input id="asset-sched-due" type="date" style="width:100%;"></div>
+              <div class="field" style="flex:1;"><label class="field-label">Reminder (days before)</label><input id="asset-sched-reminder" type="number" style="width:100%;"></div>
+            </div>
+            <div class="row" style="gap:8px;">
+              <button id="btn-save-asset-sched" class="primary" onclick="window.saveAssetScheduleMeta()">Save Routine</button>
+            </div>
+          </div>
+
+          <div class="panel" id="panel-asset-sched-items">
+            <label class="field-label">Checklist Items</label>
+            <div id="asset-sched-items" style="margin-top:10px;"></div>
+            <div class="row" style="margin-top:12px; gap:8px; flex-wrap:wrap;">
+              <input id="new-asset-item-section" placeholder="Section (e.g. INFEED)" style="width:180px;">
+              <input id="new-asset-item-desc" placeholder="Add checklist task..." style="flex:1; min-width:180px;">
+              <select id="new-asset-item-type" style="width:auto;" onchange="window.toggleNewAssetItemUnit()">
+                <option value="check">Check</option>
+                <option value="reading">Reading</option>
+              </select>
+              <input id="new-asset-item-unit" placeholder="unit" style="width:64px; display:none;">
+              <input id="new-asset-item-tool" placeholder="Tool (e.g. 10mm wrench)" style="width:150px;">
+              <button id="btn-add-asset-item" class="ghost" style="border:1px solid var(--border); white-space:nowrap;" onclick="window.addAssetScheduleItem()"><i data-lucide="plus" style="width:14px;"></i> Add Item</button>
+            </div>
+          </div>
         </div>
       </div>
 
