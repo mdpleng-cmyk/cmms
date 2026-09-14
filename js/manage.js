@@ -38,21 +38,18 @@ export async function createEquipmentType() {
   loadEquipmentTypesList();
 }
 
+let currentTemplateId = null;
+let cachedTypeTemplates = [];
+
 export async function openManageType(typeId, name) {
   console.log('openManageType called with:', { typeId, name });
   currentTypeId = typeId;
+  currentTemplateId = null;
   document.getElementById('manage-types-list-view').classList.add('hidden');
   document.getElementById('manage-types-detail-view').classList.remove('hidden');
   document.getElementById('manage-type-title').textContent = name;
 
-  const { data: templates, error: tmplErr } = await sb.from('equipment_type_pm_templates').select('*').eq('equipment_type_id', typeId).order('id').limit(1);
-  if (tmplErr) console.error('Error fetching template:', tmplErr);
-  const template = templates && templates.length ? templates[0] : null;
-  document.getElementById('type-template-title').value = template?.title || '';
-  document.getElementById('type-template-interval').value = template?.interval_days || 180;
-  document.getElementById('type-template-reminder').value = template?.reminder_days_before || '';
-
-  await refreshTypeTemplateItems();
+  await loadTypeTemplates(typeId);
 }
 
 export function backToTypesList() {
@@ -61,15 +58,139 @@ export function backToTypesList() {
   loadEquipmentTypesList();
 }
 
-async function getOrCreateTemplateId() {
-  if (!currentTypeId) return null;
-  const { data, error } = await sb.from('equipment_type_pm_templates').select('id').eq('equipment_type_id', currentTypeId).order('id').limit(1);
-  if (error) { console.error('getOrCreateTemplateId error:', error); return null; }
-  return (data && data.length) ? data[0].id : null;
+async function loadTypeTemplates(typeId, selectId = null) {
+  const { data: templates, error: tmplErr } = await sb.from('equipment_type_pm_templates')
+    .select('*')
+    .eq('equipment_type_id', typeId)
+    .order('interval_days', { ascending: true })
+    .order('id', { ascending: true });
+
+  if (tmplErr) console.error('Error fetching templates:', tmplErr);
+  cachedTypeTemplates = templates || [];
+
+  if (selectId && cachedTypeTemplates.some(t => t.id === selectId)) {
+    currentTemplateId = selectId;
+  } else if (cachedTypeTemplates.length > 0) {
+    currentTemplateId = cachedTypeTemplates[0].id;
+  } else {
+    currentTemplateId = null;
+  }
+
+  renderTypeTemplateTabs();
+  syncActiveTemplateUI();
+}
+
+function renderTypeTemplateTabs() {
+  const bar = document.getElementById('manage-type-templates-bar');
+  if (!bar) return;
+
+  const isCreatingNew = currentTemplateId === null && cachedTypeTemplates.length > 0;
+  
+  const tabsHtml = cachedTypeTemplates.map(t => {
+    const isActive = t.id === currentTemplateId;
+    return `
+      <button type="button" class="pm-template-tab ${isActive ? 'active' : ''}" onclick="window.selectTypeTemplate(${t.id})">
+        <i data-lucide="calendar-clock" style="width:13px;"></i>
+        <span>${escapeHtml(t.title)}</span>
+        <span class="tab-interval">${t.interval_days}d</span>
+      </button>
+    `;
+  }).join('');
+
+  const newTabHtml = `
+    <button type="button" class="pm-template-tab ${isCreatingNew ? 'active' : ''}" onclick="window.startNewTypeTemplate()" style="${isCreatingNew ? '' : 'border-style:dashed; color:var(--text-muted);'}">
+      <i data-lucide="plus" style="width:13px; color:var(--green);"></i>
+      <span>${isCreatingNew ? 'New Routine (Unsaved)' : 'Add PM Routine'}</span>
+    </button>
+  `;
+
+  bar.innerHTML = tabsHtml + newTabHtml;
+  lucide.createIcons({ root: bar });
+}
+
+function syncActiveTemplateUI() {
+  const activeTmpl = cachedTypeTemplates.find(t => t.id === currentTemplateId);
+  const typeName = document.getElementById('manage-type-title')?.textContent || '';
+  const titleInput = document.getElementById('type-template-title');
+  const intervalInput = document.getElementById('type-template-interval');
+  const reminderInput = document.getElementById('type-template-reminder');
+  const deleteBtn = document.getElementById('btn-delete-type-template');
+  const eyebrow = document.getElementById('type-template-eyebrow');
+
+  if (activeTmpl) {
+    if (eyebrow) eyebrow.textContent = `PM Routine: ${activeTmpl.title}`;
+    if (titleInput) titleInput.value = activeTmpl.title || '';
+    if (intervalInput) intervalInput.value = activeTmpl.interval_days || 180;
+    if (reminderInput) reminderInput.value = activeTmpl.reminder_days_before || '';
+    if (deleteBtn) deleteBtn.classList.remove('hidden');
+    refreshTypeTemplateItems();
+  } else {
+    if (eyebrow) eyebrow.textContent = 'Create New PM Routine';
+    if (titleInput) {
+      titleInput.value = '';
+      titleInput.placeholder = typeName ? `e.g. ${typeName} · 180d Electrical PM` : 'e.g. 180d Electrical PM';
+    }
+    if (intervalInput) intervalInput.value = 180;
+    if (reminderInput) reminderInput.value = '';
+    if (deleteBtn) deleteBtn.classList.add('hidden');
+    const itemsBox = document.getElementById('type-template-items');
+    if (itemsBox) {
+      itemsBox.innerHTML = '<div class="card-meta" style="text-align:center; padding:24px 0;">Save this new PM routine above first, then add checklist items below.</div>';
+    }
+  }
+}
+
+export function selectTypeTemplate(templateId) {
+  currentTemplateId = templateId;
+  renderTypeTemplateTabs();
+  syncActiveTemplateUI();
+}
+
+export function startNewTypeTemplate() {
+  currentTemplateId = null;
+  renderTypeTemplateTabs();
+  syncActiveTemplateUI();
+  const titleInput = document.getElementById('type-template-title');
+  if (titleInput) titleInput.focus();
+}
+
+export async function deleteTypeTemplate() {
+  if (!currentTemplateId) return;
+  const tmpl = cachedTypeTemplates.find(t => t.id === currentTemplateId);
+  const tmplTitle = tmpl?.title || 'this PM routine';
+
+  const proceed = confirm(`Are you sure you want to delete the PM routine "${tmplTitle}"?\n\nThis will remove the template and unlink associated recurring schedules for this equipment class.`);
+  if (!proceed) return;
+
+  setButtonLoading('btn-delete-type-template', true, '<i data-lucide="loader-2" class="spin" style="width:12px;"></i> Deleting...');
+
+  try {
+    // 1. Unlink recurring schedules so foreign key constraint does not block
+    await sb.from('recurring_schedules').update({ pm_template_id: null }).eq('pm_template_id', currentTemplateId);
+
+    // 2. Delete template items
+    await sb.from('equipment_type_pm_template_items').delete().eq('template_id', currentTemplateId);
+
+    // 3. Delete the template itself
+    const { error } = await sb.from('equipment_type_pm_templates').delete().eq('id', currentTemplateId);
+    if (error) {
+      toast('Failed to delete template: ' + error.message, 'err');
+      setButtonLoading('btn-delete-type-template', false);
+      return;
+    }
+
+    toast(`PM routine "${tmplTitle}" deleted`);
+    setButtonLoading('btn-delete-type-template', false);
+    await loadTypeTemplates(currentTypeId);
+  } catch (err) {
+    setButtonLoading('btn-delete-type-template', false);
+    console.error('deleteTypeTemplate error:', err);
+    toast(err.message || 'Failed to delete template', 'err');
+  }
 }
 
 export async function saveTypeTemplateMeta() {
-  console.log('saveTypeTemplateMeta called. currentTypeId:', currentTypeId);
+  console.log('saveTypeTemplateMeta called. currentTypeId:', currentTypeId, 'currentTemplateId:', currentTemplateId);
   if (!currentTypeId) {
     toast('Please select an equipment type first', 'err');
     return;
@@ -86,25 +207,27 @@ export async function saveTypeTemplateMeta() {
   setButtonLoading('btn-save-type-template', true);
 
   try {
-    const existingId = await getOrCreateTemplateId();
-    console.log('existingId for template:', existingId);
-    if (existingId) {
+    let savedId = currentTemplateId;
+    if (currentTemplateId) {
       const { error } = await sb.from('equipment_type_pm_templates').update({
         title,
         interval_days,
         reminder_days_before
-      }).eq('id', existingId);
+      }).eq('id', currentTemplateId);
       if (error) { toast(error.message, 'err'); setButtonLoading('btn-save-type-template', false); return; }
+      toast('PM routine updated — synced to every linked machine');
     } else {
-      const { error } = await sb.from('equipment_type_pm_templates').insert({
+      const { data, error } = await sb.from('equipment_type_pm_templates').insert({
         equipment_type_id: currentTypeId,
         title,
         interval_days,
         reminder_days_before
-      });
+      }).select('id').single();
       if (error) { toast(error.message, 'err'); setButtonLoading('btn-save-type-template', false); return; }
+      savedId = data.id;
+      toast('New PM routine created — auto-populated to all machines in this class!');
     }
-    toast('Template saved — title/interval synced to every linked machine');
+
     const saveBtn = document.getElementById('btn-save-type-template');
     if (saveBtn) {
       saveBtn.disabled = false;
@@ -114,7 +237,7 @@ export async function saveTypeTemplateMeta() {
         saveBtn.innerHTML = 'Save Template';
       }, 2000);
     }
-    await refreshTypeTemplateItems();
+    await loadTypeTemplates(currentTypeId, savedId);
   } catch (err) {
     setButtonLoading('btn-save-type-template', false);
     console.error('saveTypeTemplateMeta error:', err);
@@ -133,9 +256,14 @@ let editingTemplateItemId = null;
 async function refreshTypeTemplateItems() {
   const box = document.getElementById('type-template-items');
   if (!box) return;
-  const templateId = await getOrCreateTemplateId();
-  if (!templateId) { box.innerHTML = '<div class="card-meta">Save the template above first.</div>'; return; }
-  const { data, error } = await sb.from('equipment_type_pm_template_items').select('id, description, item_type, unit, section, tool, sort_order').eq('template_id', templateId).order('sort_order');
+  if (!currentTemplateId) {
+    box.innerHTML = '<div class="card-meta" style="text-align:center; padding:24px 0;">Save this new PM routine above first, then add checklist items below.</div>';
+    return;
+  }
+  const { data, error } = await sb.from('equipment_type_pm_template_items')
+    .select('id, description, item_type, unit, section, tool, sort_order')
+    .eq('template_id', currentTemplateId)
+    .order('sort_order');
   if (error) {
     console.error('refreshTypeTemplateItems error:', error);
     box.innerHTML = `<div class="card-meta" style="color:var(--red);">Error loading items: ${escapeHtml(error.message)}</div>`;
@@ -274,9 +402,9 @@ export async function addTypeTemplateItem() {
   setButtonLoading('btn-add-type-item', true);
 
   try {
-    const templateId = await getOrCreateTemplateId();
+    const templateId = currentTemplateId;
     if (!templateId) {
-      toast('Save the template above first', 'err');
+      toast('Save the PM routine above first', 'err');
       setButtonLoading('btn-add-type-item', false, '<i data-lucide="plus" style="width:14px;"></i> Add Item');
       return;
     }

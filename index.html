@@ -240,17 +240,32 @@
           <button class="ghost" style="margin:16px 0 8px; padding:6px 10px;" onclick="window.backToTypesList()">
             <i data-lucide="arrow-left" style="width:14px;"></i> Back
           </button>
-          <div class="card-title" id="manage-type-title" style="margin-bottom:12px;"></div>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
+            <div class="card-title" id="manage-type-title" style="margin:0;"></div>
+            <button class="ghost" id="btn-new-type-template" style="border:1px solid var(--border); padding:4px 10px; font-size:12px; display:inline-flex; align-items:center; gap:5px;" onclick="window.startNewTypeTemplate()">
+              <i data-lucide="plus" style="width:13px; color:var(--green);"></i> New PM Routine
+            </button>
+          </div>
+
+          <!-- Template Tabs Bar -->
+          <div id="manage-type-templates-bar" class="pm-template-tabs" style="margin-bottom:14px;"></div>
 
           <div class="panel">
-            <div class="eyebrow" style="margin-bottom:10px;">PM Template</div>
-            <div class="card-meta" style="margin-bottom:12px;">Stamped onto every new asset created with this type. Editing this never changes assets already created.</div>
-            <div class="field"><label class="field-label">Title</label><input id="type-template-title" placeholder="e.g. 6-Month General PM" style="width:100%;"></div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+              <div class="eyebrow" id="type-template-eyebrow" style="margin:0;">PM Routine Settings</div>
+              <button id="btn-delete-type-template" class="ghost hidden" style="color:var(--red); padding:3px 8px; font-size:11.5px; border:1px solid var(--border); display:inline-flex; align-items:center; gap:4px;" onclick="window.deleteTypeTemplate()">
+                <i data-lucide="trash-2" style="width:12px;"></i> Delete Routine
+              </button>
+            </div>
+            <div class="card-meta" style="margin-bottom:12px;">PM routines defined here automatically populate and live-link to every machine in this equipment class.</div>
+            <div class="field"><label class="field-label">Title</label><input id="type-template-title" placeholder="e.g. 180d Mechanical Inspection" style="width:100%;"></div>
             <div class="row">
               <div class="field" style="flex:1;"><label class="field-label">Interval (days)</label><input id="type-template-interval" type="number" value="180" style="width:100%;"></div>
               <div class="field" style="flex:1;"><label class="field-label">Reminder (days before)</label><input id="type-template-reminder" type="number" style="width:100%;"></div>
             </div>
-            <button id="btn-save-type-template" class="primary" onclick="window.saveTypeTemplateMeta()">Save Template</button>
+            <div class="row" style="gap:8px;">
+              <button id="btn-save-type-template" class="primary" onclick="window.saveTypeTemplateMeta()">Save Template</button>
+            </div>
           </div>
 
           <div class="panel">
