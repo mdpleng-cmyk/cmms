@@ -525,11 +525,49 @@ export async function addChecklistItemToClass(groupKey) {
 
 
 export async function loadChecklistItems(scheduleId) {
-  const { data } = await sb.from('checklist_items').select('id, description, item_type, unit').eq('schedule_id', scheduleId).eq('active', true).order('added_at');
+  const { data } = await sb.from('checklist_items')
+    .select('id, description, item_type, unit, section, tool, sort_order')
+    .eq('schedule_id', scheduleId)
+    .eq('active', true)
+    .order('sort_order', { ascending: true, nullsFirst: false })
+    .order('added_at', { ascending: true });
   const box = document.getElementById('items-' + scheduleId);
   if (!box) return;
   if (!data || !data.length) { box.innerHTML = '<div class="card-meta">No checklist tasks defined.</div>'; return; }
-  box.innerHTML = data.map(i => `<div class="checklist-item"><i data-lucide="${i.item_type === 'reading' ? 'gauge' : 'minus'}" style="width:12px; color:var(--text-muted); margin-top:2px;"></i> ${escapeHtml(i.description)}${i.item_type === 'reading' ? ` <span class="card-meta">(${escapeHtml(i.unit)})</span>` : ''}</div>`).join('');
+
+  const hasSections = data.some(i => i.section && i.section.trim());
+  if (!hasSections) {
+    box.innerHTML = data.map(i => `
+      <div class="checklist-item" style="display:flex; align-items:center; gap:6px;">
+        <i data-lucide="${i.item_type === 'reading' ? 'gauge' : 'minus'}" style="width:12px; color:var(--text-muted); flex-shrink:0;"></i>
+        <span style="flex:1;">${escapeHtml(i.description)}</span>
+        ${i.item_type === 'reading' ? ` <span class="card-meta">(${escapeHtml(i.unit || '')})</span>` : ''}
+        ${i.tool ? ` <span class="pm-tool-chip" style="font-size:10px; padding:1px 5px;">🔧 ${escapeHtml(i.tool)}</span>` : ''}
+      </div>
+    `).join('');
+  } else {
+    const groups = {};
+    for (const item of data) {
+      const sec = (item.section && item.section.trim()) ? item.section.trim() : 'General';
+      if (!groups[sec]) groups[sec] = [];
+      groups[sec].push(item);
+    }
+    box.innerHTML = Object.entries(groups).map(([sec, items]) => `
+      <div style="margin-top:6px; margin-bottom:6px;">
+        <div style="font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; color:var(--text-muted); margin-bottom:3px;">
+          ${escapeHtml(sec)} <span style="font-weight:normal; opacity:0.7;">(${items.length})</span>
+        </div>
+        ${items.map(i => `
+          <div class="checklist-item" style="display:flex; align-items:center; gap:6px; padding-left:6px;">
+            <i data-lucide="${i.item_type === 'reading' ? 'gauge' : 'minus'}" style="width:12px; color:var(--text-muted); flex-shrink:0;"></i>
+            <span style="flex:1;">${escapeHtml(i.description)}</span>
+            ${i.item_type === 'reading' ? ` <span class="card-meta">(${escapeHtml(i.unit || '')})</span>` : ''}
+            ${i.tool ? ` <span class="pm-tool-chip" style="font-size:10px; padding:1px 5px;">🔧 ${escapeHtml(i.tool)}</span>` : ''}
+          </div>
+        `).join('')}
+      </div>
+    `).join('');
+  }
   lucide.createIcons({ root: box });
 }
 

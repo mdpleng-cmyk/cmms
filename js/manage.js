@@ -92,45 +92,79 @@ async function refreshTypeTemplateItems() {
   const box = document.getElementById('type-template-items');
   const templateId = await getOrCreateTemplateId();
   if (!templateId) { box.innerHTML = '<div class="card-meta">Save the template above first.</div>'; return; }
-  const { data } = await sb.from('equipment_type_pm_template_items').select('id, description, item_type, unit').eq('template_id', templateId).order('sort_order');
+  const { data } = await sb.from('equipment_type_pm_template_items').select('id, description, item_type, unit, section, tool, sort_order').eq('template_id', templateId).order('sort_order');
   cachedTemplateItems = data || [];
   editingTemplateItemId = null;
   renderTypeTemplateItems();
 }
 
 // Renders from the cache so toggling edit mode on one row doesn't require a
-// re-fetch. Every add/edit/delete here is live-linked: it propagates via DB
-// trigger to every asset schedule stamped from this template (see
-// propagate_pm_template_item_change() in the pm_template live-link migration).
-// checklist_items rows that are asset-specific one-offs (template_item_id
-// NULL) are never touched by that propagation.
+// re-fetch. Groups items by section (e.g. ISOLATION, MAIN MOTOR). Every add/edit/delete
+// here is live-linked and propagates via DB triggers.
 function renderTypeTemplateItems() {
   const box = document.getElementById('type-template-items');
   if (!cachedTemplateItems.length) { box.innerHTML = '<div class="card-meta">No checklist items yet.</div>'; return; }
-  box.innerHTML = cachedTemplateItems.map(i => {
-    if (i.id === editingTemplateItemId) {
-      return `
-        <div class="checklist-item" style="gap:6px;">
-          <input id="edit-type-item-desc-${i.id}" value="${escapeHtml(i.description)}" style="flex:1;">
-          <select id="edit-type-item-type-${i.id}" style="width:auto;" onchange="window.toggleEditTypeItemUnit(${i.id})">
-            <option value="check" ${i.item_type === 'check' ? 'selected' : ''}>Check</option>
-            <option value="reading" ${i.item_type === 'reading' ? 'selected' : ''}>Reading</option>
-          </select>
-          <input id="edit-type-item-unit-${i.id}" placeholder="unit" value="${escapeHtml(i.unit || '')}" style="width:64px; display:${i.item_type === 'reading' ? '' : 'none'};">
-          <button class="ghost" style="padding:2px 6px;" onclick="window.saveTypeTemplateItem(${i.id})"><i data-lucide="check" style="width:12px; color:var(--green);"></i></button>
-          <button class="ghost" style="padding:2px 6px;" onclick="window.cancelEditTypeTemplateItem()"><i data-lucide="x" style="width:12px;"></i></button>
-        </div>`;
-    }
-    return `
-      <div class="checklist-item">
-        <i data-lucide="${i.item_type === 'reading' ? 'gauge' : 'minus'}" style="width:12px; color:var(--text-muted); margin-top:2px;"></i>
-        <span style="flex:1;">${escapeHtml(i.description)}${i.item_type === 'reading' ? ` <span class="card-meta">(${escapeHtml(i.unit || '')})</span>` : ''}</span>
-        <button class="ghost" style="padding:2px 6px;" onclick="window.startEditTypeTemplateItem(${i.id})"><i data-lucide="pencil" style="width:12px;"></i></button>
-        <button class="ghost" style="padding:2px 6px;" onclick="window.deleteTypeTemplateItem(${i.id})"><i data-lucide="trash-2" style="width:12px; color:var(--red);"></i></button>
+
+  // Group by section
+  const sectionMap = new Map();
+  cachedTemplateItems.forEach(i => {
+    const sec = (i.section && i.section.trim()) ? i.section.trim() : 'General';
+    if (!sectionMap.has(sec)) sectionMap.set(sec, []);
+    sectionMap.get(sec).push(i);
+  });
+
+  box.innerHTML = Array.from(sectionMap.entries()).map(([secName, items]) => `
+    <div style="margin-bottom:14px; background:var(--bg); border:1px solid var(--border); border-radius:8px; overflow:hidden;">
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 12px; background:rgba(255,255,255,0.03); border-bottom:1px solid var(--border);">
+        <span style="font-size:11.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; color:var(--text-muted);">
+          <i data-lucide="folder" style="width:12px; display:inline-block; vertical-align:-1px; margin-right:4px;"></i> ${escapeHtml(secName)} (${items.length})
+        </span>
+        <button class="ghost" style="padding:2px 8px; font-size:11px; border:1px solid var(--border);" onclick="window.prefillTypeItemSection('${escapeHtml(secName)}')">
+          <i data-lucide="plus" style="width:11px;"></i> Add to section
+        </button>
       </div>
-    `;
-  }).join('');
+      <div style="padding:0 10px;">
+        ${items.map(i => {
+          if (i.id === editingTemplateItemId) {
+            return `
+              <div class="checklist-item" style="gap:6px; flex-wrap:wrap; padding:8px 0;">
+                <input id="edit-type-item-sec-${i.id}" placeholder="Section" value="${escapeHtml(i.section || '')}" style="width:130px;">
+                <input id="edit-type-item-desc-${i.id}" value="${escapeHtml(i.description)}" style="flex:1; min-width:160px;">
+                <select id="edit-type-item-type-${i.id}" style="width:auto;" onchange="window.toggleEditTypeItemUnit(${i.id})">
+                  <option value="check" ${i.item_type === 'check' ? 'selected' : ''}>Check</option>
+                  <option value="reading" ${i.item_type === 'reading' ? 'selected' : ''}>Reading</option>
+                </select>
+                <input id="edit-type-item-unit-${i.id}" placeholder="unit" value="${escapeHtml(i.unit || '')}" style="width:64px; display:${i.item_type === 'reading' ? '' : 'none'};">
+                <input id="edit-type-item-tool-${i.id}" placeholder="Tool" value="${escapeHtml(i.tool || '')}" style="width:110px;">
+                <button class="ghost" style="padding:2px 6px;" onclick="window.saveTypeTemplateItem(${i.id})"><i data-lucide="check" style="width:12px; color:var(--green);"></i></button>
+                <button class="ghost" style="padding:2px 6px;" onclick="window.cancelEditTypeTemplateItem()"><i data-lucide="x" style="width:12px;"></i></button>
+              </div>`;
+          }
+          return `
+            <div class="checklist-item" style="display:flex; align-items:center; gap:8px; padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.04);">
+              <i data-lucide="${i.item_type === 'reading' ? 'gauge' : 'minus'}" style="width:12px; color:var(--text-muted); flex-shrink:0;"></i>
+              <div style="flex:1; min-width:0;">
+                <span style="color:var(--text); font-size:13.5px;">${escapeHtml(i.description)}</span>
+                ${i.item_type === 'reading' ? ` <span class="card-meta">(${escapeHtml(i.unit || '')})</span>` : ''}
+                ${i.tool ? ` <span class="pm-tool-chip">🔧 ${escapeHtml(i.tool)}</span>` : ''}
+              </div>
+              <button class="ghost" style="padding:2px 6px;" onclick="window.startEditTypeTemplateItem(${i.id})"><i data-lucide="pencil" style="width:12px;"></i></button>
+              <button class="ghost" style="padding:2px 6px;" onclick="window.deleteTypeTemplateItem(${i.id})"><i data-lucide="trash-2" style="width:12px; color:var(--red);"></i></button>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    </div>
+  `).join('');
   lucide.createIcons({ root: box });
+}
+
+export function prefillTypeItemSection(secName) {
+  const input = document.getElementById('new-type-item-section');
+  if (input) {
+    input.value = secName === 'General' ? '' : secName;
+    document.getElementById('new-type-item-desc')?.focus();
+  }
 }
 
 export function startEditTypeTemplateItem(itemId) {
@@ -151,12 +185,20 @@ export function toggleEditTypeItemUnit(itemId) {
 export async function saveTypeTemplateItem(itemId) {
   const description = document.getElementById(`edit-type-item-desc-${itemId}`).value.trim();
   if (!description) { toast('Description required', 'err'); return; }
+  const section = document.getElementById(`edit-type-item-sec-${itemId}`)?.value.trim() || null;
+  const tool = document.getElementById(`edit-type-item-tool-${itemId}`)?.value.trim() || null;
   const item_type = document.getElementById(`edit-type-item-type-${itemId}`).value;
   const unitInput = document.getElementById(`edit-type-item-unit-${itemId}`);
   const unit = item_type === 'reading' ? unitInput.value.trim() : null;
   if (item_type === 'reading' && !unit) { toast('Enter a unit for readings', 'err'); return; }
 
-  const { error } = await sb.from('equipment_type_pm_template_items').update({ description, item_type, unit }).eq('id', itemId);
+  const { error } = await sb.from('equipment_type_pm_template_items').update({
+    description,
+    item_type,
+    unit,
+    section,
+    tool
+  }).eq('id', itemId);
   if (error) { toast(error.message, 'err'); return; }
   toast('Task updated — synced to every linked machine');
   editingTemplateItemId = null;
@@ -166,6 +208,10 @@ export async function saveTypeTemplateItem(itemId) {
 export async function addTypeTemplateItem() {
   const description = document.getElementById('new-type-item-desc').value.trim();
   if (!description) return;
+  const sectionInput = document.getElementById('new-type-item-section');
+  const section = sectionInput ? sectionInput.value.trim() || null : null;
+  const toolInput = document.getElementById('new-type-item-tool');
+  const tool = toolInput ? toolInput.value.trim() || null : null;
   const item_type = document.getElementById('new-type-item-type').value;
   const unitInput = document.getElementById('new-type-item-unit');
   const unit = item_type === 'reading' ? unitInput.value.trim() : null;
@@ -174,10 +220,18 @@ export async function addTypeTemplateItem() {
   const templateId = await getOrCreateTemplateId();
   if (!templateId) { toast('Save the template above first', 'err'); return; }
 
-  const { error } = await sb.from('equipment_type_pm_template_items').insert({ template_id: templateId, description, item_type, unit });
+  const { error } = await sb.from('equipment_type_pm_template_items').insert({
+    template_id: templateId,
+    description,
+    item_type,
+    unit,
+    section,
+    tool
+  });
   if (error) { toast(error.message, 'err'); return; }
   document.getElementById('new-type-item-desc').value = '';
   unitInput.value = '';
+  if (toolInput) toolInput.value = '';
   toast('Task added — synced to every linked machine');
   refreshTypeTemplateItems();
 }

@@ -284,6 +284,10 @@ export async function openWoDetailModal(id) {
 
   renderWoDetailHeader(wo, false);
 
+  const isPm = wo.type === 'pm';
+  const runnerBtn = document.getElementById('wo-detail-runner-btn');
+  if (runnerBtn) runnerBtn.classList.toggle('hidden', !isPm);
+
   document.getElementById('wo-detail-update-btn').classList.toggle('hidden',
     !(wo.status !== 'closed' && (state.currentRole === 'admin' || state.currentRole === 'technician')));
 
@@ -318,12 +322,12 @@ export function isWoDetailDirty() {
     return true;
   }
 
-  // 5. Any checklist reading input has an unsaved value or is focused
+  // 5. Any checklist reading input has an unsaved value or is focused (detail modal or runner)
   const activeEl = document.activeElement;
-  if (activeEl && activeEl.matches && activeEl.matches('#wo-detail-checklist input[type="number"]')) {
+  if (activeEl && activeEl.matches && activeEl.matches('#wo-detail-checklist input[type="number"], #pm-runner-body input[type="number"]')) {
     return true;
   }
-  const readingInputs = document.querySelectorAll('#wo-detail-checklist input[data-prev-value]');
+  const readingInputs = document.querySelectorAll('#wo-detail-checklist input[data-prev-value], #pm-runner-body input[data-prev-value]');
   for (const input of readingInputs) {
     const prev = (input.dataset.prevValue ?? '').trim();
     const current = input.value.trim();
@@ -818,32 +822,74 @@ export async function confirmSaveWo() {
 async function loadChecklistForWo(woId) {
   const box = document.getElementById('wo-detail-checklist');
   const { data } = await sb.from('wo_checklist_results')
-    .select('id, done, result_value, checklist_items(description, item_type, unit)')
+    .select('id, done, result_value, checklist_items(description, item_type, unit, section, tool, sort_order)')
     .eq('wo_id', woId);
   if (!box) return;
   if (!data || !data.length) { box.classList.add('hidden'); return; }
   box.classList.remove('hidden');
   const isClosed = state.woDetailCurrent?.status === 'closed';
   const readOnly = state.currentRole === 'viewer' || isClosed;
-  box.innerHTML = `<div class="eyebrow" style="margin:14px 0 8px;">Checklist${isClosed ? ' <span class="card-meta" style="font-weight:normal; text-transform:none;">(Completed &amp; Locked)</span>' : ''}</div><div style="background:var(--bg); border:1px solid var(--border); border-radius:6px; padding:0 12px;">` +
-    data.map(r => {
-      const item = r.checklist_items;
-      if (item.item_type === 'reading') {
-        const valStr = (r.result_value != null && !Number.isNaN(Number(r.result_value))) ? String(r.result_value) : '';
-        return `
-        <div class="checklist-item">
-          <span style="flex:1;">${escapeHtml(item.description)}</span>
-          <input type="number" step="any" value="${escapeHtml(valStr)}" data-prev-value="${escapeHtml(valStr)}" placeholder="value" style="width:80px;"
-            ${readOnly ? 'disabled' : ''} onchange="window.saveReadingValue(${r.id}, this)">
-          <span class="card-meta" style="margin-left:4px;">${escapeHtml(item.unit || '')}</span>
-        </div>`;
-      }
-      return `
-      <label class="checklist-item ${r.done ? 'done' : ''}" style="${readOnly ? 'cursor:default;' : 'cursor:pointer;'}">
-        <input type="checkbox" ${r.done ? 'checked' : ''} ${readOnly ? 'disabled' : ''} onchange="window.toggleChecklistItem(${r.id}, this)">
-        <span>${escapeHtml(item.description)}</span>
-      </label>`;
-    }).join('') + `</div>`;
+
+  let html = `
+    <div style="display:flex; justify-content:space-between; align-items:center; margin:14px 0 8px; flex-wrap:wrap; gap:8px;">
+      <div class="eyebrow" style="margin:0;">Checklist${isClosed ? ' <span class="card-meta" style="font-weight:normal; text-transform:none;">(Completed &amp; Locked)</span>' : ''}</div>
+      <button class="ghost" style="padding:3px 8px; font-size:11.5px; border:1px solid var(--border); display:inline-flex; align-items:center; gap:5px; cursor:pointer;" onclick="window.openPmChecklistRunner(${woId})">
+        <i data-lucide="play-circle" style="width:13px; color:var(--green);"></i> PM Runner View
+      </button>
+    </div>
+  `;
+
+  const hasSections = data.some(r => r.checklist_items?.section && r.checklist_items.section.trim());
+  if (!hasSections) {
+    html += `<div style="background:var(--bg); border:1px solid var(--border); border-radius:6px; padding:0 12px;">` +
+      data.map(r => renderWoChecklistRow(r, readOnly)).join('') + `</div>`;
+  } else {
+    const groups = new Map();
+    for (const r of data) {
+      const sec = (r.checklist_items?.section && r.checklist_items.section.trim()) ? r.checklist_items.section.trim() : 'General';
+      if (!groups.has(sec)) groups.set(sec, []);
+      groups.get(sec).push(r);
+    }
+    html += Array.from(groups.entries()).map(([secName, items]) => `
+      <div style="margin-bottom:10px; background:var(--bg); border:1px solid var(--border); border-radius:6px; overflow:hidden;">
+        <div style="padding:6px 12px; background:rgba(255,255,255,0.03); border-bottom:1px solid var(--border); font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; color:var(--text-muted); display:flex; justify-content:space-between;">
+          <span>${escapeHtml(secName)}</span>
+          <span class="card-meta">${items.filter(i => i.done).length}/${items.length}</span>
+        </div>
+        <div style="padding:0 12px;">
+          ${items.map(r => renderWoChecklistRow(r, readOnly)).join('')}
+        </div>
+      </div>
+    `).join('');
+  }
+
+  box.innerHTML = html;
+  lucide.createIcons({ root: box });
+}
+
+function renderWoChecklistRow(r, readOnly) {
+  const item = r.checklist_items || {};
+  if (item.item_type === 'reading') {
+    const valStr = (r.result_value != null && !Number.isNaN(Number(r.result_value))) ? String(r.result_value) : '';
+    return `
+    <div class="checklist-item" style="display:flex; align-items:center; gap:8px;">
+      <span style="flex:1;">
+        ${escapeHtml(item.description || '')}
+        ${item.tool ? `<span class="pm-tool-chip" style="font-size:10px; padding:1px 5px; margin-left:6px;">🔧 ${escapeHtml(item.tool)}</span>` : ''}
+      </span>
+      <input type="number" step="any" value="${escapeHtml(valStr)}" data-prev-value="${escapeHtml(valStr)}" placeholder="value" style="width:80px;"
+        ${readOnly ? 'disabled' : ''} onchange="window.saveReadingValue(${r.id}, this)">
+      <span class="card-meta" style="margin-left:4px;">${escapeHtml(item.unit || '')}</span>
+    </div>`;
+  }
+  return `
+  <label class="checklist-item ${r.done ? 'done' : ''}" style="${readOnly ? 'cursor:default;' : 'cursor:pointer;'} display:flex; align-items:center; gap:8px;">
+    <input type="checkbox" ${r.done ? 'checked' : ''} ${readOnly ? 'disabled' : ''} onchange="window.toggleChecklistItem(${r.id}, this)">
+    <span style="flex:1;">
+      ${escapeHtml(item.description || '')}
+      ${item.tool ? `<span class="pm-tool-chip" style="font-size:10px; padding:1px 5px; margin-left:6px;">🔧 ${escapeHtml(item.tool)}</span>` : ''}
+    </span>
+  </label>`;
 }
 
 export async function toggleChecklistItem(resultId, checkboxEl) {
@@ -943,5 +989,311 @@ export async function saveReadingValue(resultId, inputEl) {
       inputEl.disabled = false;
     }
     checklistInFlight.delete(resultId);
+  }
+}
+
+let currentRunnerWoId = null;
+
+export function openRunnerFromDetail() {
+  if (state.woDetailCurrent?.id) {
+    openPmChecklistRunner(state.woDetailCurrent.id);
+  }
+}
+
+export async function openPmChecklistRunner(woId) {
+  let wo = (state.woDetailCurrent?.id === woId) ? state.woDetailCurrent : state.activeWorkOrders.find(w => w.id === woId);
+  if (!wo) {
+    const { data } = await sb.from('work_orders')
+      .select('*, assets(name), recurring_schedules(title, interval_days)')
+      .eq('id', woId)
+      .single();
+    wo = data;
+  }
+  if (!wo) {
+    toast('Work order not found', 'err');
+    return;
+  }
+
+  currentRunnerWoId = woId;
+  const isClosed = wo.status === 'closed';
+  const readOnly = state.currentRole === 'viewer' || isClosed;
+
+  // Set topbar info
+  const assetName = wo.assets?.name || 'No asset';
+  const metaText = `WO #${wo.id} · ${wo.status.replace('_', ' ').toUpperCase()}`;
+  const intervalDays = wo.recurring_schedules?.interval_days;
+  const pillText = `PM${intervalDays ? ` · ${intervalDays}d` : ''}`;
+
+  const nameEl = document.getElementById('pm-runner-asset-name');
+  const metaEl = document.getElementById('pm-runner-meta');
+  const pillEl = document.getElementById('pm-runner-pill');
+  if (nameEl) nameEl.innerText = assetName;
+  if (metaEl) metaEl.innerText = metaText;
+  if (pillEl) pillEl.innerText = pillText;
+
+  // Query checklist results
+  const { data: results, error } = await sb.from('wo_checklist_results')
+    .select('id, done, result_value, checklist_items(id, description, item_type, unit, section, tool, sort_order)')
+    .eq('wo_id', woId);
+
+  if (error) {
+    toast(error.message || 'Failed to load PM checklist', 'err');
+    return;
+  }
+
+  const sortedResults = (results || []).slice().sort((a, b) => {
+    const orderA = a.checklist_items?.sort_order ?? 999999;
+    const orderB = b.checklist_items?.sort_order ?? 999999;
+    if (orderA !== orderB) return orderA - orderB;
+    return a.id - b.id;
+  });
+
+  const sectionMap = new Map();
+  for (const r of sortedResults) {
+    const item = r.checklist_items || {};
+    const sec = (item.section && item.section.trim()) ? item.section.trim() : 'General';
+    if (!sectionMap.has(sec)) sectionMap.set(sec, []);
+    sectionMap.get(sec).push(r);
+  }
+
+  const bodyEl = document.getElementById('pm-runner-body');
+  if (!bodyEl) return;
+
+  if (!sortedResults.length) {
+    bodyEl.innerHTML = '<div class="card-meta" style="text-align:center; padding:40px 10px;">No checklist tasks defined for this work order.</div>';
+  } else {
+    bodyEl.innerHTML = Array.from(sectionMap.entries()).map(([secName, items]) => {
+      const secDone = items.filter(i => i.done).length;
+      const secTotal = items.length;
+      return `
+        <div class="pm-runner-section" data-section="${escapeHtml(secName)}">
+          <div class="pm-runner-section-head">
+            <span class="pm-runner-section-title">${escapeHtml(secName)}</span>
+            <span class="pm-runner-section-count" data-sec-count="${escapeHtml(secName)}">${secDone} / ${secTotal}</span>
+          </div>
+          <div class="pm-runner-card">
+            ${items.map(r => {
+              const item = r.checklist_items || {};
+              if (item.item_type === 'reading') {
+                const valStr = (r.result_value != null && !Number.isNaN(Number(r.result_value))) ? String(r.result_value) : '';
+                return `
+                  <div class="pm-runner-item ${r.done ? 'done' : ''}" id="pm-runner-item-${r.id}" data-result-id="${r.id}"
+                    onclick="this.querySelector('.pm-reading-input')?.focus()">
+                    <div class="pm-runner-check">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                      </svg>
+                    </div>
+                    <div class="pm-runner-item-text">
+                      <div class="pm-runner-item-label">${escapeHtml(item.description || '')}</div>
+                      ${item.tool ? `<div class="pm-tool-chip">🔧 ${escapeHtml(item.tool)}</div>` : ''}
+                      <div class="pm-reading-row" onclick="event.stopPropagation()">
+                        <input type="number" step="any" class="pm-reading-input" placeholder="0.0"
+                          value="${escapeHtml(valStr)}" data-prev-value="${escapeHtml(valStr)}"
+                          ${readOnly ? 'disabled' : ''}
+                          onchange="window.saveRunnerReading(${r.id}, this)">
+                        <span class="pm-reading-unit">${escapeHtml(item.unit || '')}</span>
+                      </div>
+                    </div>
+                  </div>
+                `;
+              }
+              return `
+                <div class="pm-runner-item ${r.done ? 'done' : ''}" id="pm-runner-item-${r.id}" data-result-id="${r.id}"
+                  onclick="${readOnly ? '' : `window.toggleRunnerItem(${r.id}, this)`}">
+                  <div class="pm-runner-check">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                      <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                  </div>
+                  <div class="pm-runner-item-text">
+                    <div class="pm-runner-item-label">${escapeHtml(item.description || '')}</div>
+                    ${item.tool ? `<div class="pm-tool-chip">🔧 ${escapeHtml(item.tool)}</div>` : ''}
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  updateRunnerProgressUI();
+  document.getElementById('modal-pm-runner').classList.remove('hidden');
+  lucide.createIcons({ root: document.getElementById('modal-pm-runner') });
+}
+
+export function closePmChecklistRunner() {
+  const modal = document.getElementById('modal-pm-runner');
+  if (modal) modal.classList.add('hidden');
+  if (currentRunnerWoId && state.woDetailCurrent?.id === currentRunnerWoId) {
+    loadChecklistForWo(currentRunnerWoId);
+  }
+}
+
+function updateRunnerProgressUI() {
+  const items = Array.from(document.querySelectorAll('#pm-runner-body .pm-runner-item'));
+  const total = items.length;
+  const done = items.filter(el => el.classList.contains('done')).length;
+
+  const doneEl = document.getElementById('pm-runner-progress-done');
+  const totalEl = document.getElementById('pm-runner-progress-total');
+  const fillEl = document.getElementById('pm-runner-progress-fill');
+  const btn = document.getElementById('pm-runner-complete-btn');
+
+  if (doneEl) doneEl.innerText = done;
+  if (totalEl) totalEl.innerText = total;
+
+  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+  if (fillEl) fillEl.style.width = `${pct}%`;
+
+  document.querySelectorAll('#pm-runner-body .pm-runner-section').forEach(sectionEl => {
+    const secItems = sectionEl.querySelectorAll('.pm-runner-item');
+    const secDone = sectionEl.querySelectorAll('.pm-runner-item.done').length;
+    const countEl = sectionEl.querySelector('[data-sec-count]');
+    if (countEl) countEl.innerText = `${secDone} / ${secItems.length}`;
+  });
+
+  if (btn) {
+    const isClosed = state.woDetailCurrent?.status === 'closed';
+    const isViewer = state.currentRole === 'viewer';
+    if (isClosed) {
+      btn.disabled = true;
+      btn.classList.remove('ready');
+      btn.innerText = 'Work Order Closed';
+    } else if (isViewer) {
+      btn.disabled = true;
+      btn.classList.remove('ready');
+      btn.innerText = 'View Only';
+    } else {
+      btn.disabled = false;
+      const isReady = total > 0 && done === total;
+      btn.classList.toggle('ready', isReady);
+      btn.innerText = `Complete WO (${done}/${total})`;
+    }
+  }
+}
+
+export async function toggleRunnerItem(resultId, itemEl) {
+  const isClosed = state.woDetailCurrent?.status === 'closed';
+  if (isClosed || state.currentRole === 'viewer') {
+    toast('Checklist cannot be modified on a closed work order', 'err');
+    return;
+  }
+
+  if (checklistInFlight.has(resultId)) return;
+
+  const wasDone = itemEl.classList.contains('done');
+  const newDone = !wasDone;
+
+  itemEl.classList.toggle('done', newDone);
+  updateRunnerProgressUI();
+
+  checklistInFlight.add(resultId);
+  try {
+    const { error } = await sb.from('wo_checklist_results').update({
+      done: newDone,
+      result_check: newDone,
+      done_at: newDone ? new Date().toISOString() : null
+    }).eq('id', resultId);
+
+    if (error) {
+      itemEl.classList.toggle('done', wasDone);
+      updateRunnerProgressUI();
+      toast(error.message || 'Failed to update item', 'err');
+    }
+  } catch (err) {
+    itemEl.classList.toggle('done', wasDone);
+    updateRunnerProgressUI();
+    toast(err.message || 'Failed to update item', 'err');
+  } finally {
+    checklistInFlight.delete(resultId);
+  }
+}
+
+export async function saveRunnerReading(resultId, inputEl) {
+  const isClosed = state.woDetailCurrent?.status === 'closed';
+  const prevValue = inputEl.dataset.prevValue ?? '';
+  if (isClosed || state.currentRole === 'viewer') {
+    toast('Checklist cannot be modified on a closed work order', 'err');
+    inputEl.value = prevValue;
+    return;
+  }
+
+  if (checklistInFlight.has(resultId)) {
+    inputEl.value = prevValue;
+    return;
+  }
+
+  const raw = inputEl.value.trim();
+  const value = raw === '' ? null : parseFloat(raw);
+
+  if (raw !== '' && Number.isNaN(value)) {
+    toast('Please enter a valid number', 'err');
+    inputEl.value = prevValue;
+    return;
+  }
+
+  const itemEl = inputEl.closest('.pm-runner-item');
+  const wasDone = itemEl ? itemEl.classList.contains('done') : false;
+  const newDone = value !== null;
+
+  if (itemEl) itemEl.classList.toggle('done', newDone);
+  updateRunnerProgressUI();
+
+  checklistInFlight.add(resultId);
+  inputEl.disabled = true;
+
+  try {
+    const { error } = await sb.from('wo_checklist_results').update({
+      result_value: value,
+      done: newDone,
+      done_at: newDone ? new Date().toISOString() : null
+    }).eq('id', resultId);
+
+    if (error) {
+      inputEl.value = prevValue;
+      if (itemEl) itemEl.classList.toggle('done', wasDone);
+      updateRunnerProgressUI();
+      toast(error.message || 'Failed to save reading', 'err');
+    } else {
+      inputEl.dataset.prevValue = value != null ? String(value) : '';
+    }
+  } catch (err) {
+    inputEl.value = prevValue;
+    if (itemEl) itemEl.classList.toggle('done', wasDone);
+    updateRunnerProgressUI();
+    toast(err.message || 'Failed to save reading', 'err');
+  } finally {
+    if (state.currentRole !== 'viewer' && state.woDetailCurrent?.status !== 'closed') {
+      inputEl.disabled = false;
+    }
+    checklistInFlight.delete(resultId);
+  }
+}
+
+export function completePmFromRunner() {
+  const isClosed = state.woDetailCurrent?.status === 'closed';
+  if (isClosed || state.currentRole === 'viewer') return;
+
+  const items = document.querySelectorAll('#pm-runner-body .pm-runner-item');
+  const total = items.length;
+  const done = document.querySelectorAll('#pm-runner-body .pm-runner-item.done').length;
+
+  if (total > 0 && done < total) {
+    const proceed = confirm(`Only ${done} of ${total} tasks are complete. Do you want to complete and close this Work Order?`);
+    if (!proceed) return;
+  }
+
+  if (currentRunnerWoId) {
+    closePmChecklistRunner();
+    triggerUpdateFlow(currentRunnerWoId);
+    const toggleClose = document.getElementById('toggle-close');
+    if (toggleClose) toggleClose.checked = true;
+    const notesEl = document.getElementById('modal-wo-notes');
+    if (notesEl && !notesEl.value.trim()) {
+      notesEl.value = 'PM checklist completed.';
+    }
   }
 }

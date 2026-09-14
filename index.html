@@ -256,14 +256,16 @@
           <div class="panel">
             <label class="field-label">Checklist Items</label>
             <div id="type-template-items" style="margin-top:10px;"></div>
-            <div class="row" style="margin-top:10px;">
-              <input id="new-type-item-desc" placeholder="Add checklist item..." style="flex:1;">
+            <div class="row" style="margin-top:12px; gap:8px; flex-wrap:wrap;">
+              <input id="new-type-item-section" placeholder="Section (e.g. MAIN MOTOR)" style="width:180px;">
+              <input id="new-type-item-desc" placeholder="Add checklist task..." style="flex:1; min-width:180px;">
               <select id="new-type-item-type" style="width:auto;" onchange="window.toggleNewTypeItemUnit()">
                 <option value="check">Check</option>
                 <option value="reading">Reading</option>
               </select>
               <input id="new-type-item-unit" placeholder="unit" style="width:64px; display:none;">
-              <button class="ghost" style="border:1px solid var(--border);" onclick="window.addTypeTemplateItem()"><i data-lucide="plus" style="width:14px;"></i></button>
+              <input id="new-type-item-tool" placeholder="Tool (e.g. 7mm socket)" style="width:150px;">
+              <button class="ghost" style="border:1px solid var(--border); white-space:nowrap;" onclick="window.addTypeTemplateItem()"><i data-lucide="plus" style="width:14px;"></i> Add Item</button>
             </div>
           </div>
         </div>
@@ -399,7 +401,8 @@
     <div id="wo-detail-checklist" class="hidden"></div>
     <div class="eyebrow" style="margin:16px 0 8px;">Activity</div>
     <div id="wo-detail-visits"></div>
-    <div class="row" style="margin-top:16px; border-top: 1px solid var(--border); padding-top: 14px; justify-content:flex-end;">
+    <div class="row" style="margin-top:16px; border-top: 1px solid var(--border); padding-top: 14px; justify-content:flex-end; gap:8px;">
+      <button id="wo-detail-runner-btn" class="secondary hidden" onclick="window.openRunnerFromDetail()"><i data-lucide="play-circle" style="width:14px; color:var(--green);"></i> PM Runner View</button>
       <button id="wo-detail-update-btn" class="primary hidden" onclick="window.triggerUpdateFromDetail()"><i data-lucide="edit" style="width:14px;"></i> Update Ticket</button>
     </div>
   </div>
@@ -543,6 +546,47 @@
     <div class="card-title" id="pick-pm-title" style="margin:0 0 12px; font-size:15px;"></div>
     <div class="card-meta" style="margin-bottom:12px;">Choose which asset to generate this PM work order for:</div>
     <div id="pick-pm-asset-list" style="display:flex; flex-direction:column; gap:6px;"></div>
+  </div>
+<!-- Mobile PM Checklist Runner Modal -->
+<div id="modal-pm-runner" class="pm-runner-modal-overlay hidden">
+  <div class="pm-runner-phone">
+    <!-- Topbar -->
+    <div class="pm-runner-topbar">
+      <div class="pm-runner-topbar-row">
+        <button class="pm-runner-back-btn" onclick="window.closePmChecklistRunner()" title="Back">
+          <i data-lucide="arrow-left" style="width:18px;"></i>
+        </button>
+        <div class="pm-runner-asset-id">
+          <div class="name" id="pm-runner-asset-name">Asset Name</div>
+          <div class="meta" id="pm-runner-meta">WO #000 · Status</div>
+        </div>
+        <div class="pm-runner-type-pill" id="pm-runner-pill">PM</div>
+      </div>
+      <div class="pm-progress-wrap">
+        <div class="pm-progress-labels">
+          <span>Checklist progress</span>
+          <span><b id="pm-runner-progress-done">0</b> / <span id="pm-runner-progress-total">0</span></span>
+        </div>
+        <div class="pm-progress-track">
+          <div class="pm-progress-fill" id="pm-runner-progress-fill"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scrollable Body with Section Cards -->
+    <div class="pm-runner-body" id="pm-runner-body">
+      <!-- Section cards injected by JS -->
+    </div>
+
+    <!-- Bottom Action Bar -->
+    <div class="pm-runner-action-bar">
+      <button class="pm-runner-btn pm-runner-btn-secondary" onclick="window.closePmChecklistRunner()">
+        <i data-lucide="save" style="width:14px;"></i> Save &amp; Exit
+      </button>
+      <button class="pm-runner-btn pm-runner-btn-primary" id="pm-runner-complete-btn" onclick="window.completePmFromRunner()">
+        Complete WO (0/0)
+      </button>
+    </div>
   </div>
 </div>
 

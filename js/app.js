@@ -2,8 +2,8 @@ import { sb } from './store.js';
 import { signIn, signOut, onSignedIn } from './auth.js';
 import { openNewAssetForm, closeNewAssetForm, createAsset, loadAssets, openAssetHistoryModal, closeAssetHistoryModal, renderAssetDropdown, selectAsset, goToSchedule, toggleScheduleItems, switchAssetModalTab, toggleAssetClassFields, onEquipmentTypeChange, setAssetTabFilter, filterAssetsTab } from './assets.js';
 import { openNewScheduleForm, closeNewScheduleForm, createSchedule, loadSchedules, addChecklistItem, toggleNewItemUnit, generatePmWoNow, onPmTargetChange, openPickPmAssetModal, closePickPmAssetModal, addChecklistItemToClass, toggleClassNewItemUnit, togglePmTile, toggleAllPmTiles } from './schedules.js';
-import { openNewWoForm, closeNewWoForm, createWorkOrder, loadWorkOrders, filterWorkOrders, triggerUpdateFlow, closeUpdateModal, reviewUpdateWo, backToEditWo, confirmSaveWo, toggleChecklistItem, saveReadingValue, openWoDetailModal, closeWoDetailModal, triggerUpdateFromDetail, openNewWoFormForAsset, raiseWoFromAssetPage, toggleWoCloseTimes, togglePlannedDateField, startEditVisit, cancelEditVisit, saveVisitEdit, startEditWoMeta, cancelWoMetaEdit, saveWoMetaEdit, logWithoutAsset, clearNoAssetSelection, cancelNoAssetWarning, continueWithoutAsset, viewCreatedWorkOrder, reloadLatestWoDetail } from './workOrders.js';
-import { loadManageAssetList, openManageAsset, backToManageList, saveManageCategory, saveManageSpecField, deleteManageSpec, addManageSpec, switchManageMode, createEquipmentType, openManageType, backToTypesList, saveTypeTemplateMeta, toggleNewTypeItemUnit, addTypeTemplateItem, deleteTypeTemplateItem, startEditTypeTemplateItem, cancelEditTypeTemplateItem, toggleEditTypeItemUnit, saveTypeTemplateItem, saveManageAssetField, setManageAssetFilter, filterManageAssets } from './manage.js';
+import { openNewWoForm, closeNewWoForm, createWorkOrder, loadWorkOrders, filterWorkOrders, triggerUpdateFlow, closeUpdateModal, reviewUpdateWo, backToEditWo, confirmSaveWo, toggleChecklistItem, saveReadingValue, openWoDetailModal, closeWoDetailModal, triggerUpdateFromDetail, openNewWoFormForAsset, raiseWoFromAssetPage, toggleWoCloseTimes, togglePlannedDateField, startEditVisit, cancelEditVisit, saveVisitEdit, startEditWoMeta, cancelWoMetaEdit, saveWoMetaEdit, logWithoutAsset, clearNoAssetSelection, cancelNoAssetWarning, continueWithoutAsset, viewCreatedWorkOrder, reloadLatestWoDetail, openPmChecklistRunner, closePmChecklistRunner, toggleRunnerItem, saveRunnerReading, completePmFromRunner, openRunnerFromDetail } from './workOrders.js';
+import { loadManageAssetList, openManageAsset, backToManageList, saveManageCategory, saveManageSpecField, deleteManageSpec, addManageSpec, switchManageMode, createEquipmentType, openManageType, backToTypesList, saveTypeTemplateMeta, toggleNewTypeItemUnit, addTypeTemplateItem, deleteTypeTemplateItem, startEditTypeTemplateItem, cancelEditTypeTemplateItem, toggleEditTypeItemUnit, saveTypeTemplateItem, saveManageAssetField, setManageAssetFilter, filterManageAssets, prefillTypeItemSection } from './manage.js';
 import { loadOverview } from './overview.js';
 import { loadTelemetry } from './telemetry.js';
 
@@ -70,6 +70,13 @@ window.startEditWoMeta = startEditWoMeta;
 window.cancelWoMetaEdit = cancelWoMetaEdit;
 window.saveWoMetaEdit = saveWoMetaEdit;
 window.reloadLatestWoDetail = reloadLatestWoDetail;
+window.openPmChecklistRunner = openPmChecklistRunner;
+window.closePmChecklistRunner = closePmChecklistRunner;
+window.toggleRunnerItem = toggleRunnerItem;
+window.saveRunnerReading = saveRunnerReading;
+window.completePmFromRunner = completePmFromRunner;
+window.openRunnerFromDetail = openRunnerFromDetail;
+window.prefillTypeItemSection = prefillTypeItemSection;
 
 
 window.openManageAsset = openManageAsset;
