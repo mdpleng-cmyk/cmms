@@ -525,14 +525,20 @@ export async function addChecklistItemToClass(groupKey) {
 
 
 export async function loadChecklistItems(scheduleId) {
-  const { data } = await sb.from('checklist_items')
+  const box = document.getElementById('items-' + scheduleId);
+  if (!box) return;
+  const { data, error } = await sb.from('checklist_items')
     .select('id, description, item_type, unit, section, tool, sort_order')
     .eq('schedule_id', scheduleId)
     .eq('active', true)
     .order('sort_order', { ascending: true, nullsFirst: false })
     .order('added_at', { ascending: true });
-  const box = document.getElementById('items-' + scheduleId);
-  if (!box) return;
+
+  if (error) {
+    console.error('loadChecklistItems error for schedule', scheduleId, error);
+    box.innerHTML = `<div class="card-meta" style="color:var(--red);">Error loading tasks: ${escapeHtml(error.message)}</div>`;
+    return;
+  }
   if (!data || !data.length) { box.innerHTML = '<div class="card-meta">No checklist tasks defined.</div>'; return; }
 
   const hasSections = data.some(i => i.section && i.section.trim());
