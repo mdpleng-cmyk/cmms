@@ -135,7 +135,10 @@
 
     <!-- SCHEDULES TAB -->
     <section id="tab-schedules" class="hidden">
-      <div class="row" style="margin-top:16px; justify-content:flex-end;">
+      <div class="row" style="margin-top:16px; justify-content:space-between; align-items:center;">
+        <button class="ghost" id="btn-toggle-all-pm" style="font-size:12px; border:1px solid var(--border); padding:6px 12px; display:none; align-items:center; gap:6px;" onclick="window.toggleAllPmTiles()">
+          <i data-lucide="chevrons-down" id="toggle-all-pm-icon" style="width:14px;"></i> <span id="toggle-all-pm-label">Expand All</span>
+        </button>
         <button class="primary" onclick="window.openNewScheduleForm()" id="btn-new-schedule"><i data-lucide="plus"></i> New PM Schedule</button>
       </div>
       <div id="new-schedule-form" class="panel hidden">

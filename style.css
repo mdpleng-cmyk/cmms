@@ -159,6 +159,20 @@ button.big { width: 100%; padding: 14px; font-size: 15px; }
 @keyframes flashHighlight { 0% { box-shadow: 0 0 0 2px var(--amber); } 100% { box-shadow: none; } }
 .flash-highlight { animation: flashHighlight 1.4s ease-out; }
 
+.pm-tile-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px;
+  cursor: pointer;
+  user-select: none;
+  gap: 12px;
+  transition: background 0.15s ease;
+}
+.pm-tile-header:hover {
+  background: rgba(255, 255, 255, 0.025);
+}
+
 /* Modals */
 .modal-overlay {
   position: fixed;

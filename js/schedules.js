@@ -171,6 +171,81 @@ export async function createSchedule() {
 }
 
 let classPmGroups = {};
+const expandedTileKeys = new Set();
+
+function getSafeKey(key) {
+  return 'pm-' + encodeURIComponent(key).replace(/[^a-zA-Z0-9_-]/g, '_');
+}
+
+export function togglePmTile(safeKey) {
+  const body = document.getElementById('pm-body-' + safeKey);
+  const chevron = document.getElementById('pm-chevron-' + safeKey);
+  if (!body) return;
+  const isHidden = body.classList.contains('hidden');
+  if (isHidden) {
+    body.classList.remove('hidden');
+    if (chevron) chevron.style.transform = 'rotate(180deg)';
+    expandedTileKeys.add(safeKey);
+  } else {
+    body.classList.add('hidden');
+    if (chevron) chevron.style.transform = 'rotate(0deg)';
+    expandedTileKeys.delete(safeKey);
+  }
+  updateToggleAllButton();
+}
+
+export function toggleAllPmTiles() {
+  const groupKeys = Object.keys(classPmGroups);
+  if (!groupKeys.length) return;
+
+  const allSafeKeys = groupKeys.map(k => getSafeKey(k));
+  const allExpanded = allSafeKeys.every(k => expandedTileKeys.has(k));
+
+  if (allExpanded) {
+    expandedTileKeys.clear();
+    allSafeKeys.forEach(k => {
+      const body = document.getElementById('pm-body-' + k);
+      const chevron = document.getElementById('pm-chevron-' + k);
+      if (body) body.classList.add('hidden');
+      if (chevron) chevron.style.transform = 'rotate(0deg)';
+    });
+  } else {
+    allSafeKeys.forEach(k => {
+      expandedTileKeys.add(k);
+      const body = document.getElementById('pm-body-' + k);
+      const chevron = document.getElementById('pm-chevron-' + k);
+      if (body) body.classList.remove('hidden');
+      if (chevron) chevron.style.transform = 'rotate(180deg)';
+    });
+  }
+  updateToggleAllButton();
+}
+
+export function updateToggleAllButton() {
+  const btn = document.getElementById('btn-toggle-all-pm');
+  const label = document.getElementById('toggle-all-pm-label');
+  const icon = document.getElementById('toggle-all-pm-icon');
+  if (!btn || !label) return;
+
+  const groupKeys = Object.keys(classPmGroups);
+  if (!groupKeys.length) {
+    btn.style.display = 'none';
+    return;
+  }
+  btn.style.display = 'inline-flex';
+
+  const allSafeKeys = groupKeys.map(k => getSafeKey(k));
+  const allExpanded = allSafeKeys.length > 0 && allSafeKeys.every(k => expandedTileKeys.has(k));
+
+  if (allExpanded) {
+    label.textContent = 'Collapse All';
+    if (icon) icon.setAttribute('data-lucide', 'chevrons-up');
+  } else {
+    label.textContent = 'Expand All';
+    if (icon) icon.setAttribute('data-lucide', 'chevrons-down');
+  }
+  lucide.createIcons({ root: btn });
+}
 
 export async function loadSchedules() {
   const list = document.getElementById('schedule-list');
@@ -180,7 +255,12 @@ export async function loadSchedules() {
   state.schedulesCache = data || [];
   
   if (error) { list.innerHTML = `<div class="readout-empty">${error.message}</div>`; return; }
-  if (!state.schedulesCache.length) { list.innerHTML = '<div class="readout-empty"><i data-lucide="calendar-clock" style="width:32px;height:32px;"></i> No PM schedules yet.</div>'; lucide.createIcons(); return; }
+  if (!state.schedulesCache.length) {
+    list.innerHTML = '<div class="readout-empty"><i data-lucide="calendar-clock" style="width:32px;height:32px;"></i> No PM schedules yet.</div>';
+    lucide.createIcons();
+    updateToggleAllButton();
+    return;
+  }
 
   // Group schedules by equipment class + title
   classPmGroups = {};
@@ -200,81 +280,133 @@ export async function loadSchedules() {
   });
 
   // Helper to render an individual schedule card (with checklist intact)
-  const renderScheduleCard = (s, isSubCard = false) => {
+  const renderScheduleCard = (s, isSubCard = false, groupKey = null) => {
     const typeName = s.assets?.equipment_types?.name;
+    const safeKey = getSafeKey(groupKey || ('single:::' + s.id));
+    const isExpanded = expandedTileKeys.has(safeKey);
+
+    if (isSubCard) {
+      return `
+      <div class="panel" id="schedule-card-${s.id}" style="background:var(--bg); border:1px solid var(--border); margin-bottom:0; padding:12px;">
+        <div class="row" style="justify-content:space-between; margin-bottom:2px;">
+          <div class="card-title" style="margin:0; font-size:14px;">${escapeHtml(s.title)} &mdash; <span style="font-size:13px; font-weight:500; color:var(--text);">${escapeHtml(s.assets?.name || 'Unknown')}</span></div>
+          ${state.currentRole !== 'viewer' ? `<button class="ghost" style="padding:4px 8px; font-size:11px; border:1px solid var(--border);" onclick="window.generatePmWoNow(${s.id})"><i data-lucide="zap" style="width:12px;"></i> Generate WO Now</button>` : ''}
+        </div>
+        <div class="card-meta">
+          <i data-lucide="server" style="width:12px; display:inline-block; vertical-align:-2px;"></i> ${escapeHtml(s.assets?.name || 'No asset')} &middot; 
+          <i data-lucide="rotate-cw" style="width:12px; display:inline-block; vertical-align:-2px;"></i> ${s.interval_days}d &middot; 
+          Due: ${s.next_due_at}
+        </div>
+        <div id="items-${s.id}" style="margin-top:10px"></div>
+        ${state.currentRole !== 'viewer' ? `
+          <div class="row" style="margin-top:12px">
+            <input id="new-item-${s.id}" placeholder="Add task only to ${escapeHtml(s.assets?.name || 'this unit')}..." style="flex:1;">
+            <select id="new-item-type-${s.id}" style="width:auto;" onchange="window.toggleNewItemUnit(${s.id})">
+              <option value="check">Check</option>
+              <option value="reading">Reading</option>
+            </select>
+            <input id="new-item-unit-${s.id}" placeholder="unit" style="width:64px; display:none;">
+            <button class="ghost" onclick="window.addChecklistItem(${s.id})" style="border:1px solid var(--border);"><i data-lucide="plus" style="width:14px;"></i></button>
+          </div>` : ''}
+      </div>`;
+    }
+
+    // Standalone (single) schedule card as top-level collapsible tile
     return `
-    <div class="panel" id="schedule-card-${s.id}" style="${isSubCard ? 'background:var(--bg); border:1px solid var(--border); margin-bottom:0;' : ''}">
-      <div class="row" style="justify-content:space-between; margin-bottom:2px;">
-        <div class="card-title" style="margin:0;">${escapeHtml(s.title)}${isSubCard ? ` &mdash; <span style="font-size:13px; font-weight:500; color:var(--text);">${escapeHtml(s.assets?.name || 'Unknown')}</span>` : ''}</div>
-        ${state.currentRole !== 'viewer' ? `<button class="ghost" style="padding:4px 8px; font-size:11px; border:1px solid var(--border);" onclick="window.generatePmWoNow(${s.id})"><i data-lucide="zap" style="width:12px;"></i> Generate WO Now</button>` : ''}
+    <div class="panel" id="schedule-card-${s.id}" style="margin-bottom:14px; padding:0; overflow:hidden;">
+      <div class="pm-tile-header" onclick="window.togglePmTile('${safeKey}')">
+        <div style="display:flex; align-items:center; gap:10px; flex:1; min-width:0;">
+          <i data-lucide="chevron-down" id="pm-chevron-${safeKey}" style="width:16px; min-width:16px; color:var(--text-muted); transition:transform 0.2s; transform:${isExpanded ? 'rotate(180deg)' : 'rotate(0deg)'};"></i>
+          <div style="min-width:0;">
+            <div class="card-title" style="margin:0; font-size:15px;">${escapeHtml(s.title)}</div>
+            <div class="card-meta" style="margin-top:3px;">
+              <i data-lucide="server" style="width:12px; display:inline-block; vertical-align:-2px;"></i> ${escapeHtml(s.assets?.name || 'No asset')}${typeName ? ` <span class="badge" style="font-size:9px; vertical-align:1px;">${escapeHtml(typeName)}</span>` : ''} &middot; 
+              <i data-lucide="rotate-cw" style="width:12px; display:inline-block; vertical-align:-2px;"></i> ${s.interval_days}d &middot; 
+              Due: ${s.next_due_at}
+            </div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;" onclick="event.stopPropagation()">
+          ${state.currentRole !== 'viewer' ? `<button class="ghost" style="padding:4px 8px; font-size:11px; border:1px solid var(--border); white-space:nowrap;" onclick="window.generatePmWoNow(${s.id})"><i data-lucide="zap" style="width:12px;"></i> Generate WO Now</button>` : ''}
+        </div>
       </div>
-      <div class="card-meta">
-        <i data-lucide="server" style="width:12px; display:inline-block; vertical-align:-2px;"></i> ${escapeHtml(s.assets?.name || 'No asset')}${typeName && !isSubCard ? ` <span class="badge" style="font-size:9px; vertical-align:1px;">${escapeHtml(typeName)}</span>` : ''} &middot; 
-        <i data-lucide="rotate-cw" style="width:12px; display:inline-block; vertical-align:-2px;"></i> ${s.interval_days}d &middot; 
-        Due: ${s.next_due_at}
+      <div id="pm-body-${safeKey}" class="${isExpanded ? '' : 'hidden'}" style="padding:0 16px 16px; border-top:1px solid var(--border);">
+        <div id="items-${s.id}" style="margin-top:12px"></div>
+        ${state.currentRole !== 'viewer' ? `
+          <div class="row" style="margin-top:12px">
+            <input id="new-item-${s.id}" placeholder="Add checklist item..." style="flex:1;">
+            <select id="new-item-type-${s.id}" style="width:auto;" onchange="window.toggleNewItemUnit(${s.id})">
+              <option value="check">Check</option>
+              <option value="reading">Reading</option>
+            </select>
+            <input id="new-item-unit-${s.id}" placeholder="unit" style="width:64px; display:none;">
+            <button class="ghost" onclick="window.addChecklistItem(${s.id})" style="border:1px solid var(--border);"><i data-lucide="plus" style="width:14px;"></i></button>
+          </div>` : ''}
       </div>
-      <div id="items-${s.id}" style="margin-top:12px"></div>
-      ${state.currentRole !== 'viewer' ? `
-        <div class="row" style="margin-top:12px">
-          <input id="new-item-${s.id}" placeholder="${isSubCard ? `Add task only to ${escapeHtml(s.assets?.name || 'this unit')}...` : 'Add checklist item...'}" style="flex:1;">
-          <select id="new-item-type-${s.id}" style="width:auto;" onchange="window.toggleNewItemUnit(${s.id})">
-            <option value="check">Check</option>
-            <option value="reading">Reading</option>
-          </select>
-          <input id="new-item-unit-${s.id}" placeholder="unit" style="width:64px; display:none;">
-          <button class="ghost" onclick="window.addChecklistItem(${s.id})" style="border:1px solid var(--border);"><i data-lucide="plus" style="width:14px;"></i></button>
-        </div>` : ''}
     </div>`;
   };
 
   list.innerHTML = Object.values(classPmGroups).map(group => {
     const isMultiUnitClass = group.typeName && group.schedules.length > 1;
     if (!isMultiUnitClass) {
-      return renderScheduleCard(group.schedules[0], false);
+      return renderScheduleCard(group.schedules[0], false, group.key);
     }
 
+    const safeKey = getSafeKey(group.key);
+    const isExpanded = expandedTileKeys.has(safeKey);
     const earliestDue = group.schedules.map(s => s.next_due_at).sort()[0] || '';
     const pluralClass = group.typeName
       ? (group.typeName.endsWith('s') || group.typeName.endsWith('S') ? group.typeName : group.typeName + 's')
       : 'units';
+
     return `
-      <div class="panel class-pm-group" style="margin-bottom:18px; border-left: 3px solid var(--amber);">
-        <!-- Group Header -->
-        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px; gap:12px;">
-          <div>
-            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-              <span class="badge open" style="font-size:10px; text-transform:uppercase;">${escapeHtml(group.typeName)}</span>
-              <div class="card-title" style="margin:0; font-size:15px;">${escapeHtml(group.title)}</div>
-            </div>
-            <div class="card-meta" style="margin-top:4px;">
-              ${group.schedules.length} units &middot; ${group.interval_days}d interval &middot; Earliest due: ${earliestDue}
+      <div class="panel class-pm-group" id="pm-tile-${safeKey}" style="margin-bottom:14px; border-left: 3px solid var(--amber); padding:0; overflow:hidden;">
+        <!-- Group Header (clickable to collapse/expand) -->
+        <div class="pm-tile-header" onclick="window.togglePmTile('${safeKey}')">
+          <div style="display:flex; align-items:center; gap:10px; flex:1; min-width:0;">
+            <i data-lucide="chevron-down" id="pm-chevron-${safeKey}" style="width:16px; min-width:16px; color:var(--text-muted); transition:transform 0.2s; transform:${isExpanded ? 'rotate(180deg)' : 'rotate(0deg)'};"></i>
+            <div style="min-width:0;">
+              <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                <span class="badge open" style="font-size:10px; text-transform:uppercase;">${escapeHtml(group.typeName)}</span>
+                <div class="card-title" style="margin:0; font-size:15px;">${escapeHtml(group.title)}</div>
+              </div>
+              <div class="card-meta" style="margin-top:3px;">
+                ${group.schedules.length} units &middot; ${group.interval_days}d interval &middot; Earliest due: ${earliestDue}
+              </div>
             </div>
           </div>
-          ${state.currentRole !== 'viewer' ? `
-            <button class="primary" style="padding:6px 12px; font-size:12px; white-space:nowrap;" onclick="window.openPickPmAssetModal('${escapeHtml(group.key)}')">
-              <i data-lucide="zap" style="width:13px; vertical-align:-1px;"></i> Generate PM
-            </button>` : ''}
+          <div style="display:flex; align-items:center; gap:8px;" onclick="event.stopPropagation()">
+            ${state.currentRole !== 'viewer' ? `
+              <button class="primary" style="padding:6px 12px; font-size:12px; white-space:nowrap;" onclick="window.openPickPmAssetModal('${escapeHtml(group.key)}')">
+                <i data-lucide="zap" style="width:13px; vertical-align:-1px;"></i> Generate PM
+              </button>` : ''}
+          </div>
         </div>
-        ${state.currentRole !== 'viewer' ? `
-          <div class="row" style="margin-top:2px; margin-bottom:10px; padding:10px; background:var(--bg); border:1px dashed var(--border); border-radius:6px;">
-            <input id="class-add-${group.schedules[0].id}-desc" placeholder="Add task to all ${group.schedules.length} ${escapeHtml(pluralClass)}..." style="flex:1;">
-            <select id="class-add-${group.schedules[0].id}-type" style="width:auto;" onchange="window.toggleClassNewItemUnit('${escapeHtml(group.key)}')">
-              <option value="check">Check</option>
-              <option value="reading">Reading</option>
-            </select>
-            <input id="class-add-${group.schedules[0].id}-unit" placeholder="unit" style="width:64px; display:none;">
-            <button class="ghost" onclick="window.addChecklistItemToClass('${escapeHtml(group.key)}')" style="border:1px solid var(--border); white-space:nowrap;">
-              <i data-lucide="plus" style="width:14px;"></i> Add to all ${escapeHtml(pluralClass)}
-            </button>
-          </div>` : ''}
-        <!-- Individual schedules with checklists intact underneath -->
-        <div style="display:flex; flex-direction:column; gap:12px; margin-top:14px; border-top:1px solid var(--border); padding-top:14px;">
-          ${group.schedules.map(s => renderScheduleCard(s, true)).join('')}
+
+        <!-- Group Body (collapsible) -->
+        <div id="pm-body-${safeKey}" class="${isExpanded ? '' : 'hidden'}" style="padding:0 16px 16px; border-top:1px solid var(--border);">
+          ${state.currentRole !== 'viewer' ? `
+            <div class="row" style="margin-top:14px; margin-bottom:12px; padding:10px; background:var(--bg); border:1px dashed var(--border); border-radius:6px;">
+              <input id="class-add-${group.schedules[0].id}-desc" placeholder="Add task to all ${group.schedules.length} ${escapeHtml(pluralClass)}..." style="flex:1;">
+              <select id="class-add-${group.schedules[0].id}-type" style="width:auto;" onchange="window.toggleClassNewItemUnit('${escapeHtml(group.key)}')">
+                <option value="check">Check</option>
+                <option value="reading">Reading</option>
+              </select>
+              <input id="class-add-${group.schedules[0].id}-unit" placeholder="unit" style="width:64px; display:none;">
+              <button class="ghost" onclick="window.addChecklistItemToClass('${escapeHtml(group.key)}')" style="border:1px solid var(--border); white-space:nowrap;">
+                <i data-lucide="plus" style="width:14px;"></i> Add to all ${escapeHtml(pluralClass)}
+              </button>
+            </div>` : ''}
+          <!-- Individual schedules with checklists intact underneath -->
+          <div style="display:flex; flex-direction:column; gap:12px; margin-top:12px;">
+            ${group.schedules.map(s => renderScheduleCard(s, true, group.key)).join('')}
+          </div>
         </div>
       </div>`;
   }).join('');
 
   lucide.createIcons();
+  updateToggleAllButton();
   for (const s of state.schedulesCache) loadChecklistItems(s.id);
 }
 
