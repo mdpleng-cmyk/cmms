@@ -590,7 +590,7 @@ function renderVisitsList() {
     <div class="activity-entry">
       <span class="activity-date">${formatDate(v.visited_at).split(',')[0]}</span>
       <div class="activity-body">
-        <p class="activity-title" style="color:var(--ov-text-muted); font-size:11px; margin:0 0 4px;">${v.visit_type.replace('_',' ')}${v.technician ? ' · ' + escapeHtml(v.technician) : ''}
+        <p class="activity-title" style="color:var(--ov-text-muted); font-size:11px; margin:0 0 4px;">${v.visit_type.replace('_',' ')}${v.technician ? ' · <span style="color:var(--ov-text-primary);">' + escapeHtml(v.technician) + '</span>' : ''}
           ${isPrivileged && (Date.now() - new Date(v.visited_at).getTime()) < EDIT_WINDOW_MS ? `<i data-lucide="pencil" style="width:11px; margin-left:6px; cursor:pointer; color:var(--ov-text-muted);" onclick="window.startEditVisit(${v.id})"></i>` : ''}
         </p>
         ${v.action_taken ? `<p class="ov-wo-log" style="color:var(--ov-text-primary); font-size:13.5px; margin:0 0 4px;">${escapeHtml(v.action_taken)}</p>` : ''}
