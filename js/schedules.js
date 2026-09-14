@@ -216,7 +216,7 @@ export async function loadSchedules() {
       <div id="items-${s.id}" style="margin-top:12px"></div>
       ${state.currentRole !== 'viewer' ? `
         <div class="row" style="margin-top:12px">
-          <input id="new-item-${s.id}" placeholder="Add checklist item..." style="flex:1;">
+          <input id="new-item-${s.id}" placeholder="${isSubCard ? `Add task only to ${escapeHtml(s.assets?.name || 'this unit')}...` : 'Add checklist item...'}" style="flex:1;">
           <select id="new-item-type-${s.id}" style="width:auto;" onchange="window.toggleNewItemUnit(${s.id})">
             <option value="check">Check</option>
             <option value="reading">Reading</option>
@@ -234,6 +234,9 @@ export async function loadSchedules() {
     }
 
     const earliestDue = group.schedules.map(s => s.next_due_at).sort()[0] || '';
+    const pluralClass = group.typeName
+      ? (group.typeName.endsWith('s') || group.typeName.endsWith('S') ? group.typeName : group.typeName + 's')
+      : 'units';
     return `
       <div class="panel class-pm-group" style="margin-bottom:18px; border-left: 3px solid var(--amber);">
         <!-- Group Header -->
@@ -254,14 +257,14 @@ export async function loadSchedules() {
         </div>
         ${state.currentRole !== 'viewer' ? `
           <div class="row" style="margin-top:2px; margin-bottom:10px; padding:10px; background:var(--bg); border:1px dashed var(--border); border-radius:6px;">
-            <input id="class-add-${group.schedules[0].id}-desc" placeholder="One-off task for these ${group.schedules.length} units only (not the template)..." style="flex:1;">
+            <input id="class-add-${group.schedules[0].id}-desc" placeholder="Add task to all ${group.schedules.length} ${escapeHtml(pluralClass)}..." style="flex:1;">
             <select id="class-add-${group.schedules[0].id}-type" style="width:auto;" onchange="window.toggleClassNewItemUnit('${escapeHtml(group.key)}')">
               <option value="check">Check</option>
               <option value="reading">Reading</option>
             </select>
             <input id="class-add-${group.schedules[0].id}-unit" placeholder="unit" style="width:64px; display:none;">
             <button class="ghost" onclick="window.addChecklistItemToClass('${escapeHtml(group.key)}')" style="border:1px solid var(--border); white-space:nowrap;">
-              <i data-lucide="plus" style="width:14px;"></i> Add to all
+              <i data-lucide="plus" style="width:14px;"></i> Add to all ${escapeHtml(pluralClass)}
             </button>
           </div>` : ''}
         <!-- Individual schedules with checklists intact underneath -->
