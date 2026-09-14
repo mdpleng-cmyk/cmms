@@ -821,10 +821,15 @@ export async function confirmSaveWo() {
 
 async function loadChecklistForWo(woId) {
   const box = document.getElementById('wo-detail-checklist');
-  const { data } = await sb.from('wo_checklist_results')
+  const { data, error } = await sb.from('wo_checklist_results')
     .select('id, done, result_value, checklist_items(description, item_type, unit, section, tool, sort_order)')
     .eq('wo_id', woId);
   if (!box) return;
+  if (error) {
+    console.error('Failed to load checklist for WO:', error);
+    box.classList.add('hidden');
+    return;
+  }
   if (!data || !data.length) { box.classList.add('hidden'); return; }
   box.classList.remove('hidden');
   const isClosed = state.woDetailCurrent?.status === 'closed';
@@ -1020,8 +1025,9 @@ export async function openPmChecklistRunner(woId) {
 
   // Set topbar info
   const assetName = wo.assets?.name || 'No asset';
-  const metaText = `WO #${wo.id} · ${wo.status.replace('_', ' ').toUpperCase()}`;
-  const intervalDays = wo.recurring_schedules?.interval_days;
+  const metaText = `WO #${wo.id} · ${(wo.status || 'open').replace('_', ' ').toUpperCase()}`;
+  const sched = (state.schedulesCache || []).find(s => s.id === wo.schedule_id);
+  const intervalDays = wo.recurring_schedules?.interval_days || sched?.interval_days;
   const pillText = `PM${intervalDays ? ` · ${intervalDays}d` : ''}`;
 
   const nameEl = document.getElementById('pm-runner-asset-name');
@@ -1037,6 +1043,7 @@ export async function openPmChecklistRunner(woId) {
     .eq('wo_id', woId);
 
   if (error) {
+    console.error('Failed to load PM runner checklist:', error);
     toast(error.message || 'Failed to load PM checklist', 'err');
     return;
   }
@@ -1274,7 +1281,7 @@ export async function saveRunnerReading(resultId, inputEl) {
 }
 
 export function completePmFromRunner() {
-  const isClosed = state.woDetailCurrent?.status === 'closed';
+  const isClosed = (state.woDetailCurrent?.status === 'closed') || (state.activeWorkOrders.find(w => w.id === currentRunnerWoId)?.status === 'closed');
   if (isClosed || state.currentRole === 'viewer') return;
 
   const items = document.querySelectorAll('#pm-runner-body .pm-runner-item');

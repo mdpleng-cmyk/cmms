@@ -547,8 +547,10 @@
     <div class="card-meta" style="margin-bottom:12px;">Choose which asset to generate this PM work order for:</div>
     <div id="pick-pm-asset-list" style="display:flex; flex-direction:column; gap:6px;"></div>
   </div>
+</div>
+
 <!-- Mobile PM Checklist Runner Modal -->
-<div id="modal-pm-runner" class="pm-runner-modal-overlay hidden">
+<div id="modal-pm-runner" class="pm-runner-modal-overlay hidden" onclick="if(event.target === this) window.closePmChecklistRunner()">
   <div class="pm-runner-phone">
     <!-- Topbar -->
     <div class="pm-runner-topbar">
