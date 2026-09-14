@@ -1,7 +1,7 @@
 import { sb } from './store.js';
 import { signIn, signOut, onSignedIn } from './auth.js';
 import { openNewAssetForm, closeNewAssetForm, createAsset, loadAssets, openAssetHistoryModal, closeAssetHistoryModal, renderAssetDropdown, selectAsset, goToSchedule, toggleScheduleItems, switchAssetModalTab, toggleAssetClassFields, onEquipmentTypeChange, setAssetTabFilter, filterAssetsTab } from './assets.js';
-import { openNewScheduleForm, closeNewScheduleForm, createSchedule, loadSchedules, addChecklistItem, toggleNewItemUnit, generatePmWoNow, onPmTargetChange } from './schedules.js';
+import { openNewScheduleForm, closeNewScheduleForm, createSchedule, loadSchedules, addChecklistItem, toggleNewItemUnit, generatePmWoNow, onPmTargetChange, openPickPmAssetModal, closePickPmAssetModal } from './schedules.js';
 import { openNewWoForm, closeNewWoForm, createWorkOrder, loadWorkOrders, filterWorkOrders, triggerUpdateFlow, closeUpdateModal, reviewUpdateWo, backToEditWo, confirmSaveWo, toggleChecklistItem, saveReadingValue, openWoDetailModal, closeWoDetailModal, triggerUpdateFromDetail, openNewWoFormForAsset, raiseWoFromAssetPage, toggleWoCloseTimes, togglePlannedDateField, startEditVisit, cancelEditVisit, saveVisitEdit, startEditWoMeta, cancelWoMetaEdit, saveWoMetaEdit, logWithoutAsset, clearNoAssetSelection, cancelNoAssetWarning, continueWithoutAsset, viewCreatedWorkOrder, reloadLatestWoDetail } from './workOrders.js';
 import { loadManageAssetList, openManageAsset, backToManageList, saveManageCategory, saveManageSpecField, deleteManageSpec, addManageSpec, switchManageMode, createEquipmentType, openManageType, backToTypesList, saveTypeTemplateMeta, toggleNewTypeItemUnit, addTypeTemplateItem, deleteTypeTemplateItem, saveManageAssetField, setManageAssetFilter, filterManageAssets } from './manage.js';
 import { loadOverview } from './overview.js';
@@ -32,6 +32,8 @@ window.addChecklistItem = addChecklistItem;
 window.toggleNewItemUnit = toggleNewItemUnit;
 window.generatePmWoNow = generatePmWoNow;
 window.onPmTargetChange = onPmTargetChange;
+window.openPickPmAssetModal = openPickPmAssetModal;
+window.closePickPmAssetModal = closePickPmAssetModal;
 
 window.openNewWoForm = openNewWoForm;
 window.closeNewWoForm = closeNewWoForm;

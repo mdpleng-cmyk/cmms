@@ -170,6 +170,8 @@ export async function createSchedule() {
   loadSchedules();
 }
 
+let classPmGroups = {};
+
 export async function loadSchedules() {
   const list = document.getElementById('schedule-list');
   list.innerHTML = getLoaderHtml('Loading schedules...');
@@ -180,17 +182,34 @@ export async function loadSchedules() {
   if (error) { list.innerHTML = `<div class="readout-empty">${error.message}</div>`; return; }
   if (!state.schedulesCache.length) { list.innerHTML = '<div class="readout-empty"><i data-lucide="calendar-clock" style="width:32px;height:32px;"></i> No PM schedules yet.</div>'; lucide.createIcons(); return; }
 
-  list.innerHTML = state.schedulesCache.map(s => {
+  // Group schedules by equipment class + title
+  classPmGroups = {};
+  state.schedulesCache.forEach(s => {
+    const typeName = s.assets?.equipment_types?.name;
+    const key = typeName ? `${typeName}:::${s.title}` : `single:::${s.id}`;
+    if (!classPmGroups[key]) {
+      classPmGroups[key] = {
+        key,
+        typeName: typeName || null,
+        title: s.title,
+        interval_days: s.interval_days,
+        schedules: []
+      };
+    }
+    classPmGroups[key].schedules.push(s);
+  });
+
+  // Helper to render an individual schedule card (with checklist intact)
+  const renderScheduleCard = (s, isSubCard = false) => {
     const typeName = s.assets?.equipment_types?.name;
     return `
-    <div class="panel" id="schedule-card-${s.id}">
+    <div class="panel" id="schedule-card-${s.id}" style="${isSubCard ? 'background:var(--bg); border:1px solid var(--border); margin-bottom:0;' : ''}">
       <div class="row" style="justify-content:space-between; margin-bottom:2px;">
-        <div class="card-title" style="margin:0;">${escapeHtml(s.title)}</div>
+        <div class="card-title" style="margin:0;">${escapeHtml(s.title)}${isSubCard ? ` &mdash; <span style="font-size:13px; font-weight:500; color:var(--text);">${escapeHtml(s.assets?.name || 'Unknown')}</span>` : ''}</div>
         ${state.currentRole !== 'viewer' ? `<button class="ghost" style="padding:4px 8px; font-size:11px; border:1px solid var(--border);" onclick="window.generatePmWoNow(${s.id})"><i data-lucide="zap" style="width:12px;"></i> Generate WO Now</button>` : ''}
       </div>
       <div class="card-meta">
-        <i data-lucide="server" style="width:12px; display:inline-block; vertical-align:-2px;"></i> ${s.assets?.name || ''} &middot; 
-        <i data-lucide="server" style="width:12px; display:inline-block; vertical-align:-2px;"></i> ${s.assets?.name || ''}${typeName ? ` <span class="badge" style="font-size:9px; vertical-align:1px;">${escapeHtml(typeName)}</span>` : ''} &middot; 
+        <i data-lucide="server" style="width:12px; display:inline-block; vertical-align:-2px;"></i> ${escapeHtml(s.assets?.name || 'No asset')}${typeName && !isSubCard ? ` <span class="badge" style="font-size:9px; vertical-align:1px;">${escapeHtml(typeName)}</span>` : ''} &middot; 
         <i data-lucide="rotate-cw" style="width:12px; display:inline-block; vertical-align:-2px;"></i> ${s.interval_days}d &middot; 
         Due: ${s.next_due_at}
       </div>
@@ -205,12 +224,92 @@ export async function loadSchedules() {
           <input id="new-item-unit-${s.id}" placeholder="unit" style="width:64px; display:none;">
           <button class="ghost" onclick="window.addChecklistItem(${s.id})" style="border:1px solid var(--border);"><i data-lucide="plus" style="width:14px;"></i></button>
         </div>` : ''}
-    </div>
-  `;
+    </div>`;
+  };
+
+  list.innerHTML = Object.values(classPmGroups).map(group => {
+    const isMultiUnitClass = group.typeName && group.schedules.length > 1;
+    if (!isMultiUnitClass) {
+      return renderScheduleCard(group.schedules[0], false);
+    }
+
+    const earliestDue = group.schedules.map(s => s.next_due_at).sort()[0] || '';
+    return `
+      <div class="panel class-pm-group" style="margin-bottom:18px; border-left: 3px solid var(--amber);">
+        <!-- Group Header -->
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px; gap:12px;">
+          <div>
+            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+              <span class="badge open" style="font-size:10px; text-transform:uppercase;">${escapeHtml(group.typeName)}</span>
+              <div class="card-title" style="margin:0; font-size:15px;">${escapeHtml(group.title)}</div>
+            </div>
+            <div class="card-meta" style="margin-top:4px;">
+              ${group.schedules.length} units &middot; ${group.interval_days}d interval &middot; Earliest due: ${earliestDue}
+            </div>
+          </div>
+          ${state.currentRole !== 'viewer' ? `
+            <button class="primary" style="padding:6px 12px; font-size:12px; white-space:nowrap;" onclick="window.openPickPmAssetModal('${escapeHtml(group.key)}')">
+              <i data-lucide="zap" style="width:13px; vertical-align:-1px;"></i> Generate PM
+            </button>` : ''}
+        </div>
+        <!-- Individual schedules with checklists intact underneath -->
+        <div style="display:flex; flex-direction:column; gap:12px; margin-top:14px; border-top:1px solid var(--border); padding-top:14px;">
+          ${group.schedules.map(s => renderScheduleCard(s, true)).join('')}
+        </div>
+      </div>`;
   }).join('');
+
   lucide.createIcons();
   for (const s of state.schedulesCache) loadChecklistItems(s.id);
 }
+
+export function openPickPmAssetModal(groupKey) {
+  const group = classPmGroups[groupKey];
+  if (!group) return;
+  if (group.schedules.length === 1) {
+    generatePmWoNow(group.schedules[0].id);
+    return;
+  }
+
+  document.getElementById('pick-pm-class-name').textContent = `${group.typeName} Class`;
+  document.getElementById('pick-pm-title').textContent = group.title;
+
+  const listEl = document.getElementById('pick-pm-asset-list');
+  const today = new Date(); today.setHours(0,0,0,0);
+
+  listEl.innerHTML = group.schedules.map(s => {
+    const dueDate = new Date(s.next_due_at + 'T00:00:00');
+    const diffDays = Math.round((dueDate - today) / 86400000);
+    const dueLabel = diffDays < 0
+      ? `<span style="color:var(--red); font-weight:500;">${Math.abs(diffDays)}d overdue</span>`
+      : diffDays === 0
+        ? `<span style="color:var(--amber); font-weight:500;">Due today</span>`
+        : `<span style="color:var(--text-muted);">Due in ${diffDays}d (${s.next_due_at})</span>`;
+
+    return `
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 12px; background:var(--bg); border:1px solid var(--border); border-radius:6px; cursor:pointer; transition:border-color 0.15s;"
+           onmouseover="this.style.borderColor='var(--amber)'"
+           onmouseout="this.style.borderColor='var(--border)'"
+           onclick="window.closePickPmAssetModal(); window.generatePmWoNow(${s.id});">
+        <div>
+          <div style="font-weight:600; font-size:13.5px; color:var(--text);">${escapeHtml(s.assets?.name || 'Unknown asset')}</div>
+          <div style="font-size:11.5px; margin-top:2px;">${dueLabel}</div>
+        </div>
+        <button class="primary" style="padding:4px 10px; font-size:11px; pointer-events:none;">
+          <i data-lucide="zap" style="width:11px;"></i> Select
+        </button>
+      </div>`;
+  }).join('');
+
+  document.getElementById('modal-pick-pm-asset').classList.remove('hidden');
+  lucide.createIcons({ root: document.getElementById('modal-pick-pm-asset') });
+}
+
+export function closePickPmAssetModal() {
+  const modal = document.getElementById('modal-pick-pm-asset');
+  if (modal) modal.classList.add('hidden');
+}
+
 
 export async function loadChecklistItems(scheduleId) {
   const { data } = await sb.from('checklist_items').select('id, description, item_type, unit').eq('schedule_id', scheduleId).eq('active', true).order('added_at');
