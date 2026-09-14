@@ -39,12 +39,15 @@ export async function createEquipmentType() {
 }
 
 export async function openManageType(typeId, name) {
+  console.log('openManageType called with:', { typeId, name });
   currentTypeId = typeId;
   document.getElementById('manage-types-list-view').classList.add('hidden');
   document.getElementById('manage-types-detail-view').classList.remove('hidden');
   document.getElementById('manage-type-title').textContent = name;
 
-  const { data: template } = await sb.from('equipment_type_pm_templates').select('*').eq('equipment_type_id', typeId).limit(1).maybeSingle();
+  const { data: templates, error: tmplErr } = await sb.from('equipment_type_pm_templates').select('*').eq('equipment_type_id', typeId).order('id').limit(1);
+  if (tmplErr) console.error('Error fetching template:', tmplErr);
+  const template = templates && templates.length ? templates[0] : null;
   document.getElementById('type-template-title').value = template?.title || '';
   document.getElementById('type-template-interval').value = template?.interval_days || 180;
   document.getElementById('type-template-reminder').value = template?.reminder_days_before || '';
@@ -59,11 +62,14 @@ export function backToTypesList() {
 }
 
 async function getOrCreateTemplateId() {
-  const { data } = await sb.from('equipment_type_pm_templates').select('id').eq('equipment_type_id', currentTypeId).limit(1).maybeSingle();
-  return data?.id || null;
+  if (!currentTypeId) return null;
+  const { data, error } = await sb.from('equipment_type_pm_templates').select('id').eq('equipment_type_id', currentTypeId).order('id').limit(1);
+  if (error) { console.error('getOrCreateTemplateId error:', error); return null; }
+  return (data && data.length) ? data[0].id : null;
 }
 
 export async function saveTypeTemplateMeta() {
+  console.log('saveTypeTemplateMeta called. currentTypeId:', currentTypeId);
   if (!currentTypeId) {
     toast('Please select an equipment type first', 'err');
     return;
@@ -79,6 +85,7 @@ export async function saveTypeTemplateMeta() {
 
   try {
     const existingId = await getOrCreateTemplateId();
+    console.log('existingId for template:', existingId);
     if (existingId) {
       const { error } = await sb.from('equipment_type_pm_templates').update({
         title,
@@ -237,6 +244,7 @@ export async function saveTypeTemplateItem(itemId) {
 export async function addTypeTemplateItem() {
   const descEl = document.getElementById('new-type-item-desc');
   const description = descEl ? descEl.value.trim() : '';
+  console.log('addTypeTemplateItem called. description:', description, 'currentTypeId:', currentTypeId);
   if (!description) {
     toast('Please enter a task description', 'err');
     if (descEl) descEl.focus();
