@@ -7,10 +7,9 @@ _Give this whole file to any AI assistant as context before asking for changes._
 
 ## ⚠️ Sync-status note — read this before trusting anything below as gospel
 This project has repeatedly drifted from what an AI assumed was "current" vs. what was actually live — the fix every time was asking the user to paste the real file rather than guessing twice. As of the latest session:
-- **Confirmed correct via a full, most-recent paste**: `js/workOrders.js`.
-- **One fix delivered since its last confirmed paste, not yet reconfirmed**: `js/app.js` (an import-list fix for `startEditWoMeta`/`cancelWoMetaEdit`/`saveWoMetaEdit`).
-- **Several edits delivered since their last confirmed paste, not yet reconfirmed**: `js/overview.js` (a query-syntax fix, priority-first sort fix, `other`-type de-emphasis), `style.css` (scrollbar styling, `color-scheme: dark`, `.badge.other`).
-- **Not fully repasted since before the whole Overview "Today" redesign began**, despite many edits to its WO modals since: `index.html`.
+- **Deployed 2026-09-14 via Supabase SQL Editor**: Migration `20260914090000_live_link_pm_templates.sql` (live-linking equipment-class PM templates to recurring schedules and checklist items via foreign keys, triggers, and backfill).
+- **Accompanying JS deployed on main (2026-09-14)**: `js/manage.js` (inline template item edit & propagation toasts), `js/schedules.js` (`addChecklistItemToClass()` one-off class additions & `toggleClassNewItemUnit()`), and `js/app.js` (window bindings).
+- **Confirmed correct & in sync**: `js/workOrders.js`, `js/app.js`, `js/manage.js`, `js/schedules.js`, `js/assets.js`, `index.html`, `style.css`.
 
 **Rule going forward**: before editing any file, if it hasn't been pasted fresh in the current conversation, ask for it. Don't assume a described edit landed — the user may have skipped it, applied it partially, or hit a mismatch and moved on without saying so explicitly.
 
