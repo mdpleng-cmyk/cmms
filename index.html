@@ -250,7 +250,7 @@
               <div class="field" style="flex:1;"><label class="field-label">Interval (days)</label><input id="type-template-interval" type="number" value="180" style="width:100%;"></div>
               <div class="field" style="flex:1;"><label class="field-label">Reminder (days before)</label><input id="type-template-reminder" type="number" style="width:100%;"></div>
             </div>
-            <button class="primary" onclick="window.saveTypeTemplateMeta()">Save Template</button>
+            <button id="btn-save-type-template" class="primary" onclick="window.saveTypeTemplateMeta()">Save Template</button>
           </div>
 
           <div class="panel">
@@ -265,7 +265,7 @@
               </select>
               <input id="new-type-item-unit" placeholder="unit" style="width:64px; display:none;">
               <input id="new-type-item-tool" placeholder="Tool (e.g. 7mm socket)" style="width:150px;">
-              <button class="ghost" style="border:1px solid var(--border); white-space:nowrap;" onclick="window.addTypeTemplateItem()"><i data-lucide="plus" style="width:14px;"></i> Add Item</button>
+              <button id="btn-add-type-item" class="ghost" style="border:1px solid var(--border); white-space:nowrap;" onclick="window.addTypeTemplateItem()"><i data-lucide="plus" style="width:14px;"></i> Add Item</button>
             </div>
           </div>
         </div>

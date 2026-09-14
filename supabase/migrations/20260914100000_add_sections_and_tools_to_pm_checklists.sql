@@ -11,7 +11,8 @@ ALTER TABLE public.equipment_type_pm_template_items
 
 ALTER TABLE public.checklist_items
   ADD COLUMN IF NOT EXISTS section text,
-  ADD COLUMN IF NOT EXISTS tool text;
+  ADD COLUMN IF NOT EXISTS tool text,
+  ADD COLUMN IF NOT EXISTS sort_order integer DEFAULT 1;
 
 CREATE INDEX IF NOT EXISTS idx_checklist_items_section
   ON public.checklist_items(section);

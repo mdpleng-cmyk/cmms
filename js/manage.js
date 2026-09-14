@@ -83,6 +83,8 @@ export async function saveTypeTemplateMeta() {
   if (!title) { toast('Template title required', 'err'); return; }
   if (!interval_days || Number.isNaN(interval_days)) { toast('Valid interval (days) required', 'err'); return; }
 
+  setButtonLoading('btn-save-type-template', true);
+
   try {
     const existingId = await getOrCreateTemplateId();
     console.log('existingId for template:', existingId);
@@ -92,7 +94,7 @@ export async function saveTypeTemplateMeta() {
         interval_days,
         reminder_days_before
       }).eq('id', existingId);
-      if (error) { toast(error.message, 'err'); return; }
+      if (error) { toast(error.message, 'err'); setButtonLoading('btn-save-type-template', false); return; }
     } else {
       const { error } = await sb.from('equipment_type_pm_templates').insert({
         equipment_type_id: currentTypeId,
@@ -100,11 +102,21 @@ export async function saveTypeTemplateMeta() {
         interval_days,
         reminder_days_before
       });
-      if (error) { toast(error.message, 'err'); return; }
+      if (error) { toast(error.message, 'err'); setButtonLoading('btn-save-type-template', false); return; }
     }
     toast('Template saved — title/interval synced to every linked machine');
+    const saveBtn = document.getElementById('btn-save-type-template');
+    if (saveBtn) {
+      saveBtn.disabled = false;
+      saveBtn.innerHTML = '<i data-lucide="check" style="width:14px;"></i> Saved!';
+      lucide.createIcons({ root: saveBtn });
+      setTimeout(() => {
+        saveBtn.innerHTML = 'Save Template';
+      }, 2000);
+    }
     await refreshTypeTemplateItems();
   } catch (err) {
+    setButtonLoading('btn-save-type-template', false);
     console.error('saveTypeTemplateMeta error:', err);
     toast(err.message || 'Failed to save template', 'err');
   }
@@ -259,9 +271,15 @@ export async function addTypeTemplateItem() {
   const unit = item_type === 'reading' ? (unitInput ? unitInput.value.trim() : null) : null;
   if (item_type === 'reading' && !unit) { toast('Enter a unit for readings', 'err'); return; }
 
+  setButtonLoading('btn-add-type-item', true);
+
   try {
     const templateId = await getOrCreateTemplateId();
-    if (!templateId) { toast('Save the template above first', 'err'); return; }
+    if (!templateId) {
+      toast('Save the template above first', 'err');
+      setButtonLoading('btn-add-type-item', false, '<i data-lucide="plus" style="width:14px;"></i> Add Item');
+      return;
+    }
 
     const nextSortOrder = (cachedTemplateItems && cachedTemplateItems.length)
       ? Math.max(...cachedTemplateItems.map(i => i.sort_order || 0)) + 1
@@ -282,6 +300,7 @@ export async function addTypeTemplateItem() {
     if (error) {
       console.error('Supabase insert error details:', error);
       toast(`${error.message}${error.details ? ` (${error.details})` : ''}`, 'err');
+      setButtonLoading('btn-add-type-item', false, '<i data-lucide="plus" style="width:14px;"></i> Add Item');
       return;
     }
     console.log('Successfully inserted item:', data);
@@ -289,8 +308,10 @@ export async function addTypeTemplateItem() {
     if (unitInput) unitInput.value = '';
     if (toolInput) toolInput.value = '';
     toast('Task added — synced to every linked machine');
+    setButtonLoading('btn-add-type-item', false, '<i data-lucide="plus" style="width:14px;"></i> Add Item');
     await refreshTypeTemplateItems();
   } catch (err) {
+    setButtonLoading('btn-add-type-item', false, '<i data-lucide="plus" style="width:14px;"></i> Add Item');
     console.error('addTypeTemplateItem caught exception:', err);
     toast(err.message || 'Failed to add item', 'err');
   }
