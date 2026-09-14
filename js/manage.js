@@ -64,20 +64,43 @@ async function getOrCreateTemplateId() {
 }
 
 export async function saveTypeTemplateMeta() {
-  const title = document.getElementById('type-template-title').value.trim();
-  const interval_days = parseInt(document.getElementById('type-template-interval').value, 10);
-  const reminder_days_before = document.getElementById('type-template-reminder').value || null;
-  if (!title || !interval_days) { toast('Title and interval required', 'err'); return; }
-
-  const existingId = await getOrCreateTemplateId();
-  if (existingId) {
-    const { error } = await sb.from('equipment_type_pm_templates').update({ title, interval_days, reminder_days_before }).eq('id', existingId);
-    if (error) { toast(error.message, 'err'); return; }
-  } else {
-    const { error } = await sb.from('equipment_type_pm_templates').insert({ equipment_type_id: currentTypeId, title, interval_days, reminder_days_before });
-    if (error) { toast(error.message, 'err'); return; }
+  if (!currentTypeId) {
+    toast('Please select an equipment type first', 'err');
+    return;
   }
-  toast('Template saved — title/interval synced to every linked machine');
+  const title = document.getElementById('type-template-title')?.value.trim() || '';
+  const intervalRaw = document.getElementById('type-template-interval')?.value.trim() || '';
+  const interval_days = parseInt(intervalRaw, 10);
+  const reminderRaw = document.getElementById('type-template-reminder')?.value.trim() || '';
+  const reminder_days_before = reminderRaw ? parseInt(reminderRaw, 10) : null;
+
+  if (!title) { toast('Template title required', 'err'); return; }
+  if (!interval_days || Number.isNaN(interval_days)) { toast('Valid interval (days) required', 'err'); return; }
+
+  try {
+    const existingId = await getOrCreateTemplateId();
+    if (existingId) {
+      const { error } = await sb.from('equipment_type_pm_templates').update({
+        title,
+        interval_days,
+        reminder_days_before
+      }).eq('id', existingId);
+      if (error) { toast(error.message, 'err'); return; }
+    } else {
+      const { error } = await sb.from('equipment_type_pm_templates').insert({
+        equipment_type_id: currentTypeId,
+        title,
+        interval_days,
+        reminder_days_before
+      });
+      if (error) { toast(error.message, 'err'); return; }
+    }
+    toast('Template saved — title/interval synced to every linked machine');
+    await refreshTypeTemplateItems();
+  } catch (err) {
+    console.error('saveTypeTemplateMeta error:', err);
+    toast(err.message || 'Failed to save template', 'err');
+  }
 }
 
 export function toggleNewTypeItemUnit() {
@@ -90,9 +113,15 @@ let editingTemplateItemId = null;
 
 async function refreshTypeTemplateItems() {
   const box = document.getElementById('type-template-items');
+  if (!box) return;
   const templateId = await getOrCreateTemplateId();
   if (!templateId) { box.innerHTML = '<div class="card-meta">Save the template above first.</div>'; return; }
-  const { data } = await sb.from('equipment_type_pm_template_items').select('id, description, item_type, unit, section, tool, sort_order').eq('template_id', templateId).order('sort_order');
+  const { data, error } = await sb.from('equipment_type_pm_template_items').select('id, description, item_type, unit, section, tool, sort_order').eq('template_id', templateId).order('sort_order');
+  if (error) {
+    console.error('refreshTypeTemplateItems error:', error);
+    box.innerHTML = `<div class="card-meta" style="color:var(--red);">Error loading items: ${escapeHtml(error.message)}</div>`;
+    return;
+  }
   cachedTemplateItems = data || [];
   editingTemplateItemId = null;
   renderTypeTemplateItems();
@@ -206,34 +235,44 @@ export async function saveTypeTemplateItem(itemId) {
 }
 
 export async function addTypeTemplateItem() {
-  const description = document.getElementById('new-type-item-desc').value.trim();
-  if (!description) return;
+  const descEl = document.getElementById('new-type-item-desc');
+  const description = descEl ? descEl.value.trim() : '';
+  if (!description) {
+    toast('Please enter a task description', 'err');
+    if (descEl) descEl.focus();
+    return;
+  }
   const sectionInput = document.getElementById('new-type-item-section');
   const section = sectionInput ? sectionInput.value.trim() || null : null;
   const toolInput = document.getElementById('new-type-item-tool');
   const tool = toolInput ? toolInput.value.trim() || null : null;
   const item_type = document.getElementById('new-type-item-type').value;
   const unitInput = document.getElementById('new-type-item-unit');
-  const unit = item_type === 'reading' ? unitInput.value.trim() : null;
+  const unit = item_type === 'reading' ? (unitInput ? unitInput.value.trim() : null) : null;
   if (item_type === 'reading' && !unit) { toast('Enter a unit for readings', 'err'); return; }
 
-  const templateId = await getOrCreateTemplateId();
-  if (!templateId) { toast('Save the template above first', 'err'); return; }
+  try {
+    const templateId = await getOrCreateTemplateId();
+    if (!templateId) { toast('Save the template above first', 'err'); return; }
 
-  const { error } = await sb.from('equipment_type_pm_template_items').insert({
-    template_id: templateId,
-    description,
-    item_type,
-    unit,
-    section,
-    tool
-  });
-  if (error) { toast(error.message, 'err'); return; }
-  document.getElementById('new-type-item-desc').value = '';
-  unitInput.value = '';
-  if (toolInput) toolInput.value = '';
-  toast('Task added — synced to every linked machine');
-  refreshTypeTemplateItems();
+    const { error } = await sb.from('equipment_type_pm_template_items').insert({
+      template_id: templateId,
+      description,
+      item_type,
+      unit,
+      section,
+      tool
+    });
+    if (error) { toast(error.message, 'err'); return; }
+    if (descEl) descEl.value = '';
+    if (unitInput) unitInput.value = '';
+    if (toolInput) toolInput.value = '';
+    toast('Task added — synced to every linked machine');
+    await refreshTypeTemplateItems();
+  } catch (err) {
+    console.error('addTypeTemplateItem error:', err);
+    toast(err.message || 'Failed to add item', 'err');
+  }
 }
 
 export async function deleteTypeTemplateItem(itemId) {
