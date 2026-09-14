@@ -64,7 +64,7 @@ function renderOpenWoList() {
 
     // Last-action log excerpt (truncated to 120 chars) or visit-type fallback
     const logHtml = lv && lv.action_taken
-      ? `<div class="ov-wo-log">${escapeHtml(lv.action_taken.slice(0, 120))}${lv.action_taken.length > 120 ? '…' : ''} — <b>${escapeHtml(lv.technician || 'unassigned')}</b></div>`
+      ? `<div class="ov-wo-log">${escapeHtml(lv.action_taken.slice(0, 120))}${lv.action_taken.length > 120 ? '…' : ''} — ${lv.technician ? `<b>${escapeHtml(lv.technician)}</b>` : `<span style="color:var(--ov-text-muted);">unassigned</span>`}</div>`
       : lv
         ? `<div class="ov-open-sub" style="margin-top:4px;"><i data-lucide="corner-down-right" style="width:11px; vertical-align:-1px;"></i> ${escapeHtml(lv.visit_type)} · ${escapeHtml(lv.technician || 'unassigned')}</div>`
         : '';
