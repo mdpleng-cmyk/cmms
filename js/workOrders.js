@@ -590,11 +590,11 @@ function renderVisitsList() {
     <div class="activity-entry">
       <span class="activity-date">${formatDate(v.visited_at).split(',')[0]}</span>
       <div class="activity-body">
-        <p class="activity-title">${v.visit_type.replace('_',' ')}${v.technician ? ' \u00b7 ' + escapeHtml(v.technician) : ''}
-          ${isPrivileged && (Date.now() - new Date(v.visited_at).getTime()) < EDIT_WINDOW_MS ? `<i data-lucide="pencil" style="width:11px; margin-left:6px; cursor:pointer; color:var(--text-muted);" onclick="window.startEditVisit(${v.id})"></i>` : ''}
+        <p class="activity-title" style="color:var(--ov-text-muted); font-size:11px; margin:0 0 4px;">${v.visit_type.replace('_',' ')}${v.technician ? ' · ' + escapeHtml(v.technician) : ''}
+          ${isPrivileged && (Date.now() - new Date(v.visited_at).getTime()) < EDIT_WINDOW_MS ? `<i data-lucide="pencil" style="width:11px; margin-left:6px; cursor:pointer; color:var(--ov-text-muted);" onclick="window.startEditVisit(${v.id})"></i>` : ''}
         </p>
-        ${v.action_taken ? `<p class="activity-meta">${escapeHtml(v.action_taken)}</p>` : ''}
-        ${v.parts_used ? `<p class="activity-meta">Parts: ${escapeHtml(v.parts_used)}</p>` : ''}
+        ${v.action_taken ? `<p class="ov-wo-log" style="margin:0 0 4px;">${escapeHtml(v.action_taken)}</p>` : ''}
+        ${v.parts_used ? `<p class="activity-meta" style="color:var(--ov-text-muted); margin:2px 0 0;">Parts: ${escapeHtml(v.parts_used)}</p>` : ''}
       </div>
     </div>`;
   }).join('');
