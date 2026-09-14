@@ -218,7 +218,7 @@ export function switchAssetModalTab(tab) {
   document.querySelectorAll('[data-modal-panel]').forEach(p => p.classList.toggle('hidden', p.dataset.modalPanel !== tab));
 }
 
-export async function openAssetHistoryModal(assetId, assetName) {
+export async function openAssetHistoryModal(assetId, assetName, initialTab = 'open') {
   document.getElementById('asset-page').classList.remove('hidden');
 
   const titleEl = document.getElementById('history-asset-title');
@@ -239,7 +239,7 @@ export async function openAssetHistoryModal(assetId, assetName) {
   openContainer.innerHTML = getLoaderHtml('Loading...');
   schedContainer.innerHTML = getLoaderHtml('Loading...');
   historyContainer.innerHTML = getLoaderHtml('Loading...');
-  switchAssetModalTab('open');
+  switchAssetModalTab(initialTab);
 
   const [woRes, schedRes] = await Promise.all([
     sb.from('work_orders')
@@ -324,8 +324,8 @@ export async function openAssetHistoryModal(assetId, assetName) {
     schedContainer.innerHTML = `
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
         <div class="card-meta">No PM schedules for this asset.</div>
-        <button class="ghost" style="padding:4px 8px; font-size:11px; border:1px solid var(--border);" onclick="window.manageAssetPmRoutines(${assetId}, '${escapeHtml(asset.name).replace(/'/g, "\\'")}')">
-          <i data-lucide="plus" style="width:12px; color:var(--green);"></i> Add PM Routine
+        <button class="primary" style="padding:4px 10px; font-size:11px; display:inline-flex; align-items:center; gap:4px;" onclick="window.openNewScheduleForCurrentAsset()">
+          <i data-lucide="calendar-plus" style="width:12px;"></i> Create PM Schedule
         </button>
       </div>`;
   } else {
@@ -344,9 +344,14 @@ export async function openAssetHistoryModal(assetId, assetName) {
     const headerHtml = `
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; padding-bottom:8px; border-bottom:1px solid var(--border);">
         <span class="card-meta" style="font-weight:600;">${schedRes.data.length} PM Routine${schedRes.data.length !== 1 ? 's' : ''} Configured</span>
-        <button class="ghost" style="padding:4px 8px; font-size:11px; border:1px solid var(--border); display:inline-flex; align-items:center; gap:4px;" onclick="window.manageAssetPmRoutines(${assetId}, '${escapeHtml(asset.name).replace(/'/g, "\\'")}')">
-          <i data-lucide="settings" style="width:12px;"></i> Manage Routines &amp; Tasks &rarr;
-        </button>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <button class="ghost" style="padding:4px 8px; font-size:11px; border:1px solid var(--border); display:inline-flex; align-items:center; gap:4px;" onclick="window.openNewScheduleForCurrentAsset()">
+            <i data-lucide="calendar-plus" style="width:12px; color:var(--green);"></i> + Add Routine
+          </button>
+          <button class="ghost" style="padding:4px 8px; font-size:11px; border:1px solid var(--border); display:inline-flex; align-items:center; gap:4px;" onclick="window.manageAssetPmRoutines(${assetId}, '${escapeHtml(assetName).replace(/'/g, "\\'")}')">
+            <i data-lucide="settings" style="width:12px;"></i> Manage &rarr;
+          </button>
+        </div>
       </div>
     `;
 
@@ -377,6 +382,12 @@ export async function openAssetHistoryModal(assetId, assetName) {
     }).join('');
   }
   lucide.createIcons({ root: document.getElementById('asset-page') });
+}
+
+export function openNewScheduleForCurrentAsset() {
+  const current = state.assetPageCurrent;
+  if (!current || !current.id) return;
+  window.openNewScheduleForm(current.id, current.name);
 }
 
 export function manageAssetPmRoutines(assetId, assetName) {

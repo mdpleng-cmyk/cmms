@@ -1,7 +1,7 @@
 import { sb } from './store.js';
 import { signIn, signOut, onSignedIn } from './auth.js';
-import { openNewAssetForm, closeNewAssetForm, createAsset, loadAssets, openAssetHistoryModal, closeAssetHistoryModal, renderAssetDropdown, selectAsset, goToSchedule, toggleScheduleItems, switchAssetModalTab, toggleAssetClassFields, onEquipmentTypeChange, setAssetTabFilter, filterAssetsTab, manageAssetPmRoutines } from './assets.js';
-import { openNewScheduleForm, closeNewScheduleForm, createSchedule, loadSchedules, addChecklistItem, toggleNewItemUnit, generatePmWoNow, onPmTargetChange, openPickPmAssetModal, closePickPmAssetModal, addChecklistItemToClass, toggleClassNewItemUnit, togglePmTile, toggleAllPmTiles } from './schedules.js';
+import { openNewAssetForm, closeNewAssetForm, createAsset, loadAssets, openAssetHistoryModal, closeAssetHistoryModal, renderAssetDropdown, selectAsset, goToSchedule, toggleScheduleItems, switchAssetModalTab, toggleAssetClassFields, onEquipmentTypeChange, setAssetTabFilter, filterAssetsTab, manageAssetPmRoutines, openNewScheduleForCurrentAsset } from './assets.js';
+import { openNewScheduleForm, closeNewScheduleForm, createSchedule, loadSchedules, addChecklistItem, toggleNewItemUnit, generatePmWoNow, onPmTargetChange, openPickPmAssetModal, closePickPmAssetModal, addChecklistItemToClass, toggleClassNewItemUnit, togglePmTile, toggleAllPmTiles, addDraftScheduleItem, removeDraftScheduleItem, toggleModalDraftItemUnit, onSchedIntervalChange } from './schedules.js';
 import { openNewWoForm, closeNewWoForm, createWorkOrder, loadWorkOrders, filterWorkOrders, triggerUpdateFlow, closeUpdateModal, reviewUpdateWo, backToEditWo, confirmSaveWo, toggleChecklistItem, saveReadingValue, openWoDetailModal, closeWoDetailModal, triggerUpdateFromDetail, openNewWoFormForAsset, raiseWoFromAssetPage, toggleWoCloseTimes, togglePlannedDateField, startEditVisit, cancelEditVisit, saveVisitEdit, startEditWoMeta, cancelWoMetaEdit, saveWoMetaEdit, logWithoutAsset, clearNoAssetSelection, cancelNoAssetWarning, continueWithoutAsset, viewCreatedWorkOrder, reloadLatestWoDetail, openPmChecklistRunner, closePmChecklistRunner, toggleRunnerItem, saveRunnerReading, completePmFromRunner, openRunnerFromDetail } from './workOrders.js';
 import { loadManageAssetList, openManageAsset, backToManageList, saveManageCategory, saveManageSpecField, deleteManageSpec, addManageSpec, switchManageMode, createEquipmentType, openManageType, backToTypesList, saveTypeTemplateMeta, toggleNewTypeItemUnit, addTypeTemplateItem, deleteTypeTemplateItem, startEditTypeTemplateItem, cancelEditTypeTemplateItem, toggleEditTypeItemUnit, saveTypeTemplateItem, saveManageAssetField, setManageAssetFilter, filterManageAssets, prefillTypeItemSection, selectTypeTemplate, startNewTypeTemplate, deleteTypeTemplate, loadAssetSchedules, selectAssetSchedule, startNewAssetSchedule, saveAssetScheduleMeta, deleteAssetSchedule, toggleNewAssetItemUnit, refreshAssetScheduleItems, prefillAssetItemSection, addAssetScheduleItem, deleteAssetScheduleItem } from './manage.js';
 import { loadOverview } from './overview.js';
@@ -25,6 +25,7 @@ window.onEquipmentTypeChange = onEquipmentTypeChange;
 window.setAssetTabFilter = setAssetTabFilter;
 window.filterAssetsTab = filterAssetsTab;
 window.manageAssetPmRoutines = manageAssetPmRoutines;
+window.openNewScheduleForCurrentAsset = openNewScheduleForCurrentAsset;
 
 window.openNewScheduleForm = openNewScheduleForm;
 window.closeNewScheduleForm = closeNewScheduleForm;
@@ -39,6 +40,10 @@ window.addChecklistItemToClass = addChecklistItemToClass;
 window.toggleClassNewItemUnit = toggleClassNewItemUnit;
 window.togglePmTile = togglePmTile;
 window.toggleAllPmTiles = toggleAllPmTiles;
+window.addDraftScheduleItem = addDraftScheduleItem;
+window.removeDraftScheduleItem = removeDraftScheduleItem;
+window.toggleModalDraftItemUnit = toggleModalDraftItemUnit;
+window.onSchedIntervalChange = onSchedIntervalChange;
 
 window.openNewWoForm = openNewWoForm;
 window.closeNewWoForm = closeNewWoForm;

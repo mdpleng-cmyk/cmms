@@ -141,22 +141,6 @@
         </button>
         <button class="primary" onclick="window.openNewScheduleForm()" id="btn-new-schedule"><i data-lucide="plus"></i> New PM Schedule</button>
       </div>
-      <div id="new-schedule-form" class="panel hidden">
-        <div class="eyebrow" style="margin-bottom:12px;">New PM Schedule</div>
-        <div class="field"><label class="field-label">PM Target</label><select id="sched-asset" onchange="window.onPmTargetChange()"></select></div>
-        <div id="sched-target-preview" class="hidden" style="margin:-8px 0 12px; padding:10px; background:var(--bg); border:1px solid var(--border); border-radius:6px; font-size:12px; color:var(--text-muted);"></div>
-        <div class="field"><label class="field-label">Title</label><input id="sched-title" placeholder="e.g. 6-Month General PM"></div>
-        <div class="field"><label class="field-label">Interval (days)</label><input id="sched-interval" type="number" value="180"></div>
-        <div class="field">
-          <label class="field-label">First due date</label>
-          <input id="sched-due" type="date">
-          <div id="sched-due-note" class="card-meta hidden" style="margin-top:4px;">Auto-calculated per asset: each asset's creation date + interval days.</div>
-        </div>
-        <div class="row">
-          <button id="btn-create-schedule" class="primary" onclick="window.createSchedule()">Create</button>
-          <button class="ghost" onclick="window.closeNewScheduleForm()">Cancel</button>
-        </div>
-      </div>
       <div id="schedule-list"></div>
     </section>
 
@@ -475,6 +459,9 @@
   <div class="asset-topbar">
     <div class="eyebrow">Asset Profile</div>
     <div style="display:flex; align-items:center; gap:10px;">
+      <button class="ghost" id="btn-asset-profile-new-pm" style="padding:6px 10px; font-size:11px; display:inline-flex; align-items:center; gap:5px;" onclick="window.openNewScheduleForCurrentAsset()">
+        <i data-lucide="calendar-plus" style="width:13px; color:var(--green);"></i> Create PM Schedule
+      </button>
       <button class="primary" style="padding:6px 10px; font-size:11px;" onclick="window.raiseWoFromAssetPage()">
         <i data-lucide="wrench" style="width:13px;"></i> Raise Work Order
       </button>
@@ -594,6 +581,86 @@
       </div>
     </div>
 
+  </div>
+</div>
+
+<!-- Create PM Schedule Modal -->
+<div id="modal-pm-schedule" class="modal-overlay hidden" style="z-index: 250;" onclick="if(event.target === this) window.closeNewScheduleForm()">
+  <div class="modal-box wide">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+      <div class="eyebrow" id="modal-pm-sched-header">Create PM Schedule</div>
+      <button type="button" class="ghost" style="padding:4px; margin:-4px;" onclick="window.closeNewScheduleForm()"><i data-lucide="x" style="width:16px; color:var(--text-muted);"></i></button>
+    </div>
+
+    <!-- Target Selector -->
+    <div id="sched-target-selector-wrap" class="field">
+      <label class="field-label">PM Target</label>
+      <select id="sched-asset" onchange="window.onPmTargetChange()"></select>
+    </div>
+
+    <!-- Locked Target Display (when opened from Asset Profile) -->
+    <div id="sched-target-locked" class="field hidden">
+      <label class="field-label">Target Machine</label>
+      <div style="padding:8px 12px; background:var(--bg); border:1px solid var(--border); border-radius:var(--radius); font-size:13px; font-weight:600; display:flex; align-items:center; gap:8px;">
+        <i data-lucide="cpu" style="width:15px; color:var(--amber);"></i>
+        <span id="sched-locked-asset-name"></span>
+      </div>
+    </div>
+
+    <div id="sched-target-preview" class="hidden" style="margin:-4px 0 12px; padding:10px; background:var(--bg); border:1px solid var(--border); border-radius:6px; font-size:12px; color:var(--text-muted);"></div>
+
+    <div class="field">
+      <label class="field-label">Routine Title *</label>
+      <input id="sched-title" placeholder="e.g. Weekly Lubrication &amp; Mechanical PM">
+    </div>
+
+    <div class="row" style="gap:12px;">
+      <div class="field" style="flex:1; margin-bottom:0;">
+        <label class="field-label">Interval (days) *</label>
+        <input id="sched-interval" type="number" value="30" oninput="window.onSchedIntervalChange()">
+      </div>
+      <div class="field" style="flex:1; margin-bottom:0;" id="sched-due-group">
+        <label class="field-label">First Due Date *</label>
+        <input id="sched-due" type="date">
+      </div>
+    </div>
+    <div id="sched-due-note" class="card-meta hidden" style="margin-top:6px;">Auto-calculated per asset: each asset's creation date + interval days.</div>
+
+    <!-- Initial Tasks Section -->
+    <div style="margin:16px 0 8px; border-top:1px solid var(--border); padding-top:14px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+        <span class="eyebrow" style="font-size:11px;">Initial Checklist Tasks <span id="modal-sched-task-count" class="card-meta">(Optional)</span></span>
+      </div>
+      <div id="modal-sched-tasks-list" style="margin-bottom:10px; max-height:160px; overflow-y:auto; display:flex; flex-direction:column; gap:4px;">
+        <!-- Draft tasks rendered here -->
+      </div>
+      
+      <!-- Mini Task Adder -->
+      <div style="background:var(--bg); border:1px solid var(--border); border-radius:6px; padding:10px;">
+        <div class="row" style="gap:8px; margin-bottom:8px;">
+          <input id="modal-task-section" placeholder="Section (e.g. SEALS, HYDRAULICS)" style="flex:1; font-size:12px;" />
+          <input id="modal-task-tool" placeholder="Tool (e.g. 🔧 7mm socket)" style="flex:1; font-size:12px;" />
+        </div>
+        <div class="row" style="gap:8px; margin-bottom:8px;">
+          <input id="modal-task-desc" placeholder="Task description *" style="flex:2; font-size:12px;" onkeydown="if(event.key==='Enter'){event.preventDefault(); window.addDraftScheduleItem();}" />
+          <select id="modal-task-type" style="flex:1; font-size:12px;" onchange="window.toggleModalDraftItemUnit()">
+            <option value="check">Check (Pass/Fail)</option>
+            <option value="reading">Reading</option>
+          </select>
+          <input id="modal-task-unit" class="hidden" placeholder="Unit (e.g. bar)" style="width:80px; font-size:12px;" onkeydown="if(event.key==='Enter'){event.preventDefault(); window.addDraftScheduleItem();}" />
+        </div>
+        <div style="display:flex; justify-content:flex-end;">
+          <button type="button" class="ghost" style="padding:4px 10px; font-size:11px; border:1px solid var(--border); display:inline-flex; align-items:center; gap:4px;" onclick="window.addDraftScheduleItem()">
+            <i data-lucide="plus" style="width:12px; color:var(--green);"></i> Add Task
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="row" style="justify-content:flex-end; gap:8px; margin-top:16px;">
+      <button class="ghost" type="button" onclick="window.closeNewScheduleForm()">Cancel</button>
+      <button id="btn-create-schedule" class="primary" type="button" onclick="window.createSchedule()">Create Schedule</button>
+    </div>
   </div>
 </div>
 

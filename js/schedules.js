@@ -3,50 +3,219 @@ import { sb, state, toast, setButtonLoading, getLoaderHtml, escapeHtml } from '.
 const pmGenerationInFlight = new Set();
 const pmCompletionHandled = new Set();
 
-export async function openNewScheduleForm() {
-  document.getElementById('new-schedule-form').classList.remove('hidden');
+let modalScheduleDraftItems = [];
 
-  // Fetch assets with their equipment type in one query — fresh, not from cache,
-  // so newly added assets/types are always reflected.
-  const { data: assets } = await sb
-    .from('assets')
-    .select('id, name, equipment_type_id, equipment_types(id, name)')
-    .order('name');
-
-  // Build classes and individual asset options
-  const typeMap = new Map();
-  for (const a of (assets || [])) {
-    if (a.equipment_type_id != null && a.equipment_types) {
-      if (!typeMap.has(a.equipment_type_id)) {
-        typeMap.set(a.equipment_type_id, a.equipment_types.name);
-      }
-    }
-  }
-
-  const sortedTypes = [...typeMap.entries()].sort((a, b) => a[1].localeCompare(b[1]));
-
-  const classOptions = sortedTypes.map(([id, name]) => `<option value="type:${id}">All ${escapeHtml(name)} Units (Class)</option>`);
-  const assetOptions = (assets || []).map(a => {
-    const typeLabel = a.equipment_types?.name ? ` [${a.equipment_types.name}]` : '';
-    return `<option value="asset:${a.id}">${escapeHtml(a.name)}${typeLabel}</option>`;
-  });
-
-  const html = [];
-  if (classOptions.length) {
-    html.push(`<optgroup label="Equipment Classes (All units in class)">${classOptions.join('')}</optgroup>`);
-  }
-  if (assetOptions.length) {
-    html.push(`<optgroup label="Individual Assets (Specific unit only)">${assetOptions.join('')}</optgroup>`);
-  }
-
-  document.getElementById('sched-asset').innerHTML =
-    html.length ? html.join('') : '<option value="">No assets available</option>';
-
-  // Set initial field state to match the first option.
-  onPmTargetChange();
+export function resetModalDraftItems() {
+  modalScheduleDraftItems = [];
+  renderModalDraftItems();
+  const descEl = document.getElementById('modal-task-desc');
+  const secEl = document.getElementById('modal-task-section');
+  const toolEl = document.getElementById('modal-task-tool');
+  const unitEl = document.getElementById('modal-task-unit');
+  const typeEl = document.getElementById('modal-task-type');
+  if (descEl) descEl.value = '';
+  if (secEl) secEl.value = '';
+  if (toolEl) toolEl.value = '';
+  if (unitEl) unitEl.value = '';
+  if (typeEl) typeEl.value = 'check';
+  toggleModalDraftItemUnit();
 }
 
-export function closeNewScheduleForm() { document.getElementById('new-schedule-form').classList.add('hidden'); }
+export function toggleModalDraftItemUnit() {
+  const typeEl = document.getElementById('modal-task-type');
+  const unitEl = document.getElementById('modal-task-unit');
+  if (!typeEl || !unitEl) return;
+  unitEl.classList.toggle('hidden', typeEl.value !== 'reading');
+}
+
+export function addDraftScheduleItem() {
+  const descEl = document.getElementById('modal-task-desc');
+  const desc = descEl ? descEl.value.trim() : '';
+  if (!desc) {
+    toast('Please enter a task description', 'err');
+    if (descEl) descEl.focus();
+    return;
+  }
+  const secEl = document.getElementById('modal-task-section');
+  const section = secEl ? secEl.value.trim() || null : null;
+  const toolEl = document.getElementById('modal-task-tool');
+  const tool = toolEl ? toolEl.value.trim() || null : null;
+  const typeEl = document.getElementById('modal-task-type');
+  const item_type = typeEl ? typeEl.value : 'check';
+  const unitEl = document.getElementById('modal-task-unit');
+  const unit = item_type === 'reading' ? (unitEl ? unitEl.value.trim() : null) : null;
+  if (item_type === 'reading' && !unit) {
+    toast('Enter a unit for readings', 'err');
+    return;
+  }
+
+  modalScheduleDraftItems.push({
+    description: desc,
+    item_type,
+    unit,
+    section,
+    tool,
+    sort_order: modalScheduleDraftItems.length + 1
+  });
+
+  if (descEl) descEl.value = '';
+  if (toolEl) toolEl.value = '';
+  if (unitEl) unitEl.value = '';
+  renderModalDraftItems();
+  toast('Task added to draft');
+}
+
+export function removeDraftScheduleItem(idx) {
+  modalScheduleDraftItems.splice(idx, 1);
+  modalScheduleDraftItems.forEach((it, i) => { it.sort_order = i + 1; });
+  renderModalDraftItems();
+}
+
+export function renderModalDraftItems() {
+  const listEl = document.getElementById('modal-sched-tasks-list');
+  const countEl = document.getElementById('modal-sched-task-count');
+  if (!listEl) return;
+
+  if (countEl) {
+    countEl.textContent = modalScheduleDraftItems.length
+      ? `(${modalScheduleDraftItems.length} task${modalScheduleDraftItems.length !== 1 ? 's' : ''})`
+      : '(Optional)';
+  }
+
+  if (!modalScheduleDraftItems.length) {
+    listEl.innerHTML = '<div class="card-meta" style="font-size:12px; font-style:italic; padding:4px 0;">No tasks added yet. You can add them below or manage them later.</div>';
+    return;
+  }
+
+  listEl.innerHTML = modalScheduleDraftItems.map((item, idx) => `
+    <div style="display:flex; justify-content:space-between; align-items:center; padding:5px 8px; background:var(--bg); border:1px solid var(--border); border-radius:4px; font-size:12px;">
+      <div style="display:flex; align-items:center; gap:6px; overflow:hidden;">
+        <span style="color:var(--text-muted); font-size:11px;">#${idx + 1}</span>
+        ${item.section ? `<span style="font-size:10px; font-weight:700; color:var(--amber); text-transform:uppercase;">[${escapeHtml(item.section)}]</span>` : ''}
+        <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(item.description)}</span>
+        ${item.item_type === 'reading' ? `<span class="card-meta">(${escapeHtml(item.unit || '')})</span>` : ''}
+        ${item.tool ? `<span class="pm-tool-chip" style="font-size:10px; padding:1px 5px;">🔧 ${escapeHtml(item.tool)}</span>` : ''}
+      </div>
+      <button type="button" class="ghost" style="padding:2px 4px; color:var(--red); border:none; cursor:pointer;" onclick="window.removeDraftScheduleItem(${idx})">
+        <i data-lucide="trash-2" style="width:12px;"></i>
+      </button>
+    </div>
+  `).join('');
+
+  lucide.createIcons({ root: listEl });
+}
+
+export function onSchedIntervalChange() {
+  const targetValue = document.getElementById('sched-asset')?.value || '';
+  if (targetValue.startsWith('type:')) return;
+  const intervalVal = parseInt(document.getElementById('sched-interval')?.value, 10);
+  if (!intervalVal || intervalVal <= 0) return;
+  const d = new Date();
+  d.setDate(d.getDate() + intervalVal);
+  const dueInput = document.getElementById('sched-due');
+  if (dueInput) dueInput.value = d.toISOString().split('T')[0];
+}
+
+export async function openNewScheduleForm(preselectedAssetId = null, preselectedAssetName = null) {
+  const modal = document.getElementById('modal-pm-schedule');
+  if (modal) modal.classList.remove('hidden');
+
+  resetModalDraftItems();
+
+  const titleInput = document.getElementById('sched-title');
+  if (titleInput) titleInput.value = '';
+
+  const intervalInput = document.getElementById('sched-interval');
+  if (intervalInput) intervalInput.value = '30';
+
+  const dueInput = document.getElementById('sched-due');
+  const dueGroup = document.getElementById('sched-due-group');
+  const dueNote = document.getElementById('sched-due-note');
+  const preview = document.getElementById('sched-target-preview');
+  const targetSelectorWrap = document.getElementById('sched-target-selector-wrap');
+  const targetLockedWrap = document.getElementById('sched-target-locked');
+  const headerEl = document.getElementById('modal-pm-sched-header');
+
+  if (preview) {
+    preview.classList.add('hidden');
+    preview.innerHTML = '';
+  }
+
+  if (preselectedAssetId != null) {
+    if (headerEl) headerEl.textContent = 'Create PM Schedule';
+    if (targetSelectorWrap) targetSelectorWrap.classList.add('hidden');
+    if (targetLockedWrap) targetLockedWrap.classList.remove('hidden');
+    const lockedNameEl = document.getElementById('sched-locked-asset-name');
+    if (lockedNameEl) lockedNameEl.textContent = preselectedAssetName || `Asset #${preselectedAssetId}`;
+
+    const schedAsset = document.getElementById('sched-asset');
+    if (schedAsset) {
+      schedAsset.innerHTML = `<option value="asset:${preselectedAssetId}" selected>${escapeHtml(preselectedAssetName || '')}</option>`;
+    }
+
+    if (dueGroup) dueGroup.classList.remove('hidden');
+    if (dueNote) dueNote.classList.add('hidden');
+    if (dueInput) {
+      dueInput.disabled = false;
+      const d = new Date();
+      d.setDate(d.getDate() + 30);
+      dueInput.value = d.toISOString().split('T')[0];
+    }
+  } else {
+    if (headerEl) headerEl.textContent = 'New PM Schedule';
+    if (targetLockedWrap) targetLockedWrap.classList.add('hidden');
+    if (targetSelectorWrap) targetSelectorWrap.classList.remove('hidden');
+
+    // Fetch assets with their equipment type in one query
+    const { data: assets } = await sb
+      .from('assets')
+      .select('id, name, equipment_type_id, equipment_types(id, name)')
+      .order('name');
+
+    // Build classes and individual asset options
+    const typeMap = new Map();
+    for (const a of (assets || [])) {
+      if (a.equipment_type_id != null && a.equipment_types) {
+        if (!typeMap.has(a.equipment_type_id)) {
+          typeMap.set(a.equipment_type_id, a.equipment_types.name);
+        }
+      }
+    }
+
+    const sortedTypes = [...typeMap.entries()].sort((a, b) => a[1].localeCompare(b[1]));
+
+    const classOptions = sortedTypes.map(([id, name]) => `<option value="type:${id}">All ${escapeHtml(name)} Units (Class)</option>`);
+    const assetOptions = (assets || []).map(a => {
+      const typeLabel = a.equipment_types?.name ? ` [${a.equipment_types.name}]` : '';
+      return `<option value="asset:${a.id}">${escapeHtml(a.name)}${typeLabel}</option>`;
+    });
+
+    const html = [];
+    if (classOptions.length) {
+      html.push(`<optgroup label="Equipment Classes (All units in class)">${classOptions.join('')}</optgroup>`);
+    }
+    if (assetOptions.length) {
+      html.push(`<optgroup label="Individual Assets (Specific unit only)">${assetOptions.join('')}</optgroup>`);
+    }
+
+    const schedAsset = document.getElementById('sched-asset');
+    if (schedAsset) {
+      schedAsset.innerHTML = html.length ? html.join('') : '<option value="">No assets available</option>';
+    }
+
+    // Set initial field state to match the first option
+    onPmTargetChange();
+  }
+
+  lucide.createIcons({ root: modal });
+  setTimeout(() => titleInput?.focus(), 60);
+}
+
+export function closeNewScheduleForm() {
+  const modal = document.getElementById('modal-pm-schedule');
+  if (modal) modal.classList.add('hidden');
+  resetModalDraftItems();
+}
 
 // Called by onchange on #sched-asset. Disables the date picker and shows a note
 // when an equipment-type (class) target is selected, because the due date is
@@ -57,28 +226,32 @@ export async function onPmTargetChange() {
   const dueNote  = document.getElementById('sched-due-note');
   const preview  = document.getElementById('sched-target-preview');
   const isClass  = val.startsWith('type:');
-  dueInput.disabled = isClass;
+  if (dueInput) dueInput.disabled = isClass;
   if (isClass) {
-    dueInput.value = '';
-    dueNote.classList.remove('hidden');
+    if (dueInput) dueInput.value = '';
+    if (dueNote) dueNote.classList.remove('hidden');
 
     // Show asset preview for this class.
     const typeId = parseInt(val.slice(5), 10);
-    preview.innerHTML = 'Loading assets…';
-    preview.classList.remove('hidden');
-    const { data: assets } = await sb.from('assets').select('name').eq('equipment_type_id', typeId).order('name');
-    if (assets && assets.length) {
-      preview.innerHTML = `<strong>Schedules will be created for ${assets.length} asset${assets.length !== 1 ? 's' : ''}:</strong> ` +
-        assets.map(a => escapeHtml(a.name)).join(', ');
-    } else {
-      preview.innerHTML = 'No assets found for this equipment type.';
+    if (preview) {
+      preview.innerHTML = 'Loading assets…';
+      preview.classList.remove('hidden');
+      const { data: assets } = await sb.from('assets').select('name').eq('equipment_type_id', typeId).order('name');
+      if (assets && assets.length) {
+        preview.innerHTML = `<strong>Schedules will be created for ${assets.length} asset${assets.length !== 1 ? 's' : ''}:</strong> ` +
+          assets.map(a => escapeHtml(a.name)).join(', ');
+      } else {
+        preview.innerHTML = 'No assets found for this equipment type.';
+      }
     }
   } else {
-    dueNote.classList.add('hidden');
-    preview.classList.add('hidden');
-    preview.innerHTML = '';
+    if (dueNote) dueNote.classList.add('hidden');
+    if (preview) {
+      preview.classList.add('hidden');
+      preview.innerHTML = '';
+    }
     const intervalVal = parseInt(document.getElementById('sched-interval')?.value, 10) || 30;
-    if (!dueInput.value) {
+    if (dueInput && !dueInput.value) {
       const d = new Date();
       d.setDate(d.getDate() + intervalVal);
       dueInput.value = d.toISOString().split('T')[0];
@@ -91,23 +264,61 @@ export async function createSchedule() {
   const title         = document.getElementById('sched-title').value.trim();
   const interval_days = parseInt(document.getElementById('sched-interval').value, 10);
 
-  if (!targetValue || !title || !interval_days) { toast('Fill all required fields', 'err'); return; }
+  if (!targetValue || !title || !interval_days || interval_days <= 0) {
+    toast('Please fill all required fields with valid values', 'err');
+    return;
+  }
 
   // ── Standalone asset path ─────────────────────────────────────────────────
-  // Value is "asset:<id>" (new form) or a plain id (defensive fallback).
   if (!targetValue.startsWith('type:')) {
-    const asset_id    = targetValue.startsWith('asset:') ? targetValue.slice(6) : targetValue;
+    const asset_id    = parseInt(targetValue.startsWith('asset:') ? targetValue.slice(6) : targetValue, 10);
     const next_due_at = document.getElementById('sched-due').value;
-    if (!next_due_at) { toast('Fill all required fields', 'err'); return; }
+    if (!next_due_at) { toast('Please specify a first due date', 'err'); return; }
 
     setButtonLoading('btn-create-schedule', true);
-    const { error } = await sb.from('recurring_schedules').insert({ asset_id, title, interval_days, next_due_at });
-    if (error) { toast(error.message, 'err'); setButtonLoading('btn-create-schedule', false); return; }
+    const { data: newSched, error: schedErr } = await sb
+      .from('recurring_schedules')
+      .insert({ asset_id, title, interval_days, next_due_at })
+      .select()
+      .single();
 
-    toast('Schedule created');
+    if (schedErr) {
+      toast(schedErr.message, 'err');
+      setButtonLoading('btn-create-schedule', false);
+      return;
+    }
+
+    // Insert drafted checklist tasks if any
+    if (modalScheduleDraftItems.length > 0 && newSched) {
+      const taskRows = modalScheduleDraftItems.map(item => ({
+        schedule_id: newSched.id,
+        description: item.description,
+        item_type: item.item_type,
+        unit: item.unit,
+        section: item.section,
+        tool: item.tool,
+        sort_order: item.sort_order,
+        template_item_id: null
+      }));
+      const { error: itemsErr } = await sb.from('checklist_items').insert(taskRows);
+      if (itemsErr) {
+        console.error('Error inserting draft checklist items:', itemsErr);
+        toast('Schedule created, but some checklist tasks could not be saved', 'err');
+      }
+    }
+
+    toast('PM schedule created successfully');
     closeNewScheduleForm();
-    document.getElementById('sched-title').value = '';
     setButtonLoading('btn-create-schedule', false);
+
+    // If Asset Profile modal is currently open for this asset, refresh its PM tab immediately!
+    const assetModal = document.getElementById('asset-page');
+    if (assetModal && !assetModal.classList.contains('hidden') && state.assetPageCurrent?.id === asset_id) {
+      if (window.openAssetHistoryModal) {
+        await window.openAssetHistoryModal(state.assetPageCurrent.id, state.assetPageCurrent.name, 'pm');
+      }
+    }
+
     loadSchedules();
     return;
   }
@@ -126,11 +337,6 @@ export async function createSchedule() {
   if (!assets || !assets.length) { toast('No assets found for this equipment type', 'err'); return; }
 
   // 2. Bulk-check for duplicates.
-  // Duplicate rule:
-  // - same asset (asset_id)
-  // - same PM title (title)
-  // - same interval_days
-  // Checklist differences are NOT considered.
   const assetIds = assets.map(a => a.id);
   const { data: existing } = await sb
     .from('recurring_schedules')
@@ -148,9 +354,7 @@ export async function createSchedule() {
     return;
   }
 
-  // 3. Build insert rows. next_due_at = created_at::date + interval_days,
-  //    matching the stamp trigger rule. UTC date is used to align with the
-  //    Postgres ::date cast (Supabase default timezone is UTC).
+  // 3. Build insert rows.
   const rows = toCreate.map(asset => {
     const c   = new Date(asset.created_at);
     const y   = c.getUTCFullYear();
@@ -162,17 +366,47 @@ export async function createSchedule() {
   });
 
   setButtonLoading('btn-create-schedule', true);
-  const { error: insertErr } = await sb.from('recurring_schedules').insert(rows);
-  if (insertErr) { toast(insertErr.message, 'err'); setButtonLoading('btn-create-schedule', false); return; }
+  const { data: insertedScheds, error: insertErr } = await sb
+    .from('recurring_schedules')
+    .insert(rows)
+    .select();
 
-  // 4. Report result.
+  if (insertErr) {
+    toast(insertErr.message, 'err');
+    setButtonLoading('btn-create-schedule', false);
+    return;
+  }
+
+  // 4. If drafted tasks exist, attach them to each newly created schedule
+  if (modalScheduleDraftItems.length > 0 && insertedScheds && insertedScheds.length) {
+    const allTaskRows = [];
+    insertedScheds.forEach(sched => {
+      modalScheduleDraftItems.forEach(item => {
+        allTaskRows.push({
+          schedule_id: sched.id,
+          description: item.description,
+          item_type: item.item_type,
+          unit: item.unit,
+          section: item.section,
+          tool: item.tool,
+          sort_order: item.sort_order,
+          template_item_id: null
+        });
+      });
+    });
+    if (allTaskRows.length) {
+      const { error: itemsErr } = await sb.from('checklist_items').insert(allTaskRows);
+      if (itemsErr) console.error('Error attaching tasks to class schedules:', itemsErr);
+    }
+  }
+
+  // 5. Report result.
   const created = toCreate.length;
   const parts   = [`${created} schedule${created !== 1 ? 's' : ''} created`];
   if (skipped) parts.push(`${skipped} skipped (already exist${skipped !== 1 ? '' : 's'})`);
   toast(parts.join(', '));
 
   closeNewScheduleForm();
-  document.getElementById('sched-title').value = '';
   setButtonLoading('btn-create-schedule', false);
   loadSchedules();
 }
