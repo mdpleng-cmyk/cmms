@@ -71,7 +71,7 @@ function renderOpenWoList() {
 
     // Stale age indicator in side column (replaces the old stale badge)
     const staleHtml = stale
-      ? `<div class="ov-wo-stale ${stale >= 5 ? 'crit' : ''}"><i data-lucide="clock" style="width:12px; height:12px;"></i>${stale}d${!lv ? ', no reply' : ' stale'}</div>`
+      ? `<div class="ov-wo-stale ${stale >= 5 ? 'crit' : ''}"><i data-lucide="clock" style="width:12px; height:12px;"></i>${stale}d${!lv ? ', no update' : ' stale'}</div>`
       : '';
 
     return `
