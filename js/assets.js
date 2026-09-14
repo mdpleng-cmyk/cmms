@@ -82,29 +82,134 @@ export async function createAsset() {
   await loadAssets(true);
 }
 
+let assetTabFilter = 'all';
+
+export function setAssetTabFilter(filter) {
+  assetTabFilter = filter;
+  document.querySelectorAll('[data-asset-filter]').forEach(b => {
+    b.classList.toggle('active', b.dataset.assetFilter === filter);
+  });
+  renderAssetsTable();
+}
+
+export function filterAssetsTab() {
+  renderAssetsTable();
+}
+
+export function renderAssetsTable() {
+  const container = document.getElementById('asset-list');
+  const countEl = document.getElementById('asset-tab-count');
+  if (!container) return;
+
+  const search = (document.getElementById('asset-search')?.value || '').trim().toLowerCase();
+
+  let list = state.assetsCache || [];
+  if (assetTabFilter === 'p1-p2') {
+    list = list.filter(a => a.criticality === 'P1' || a.criticality === 'P2');
+  } else if (assetTabFilter === 'down') {
+    list = list.filter(a => a.status === 'down');
+  }
+
+  if (search) {
+    list = list.filter(a =>
+      (a.name && a.name.toLowerCase().includes(search)) ||
+      (a.category && a.category.toLowerCase().includes(search)) ||
+      (a.location && a.location.toLowerCase().includes(search)) ||
+      (a.department && a.department.toLowerCase().includes(search)) ||
+      (a.criticality && a.criticality.toLowerCase().includes(search))
+    );
+  }
+
+  if (countEl) {
+    countEl.textContent = `${list.length} ${list.length === 1 ? 'asset' : 'assets'}`;
+  }
+
+  if (!list.length) {
+    container.innerHTML = `
+      <div class="manage-table-panel">
+        <div class="empty-note" style="padding:40px; text-align:center; color:var(--ov-text-muted); font-size:12.5px;">No assets match your search or filter.</div>
+      </div>`;
+    return;
+  }
+
+  const rows = list.map(a => {
+    const dotCls = a.status === 'down' ? 'down' : a.status === 'maintenance' ? 'maintenance' : '';
+    const dotTitle = a.status === 'down' ? 'Down (Open breakdown)' : a.status === 'maintenance' ? 'Under maintenance (Open PM)' : 'Running';
+    const critCls = a.criticality ? `crit-${a.criticality.toLowerCase()}` : '';
+    const catFormatted = a.category ? escapeHtml(a.category.replace('_', ' ')) : '—';
+    const locFormatted = a.location ? escapeHtml(a.location) : '—';
+    const deptFormatted = a.department ? escapeHtml(a.department) : '—';
+    const catTag = a.category ? `<span class="asset-class">${escapeHtml(a.category.toUpperCase().replace(/_/g, ''))}</span>` : '';
+
+    return `
+      <tr onclick="window.openAssetHistoryModal(${a.id}, '${escapeHtml(a.name).replace(/'/g, "\\'")}')">
+        <td>
+          <div class="asset-cell">
+            <span class="status-dot ${dotCls}" title="${dotTitle}"></span>
+            <span class="asset-name">${escapeHtml(a.name)}</span>
+            ${catTag}
+          </div>
+        </td>
+        <td class="muted-cell">${catFormatted}</td>
+        <td class="muted-cell">${locFormatted}</td>
+        <td class="muted-cell">${deptFormatted}</td>
+        <td>${a.criticality ? `<span class="crit ${critCls}">${escapeHtml(a.criticality)}</span>` : '<span class="card-meta">—</span>'}</td>
+        <td class="row-actions" title="View details">&#8942;</td>
+      </tr>`;
+  }).join('');
+
+  container.innerHTML = `
+    <div class="manage-table-panel">
+      <div class="manage-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Asset</th>
+              <th>Category</th>
+              <th>Location</th>
+              <th>Department</th>
+              <th>Criticality</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
 export async function loadAssets(render) {
   const list = document.getElementById('asset-list');
-  if (render) list.innerHTML = getLoaderHtml('Loading assets...');
+  if (render && list) list.innerHTML = getLoaderHtml('Loading assets...');
   
-  const { data, error } = await sb.from('assets').select('*').order('name');
-  if (!error) state.assetsCache = data || [];
+  const [assetsRes, breakdownRes, pmRes] = await Promise.all([
+    sb.from('assets').select('*').order('name'),
+    sb.from('work_orders').select('asset_id').eq('type', 'breakdown').in('status', ['open', 'in_progress']),
+    sb.from('work_orders').select('asset_id').eq('type', 'pm').in('status', ['open', 'in_progress']),
+  ]);
+  
+  if (assetsRes.error) {
+    if (render && list) list.innerHTML = `<div class="readout-empty">${assetsRes.error.message}</div>`;
+    return;
+  }
+  
+  const downSet = new Set((breakdownRes.data || []).map(w => w.asset_id));
+  const pmSet = new Set((pmRes.data || []).map(w => w.asset_id));
+  
+  state.assetsCache = (assetsRes.data || []).map(a => ({
+    ...a,
+    status: downSet.has(a.id) ? 'down' : pmSet.has(a.id) ? 'maintenance' : 'running'
+  }));
   
   if (render) {
-    if (error) { list.innerHTML = `<div class="readout-empty">${error.message}</div>`; return; }
-    if (!state.assetsCache.length) { list.innerHTML = '<div class="readout-empty"><i data-lucide="server" style="width:32px;height:32px;"></i> No assets provisioned.</div>'; lucide.createIcons(); return; }
-    
-    list.innerHTML = state.assetsCache.map(a => `
-      <div class="panel">
-        <div class="row" style="justify-content:space-between; margin-bottom:4px;">
-          <div class="card-title" style="margin:0; cursor:pointer; transition: opacity 0.2s;" onmouseover="this.style.opacity=0.8" onmouseout="this.style.opacity=1" onclick="window.openAssetHistoryModal(${a.id}, '${escapeHtml(a.name).replace(/'/g, "\\'")}')">
-            ${escapeHtml(a.name)} <i data-lucide="external-link" style="width:14px; margin-left:4px; color:var(--text-muted);"></i>
-          </div>
-          ${a.criticality ? `<span class="badge open"><i data-lucide="alert-triangle" style="width:10px;"></i> ${a.criticality}</span>` : ''}
-        </div>
-        <div class="card-meta"><i data-lucide="map-pin" style="width:12px; display:inline-block; vertical-align:-2px;"></i> ${a.location || 'No location set'}</div>
-      </div>
-    `).join('');
-    lucide.createIcons();
+    if (!state.assetsCache.length) {
+      if (list) list.innerHTML = '<div class="readout-empty"><i data-lucide="server" style="width:32px;height:32px;"></i> No assets provisioned.</div>';
+      lucide.createIcons();
+      return;
+    }
+    renderAssetsTable();
   }
 }
 
@@ -316,3 +421,6 @@ export function selectAsset(id, name) {
   const asset = state.assetsCache.find(a => a.id === id);
   if (prioritySel && asset?.criticality) prioritySel.value = asset.criticality;
 }
+
+window.setAssetTabFilter = setAssetTabFilter;
+window.filterAssetsTab = filterAssetsTab;

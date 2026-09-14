@@ -76,10 +76,17 @@
     <section id="tab-assets" class="hidden">
 
       <div id="assets-list-view">
-        <div class="row" style="margin-top:16px; justify-content:flex-end;">
-          <button class="primary" onclick="window.openNewAssetForm()" id="btn-new-asset"><i data-lucide="plus"></i> New Asset</button>
+        <div class="manage-toolbar" style="margin-top:16px;">
+          <input id="asset-search" class="manage-search" placeholder="Search assets…" oninput="window.filterAssetsTab()">
+          <div class="manage-filters">
+            <button class="manage-filter-chip active" data-asset-filter="all" onclick="window.setAssetTabFilter('all')">All</button>
+            <button class="manage-filter-chip" data-asset-filter="p1-p2" onclick="window.setAssetTabFilter('p1-p2')">P1–P2 only</button>
+            <button class="manage-filter-chip" data-asset-filter="down" onclick="window.setAssetTabFilter('down')">Down</button>
+          </div>
+          <span id="asset-tab-count" class="manage-count"></span>
+          <button class="primary" onclick="window.openNewAssetForm()" id="btn-new-asset" style="padding:6px 12px; font-size:12.5px;"><i data-lucide="plus" style="width:13px; vertical-align:-1px;"></i> New Asset</button>
         </div>
-        <div id="new-asset-form" class="panel hidden">
+        <div id="new-asset-form" class="panel hidden" style="margin-bottom:14px;">
           <div class="eyebrow" style="margin-bottom:12px;">New Asset</div>
 
           <div class="field" style="font-size:13px;">
@@ -159,7 +166,16 @@
 
       <div id="manage-assets-mode">
         <div id="manage-list-view">
-          <div class="card-meta" style="margin:12px 0;">Pick an asset to edit its category and nameplate specs.</div>
+          <div class="card-meta" style="margin:12px 0 6px;">Pick an asset to edit its category and nameplate specs.</div>
+          <div class="manage-toolbar">
+            <input id="manage-asset-search" class="manage-search" placeholder="Search assets…" oninput="window.filterManageAssets()">
+            <div class="manage-filters">
+              <button class="manage-filter-chip active" data-manage-filter="all" onclick="window.setManageAssetFilter('all')">All</button>
+              <button class="manage-filter-chip" data-manage-filter="p1-p2" onclick="window.setManageAssetFilter('p1-p2')">P1–P2 only</button>
+              <button class="manage-filter-chip" data-manage-filter="down" onclick="window.setManageAssetFilter('down')">Down</button>
+            </div>
+            <span id="manage-asset-count" class="manage-count"></span>
+          </div>
           <div id="manage-asset-list"></div>
         </div>
 

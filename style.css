@@ -445,3 +445,354 @@ button.big { width: 100%; padding: 14px; font-size: 15px; }
 .toast.err { background: var(--red); color: #fff; }
 @keyframes slideUp { from { transform: translateY(20px); opacity: 0 } to { transform: translateY(0); opacity: 1 } }
 @keyframes fadeOut { to { opacity: 0 } }
+
+/* ── Assets Tab Table & Toolbar (scoped to #tab-assets) ─────────────────── */
+#tab-assets .manage-toolbar {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin: 14px 0 12px;
+  flex-wrap: wrap;
+}
+#tab-assets .manage-search {
+  flex: 1;
+  min-width: 180px;
+  max-width: 280px;
+  background: var(--ov-bg-panel-raised);
+  border: 1px solid var(--ov-border-strong);
+  border-radius: 6px;
+  padding: 7px 11px;
+  color: var(--ov-text-primary);
+  font-family: var(--ov-font-ui);
+  font-size: 13px;
+}
+#tab-assets .manage-search:focus {
+  outline: none;
+  border-color: var(--ov-accent);
+}
+#tab-assets .manage-search::placeholder {
+  color: var(--ov-text-muted);
+}
+#tab-assets .manage-filters {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+#tab-assets .manage-filter-chip {
+  font-family: var(--ov-font-ui);
+  font-size: 12px;
+  color: var(--ov-text-secondary);
+  background: transparent;
+  border: 1px solid var(--ov-border-strong);
+  border-radius: 6px;
+  padding: 5px 10px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.15s;
+}
+#tab-assets .manage-filter-chip:hover {
+  background: var(--ov-bg-panel-raised);
+  color: var(--ov-text-primary);
+}
+#tab-assets .manage-filter-chip.active {
+  background: var(--ov-accent-dim);
+  color: var(--ov-accent-text-on-dim);
+  border-color: transparent;
+}
+#tab-assets .manage-count {
+  margin-left: auto;
+  color: var(--ov-text-muted);
+  font-family: var(--ov-font-data);
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+
+#tab-assets .manage-table-panel {
+  background: var(--ov-bg-panel);
+  border: 1px solid var(--ov-border);
+  border-radius: var(--ov-radius-panel);
+  overflow: hidden;
+}
+#tab-assets .manage-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+#tab-assets table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--ov-font-ui);
+}
+#tab-assets thead th {
+  text-align: left;
+  font-weight: 500;
+  font-size: 11.5px;
+  color: var(--ov-text-muted);
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--ov-border);
+  background: var(--ov-bg-panel-raised);
+  white-space: nowrap;
+}
+#tab-assets tbody td {
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--ov-border);
+  vertical-align: middle;
+  font-size: 13px;
+}
+#tab-assets tbody tr:last-child td {
+  border-bottom: none;
+}
+#tab-assets tbody tr {
+  cursor: pointer;
+  transition: background 0.12s;
+}
+#tab-assets tbody tr:hover {
+  background: var(--ov-bg-panel-raised);
+}
+
+#tab-assets .asset-cell {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+#tab-assets .status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ov-success);
+  flex-shrink: 0;
+}
+#tab-assets .status-dot.maintenance {
+  background: var(--ov-accent);
+}
+#tab-assets .status-dot.down {
+  background: var(--ov-critical);
+}
+#tab-assets .asset-name {
+  font-weight: 500;
+  color: var(--ov-text-primary);
+  white-space: nowrap;
+}
+#tab-assets .asset-class {
+  font-family: var(--ov-font-data);
+  font-size: 10px;
+  color: var(--ov-text-muted);
+  border: 1px solid var(--ov-border-strong);
+  border-radius: 4px;
+  padding: 1px 5px;
+  margin-left: 6px;
+  white-space: nowrap;
+}
+#tab-assets .muted-cell {
+  color: var(--ov-text-secondary);
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+
+#tab-assets .crit {
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 4px;
+  display: inline-block;
+  font-family: var(--ov-font-ui);
+}
+#tab-assets .crit-p1 {
+  background: var(--ov-critical-dim);
+  color: var(--ov-critical);
+}
+#tab-assets .crit-p2 {
+  background: var(--ov-accent-dim);
+  color: var(--ov-accent-text-on-dim);
+}
+#tab-assets .crit-p3 {
+  background: var(--ov-progress-dim);
+  color: var(--ov-progress);
+}
+#tab-assets .crit-p4 {
+  background: var(--ov-bg-panel-raised);
+  color: var(--ov-text-muted);
+}
+#tab-assets .row-actions {
+  text-align: right;
+  color: var(--ov-text-muted);
+  font-size: 15px;
+  width: 24px;
+}
+
+/* ── Manage -> Assets Table & Toolbar (scoped to #manage-assets-mode) ───── */
+#manage-assets-mode .manage-toolbar {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin: 14px 0 12px;
+  flex-wrap: wrap;
+}
+#manage-assets-mode .manage-search {
+  flex: 1;
+  min-width: 180px;
+  max-width: 280px;
+  background: var(--ov-bg-panel-raised);
+  border: 1px solid var(--ov-border-strong);
+  border-radius: 6px;
+  padding: 7px 11px;
+  color: var(--ov-text-primary);
+  font-family: var(--ov-font-ui);
+  font-size: 13px;
+}
+#manage-assets-mode .manage-search:focus {
+  outline: none;
+  border-color: var(--ov-accent);
+}
+#manage-assets-mode .manage-search::placeholder {
+  color: var(--ov-text-muted);
+}
+#manage-assets-mode .manage-filters {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+#manage-assets-mode .manage-filter-chip {
+  font-family: var(--ov-font-ui);
+  font-size: 12px;
+  color: var(--ov-text-secondary);
+  background: transparent;
+  border: 1px solid var(--ov-border-strong);
+  border-radius: 6px;
+  padding: 5px 10px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.15s;
+}
+#manage-assets-mode .manage-filter-chip:hover {
+  background: var(--ov-bg-panel-raised);
+  color: var(--ov-text-primary);
+}
+#manage-assets-mode .manage-filter-chip.active {
+  background: var(--ov-accent-dim);
+  color: var(--ov-accent-text-on-dim);
+  border-color: transparent;
+}
+#manage-assets-mode .manage-count {
+  margin-left: auto;
+  color: var(--ov-text-muted);
+  font-family: var(--ov-font-data);
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+
+#manage-assets-mode .manage-table-panel {
+  background: var(--ov-bg-panel);
+  border: 1px solid var(--ov-border);
+  border-radius: var(--ov-radius-panel);
+  overflow: hidden;
+}
+#manage-assets-mode .manage-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+#manage-assets-mode table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--ov-font-ui);
+}
+#manage-assets-mode thead th {
+  text-align: left;
+  font-weight: 500;
+  font-size: 11.5px;
+  color: var(--ov-text-muted);
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--ov-border);
+  background: var(--ov-bg-panel-raised);
+  white-space: nowrap;
+}
+#manage-assets-mode tbody td {
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--ov-border);
+  vertical-align: middle;
+  font-size: 13px;
+}
+#manage-assets-mode tbody tr:last-child td {
+  border-bottom: none;
+}
+#manage-assets-mode tbody tr {
+  cursor: pointer;
+  transition: background 0.12s;
+}
+#manage-assets-mode tbody tr:hover {
+  background: var(--ov-bg-panel-raised);
+}
+
+#manage-assets-mode .asset-cell {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+#manage-assets-mode .status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ov-success);
+  flex-shrink: 0;
+}
+#manage-assets-mode .status-dot.maintenance {
+  background: var(--ov-accent);
+}
+#manage-assets-mode .status-dot.down {
+  background: var(--ov-critical);
+}
+#manage-assets-mode .asset-name {
+  font-weight: 500;
+  color: var(--ov-text-primary);
+  white-space: nowrap;
+}
+#manage-assets-mode .asset-class {
+  font-family: var(--ov-font-data);
+  font-size: 10px;
+  color: var(--ov-text-muted);
+  border: 1px solid var(--ov-border-strong);
+  border-radius: 4px;
+  padding: 1px 5px;
+  margin-left: 6px;
+  white-space: nowrap;
+}
+#manage-assets-mode .muted-cell {
+  color: var(--ov-text-secondary);
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+
+#manage-assets-mode .crit {
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 4px;
+  display: inline-block;
+  font-family: var(--ov-font-ui);
+}
+#manage-assets-mode .crit-p1 {
+  background: var(--ov-critical-dim);
+  color: var(--ov-critical);
+}
+#manage-assets-mode .crit-p2 {
+  background: var(--ov-accent-dim);
+  color: var(--ov-accent-text-on-dim);
+}
+#manage-assets-mode .crit-p3 {
+  background: var(--ov-progress-dim);
+  color: var(--ov-progress);
+}
+#manage-assets-mode .crit-p4 {
+  background: var(--ov-bg-panel-raised);
+  color: var(--ov-text-muted);
+}
+#manage-assets-mode .row-actions {
+  text-align: right;
+  color: var(--ov-text-muted);
+  font-size: 15px;
+  width: 24px;
+}
+
