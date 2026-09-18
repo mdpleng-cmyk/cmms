@@ -446,6 +446,7 @@ button.big { width: 100%; padding: 14px; font-size: 15px; }
 
 /* Category tag — border-only mono chip */
 .ov-wo-tag { font-family: var(--ov-font-data); font-size: 10.5px; color: var(--ov-text-muted); border: 1px solid var(--ov-border-strong); border-radius: 4px; padding: 1px 5px; }
+.ov-wo-num { font-family: var(--ov-font-data); font-size: 10px; color: var(--ov-text-muted); flex-shrink: 0; }
 
 /* Last-action log excerpt */
 .ov-wo-log { color: var(--ov-text-secondary); margin-top: 6px; font-size: 12px; padding-left: 10px; border-left: 2px solid var(--ov-border-strong); line-height: 1.5; font-family: var(--ov-font-ui); }

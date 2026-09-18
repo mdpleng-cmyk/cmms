@@ -78,6 +78,7 @@ function renderOpenWoList() {
       <div class="ov-open-row ${sevClass}" onclick="window.openWoDetailModal(${wo.id})">
         <div style="min-width:0; flex:1;">
           <div style="display:flex; align-items:center; gap:7px; flex-wrap:wrap;">
+            <span class="ov-wo-num">#${wo.id}</span>
             <span class="ov-open-asset${wo.type === 'other' ? ' other-type' : ''}">${escapeHtml(primaryText)}</span>
             ${catTag}
             ${statusBadge}
@@ -208,6 +209,10 @@ export async function loadOverview() {
     : `${openNotes.length  ? `<div class="ov-note-group-label">open</div>${noteGroup(openNotes, false)}`   : ''}
        ${doneNotes.length  ? `<div class="ov-note-group-label">done</div>${noteGroup(doneNotes, true)}`    : ''}`;
 
+  const cntOpen     = openWOs.filter(w => w.status === 'open').length;
+  const cntProgress = openWOs.filter(w => w.status === 'in_progress').length;
+  const cntWaiting  = openWOs.filter(w => w.status === 'waiting_parts').length;
+
   el.innerHTML = `
     <div class="ov-row-2-wide">
       <div class="ov-panel">
@@ -215,9 +220,9 @@ export async function loadOverview() {
           <div class="ov-panel-title-row"><div class="ov-icon-badge blue"><i data-lucide="clipboard-list"></i></div><div class="ov-panel-title">Open Work Orders</div></div>
           <div class="ov-subtabs">
             <button class="ov-subtab active" data-filter="all" onclick="window.filterOpenWos('all')">All (${openWOs.length})</button>
-            <button class="ov-subtab" data-filter="open" onclick="window.filterOpenWos('open')">Open</button>
-            <button class="ov-subtab" data-filter="in_progress" onclick="window.filterOpenWos('in_progress')">In Progress</button>
-            <button class="ov-subtab" data-filter="waiting_parts" onclick="window.filterOpenWos('waiting_parts')">Awaiting Spares</button>
+            <button class="ov-subtab" data-filter="open" onclick="window.filterOpenWos('open')">Open (${cntOpen})</button>
+            <button class="ov-subtab" data-filter="in_progress" onclick="window.filterOpenWos('in_progress')">In Progress (${cntProgress})</button>
+            <button class="ov-subtab" data-filter="waiting_parts" onclick="window.filterOpenWos('waiting_parts')">Awaiting Spares (${cntWaiting})</button>
           </div>
         </div>
         <div id="ov-open-list">${openHtml}</div>
