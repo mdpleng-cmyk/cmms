@@ -74,10 +74,20 @@ function renderOpenWoList() {
       ? `<div class="ov-wo-stale ${stale >= 5 ? 'crit' : ''}"><i data-lucide="clock" style="width:12px; height:12px;"></i>${stale}d${!lv ? ', no update' : ' stale'}</div>`
       : '';
 
+    // Priority badge — P1/P2 only; P3 is default/normal so no badge needed
+    const prioHtml = (p === 'P1' || p === 'P2')
+      ? `<span class="ov-prio-badge ${p.toLowerCase()}">${p}</span>`
+      : '';
+
+    // WO age (days since opened)
+    const ageDays = Math.floor((todayStart - new Date(wo.opened_at)) / 86400000);
+    const ageHtml = ageDays > 0 ? `<div class="ov-wo-age">${ageDays}d old</div>` : '';
+
     return `
       <div class="ov-open-row ${sevClass}" onclick="window.openWoDetailModal(${wo.id})">
         <div style="min-width:0; flex:1;">
           <div style="display:flex; align-items:center; gap:7px; flex-wrap:wrap;">
+            ${prioHtml}
             <span class="ov-open-asset${wo.type === 'other' ? ' other-type' : ''}">${escapeHtml(primaryText)}</span>
             ${catTag}
             ${statusBadge}
@@ -87,6 +97,7 @@ function renderOpenWoList() {
         </div>
         <div style="display:flex; flex-direction:column; align-items:flex-end; gap:5px; flex-shrink:0;">
           <span class="ov-wo-num">WO#${wo.id}</span>
+          ${ageHtml}
           ${staleHtml}
         </div>
       </div>`;
@@ -190,7 +201,7 @@ export async function loadOverview() {
       <div class="ov-activity-row" onclick="window.openWoDetailModal(${v.wo_id})">
         <div style="min-width:0; flex:1;">
           <div class="ov-activity-title"><b>${escapeHtml(assetName)}</b> &mdash; ${escapeHtml(desc)}</div>
-          <div class="ov-activity-meta">${escapeHtml(v.technician || 'unassigned')}</div>
+          <div class="ov-activity-meta">${escapeHtml(v.technician || 'unassigned')} · ${formatDate(v.visited_at)}</div>
         </div>
         <span class="ov-activity-chip ${chipCls}">${escapeHtml(chipLabel)}</span>
       </div>`;
