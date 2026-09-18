@@ -79,9 +79,6 @@ function renderOpenWoList() {
       ? `<span class="ov-prio-badge ${p.toLowerCase()}">${p}</span>`
       : '';
 
-    // WO age (days since opened)
-    const ageDays = Math.floor((todayStart - new Date(wo.opened_at)) / 86400000);
-    const ageHtml = ageDays > 0 ? `<div class="ov-wo-age">${ageDays}d old</div>` : '';
 
     return `
       <div class="ov-open-row ${sevClass}" onclick="window.openWoDetailModal(${wo.id})">
@@ -97,7 +94,6 @@ function renderOpenWoList() {
         </div>
         <div style="display:flex; flex-direction:column; align-items:flex-end; gap:5px; flex-shrink:0;">
           <span class="ov-wo-num">WO#${wo.id}</span>
-          ${ageHtml}
           ${staleHtml}
         </div>
       </div>`;
