@@ -86,7 +86,7 @@ function renderOpenWoList() {
           ${logHtml}
         </div>
         <div style="display:flex; flex-direction:column; align-items:flex-end; gap:5px; flex-shrink:0;">
-          <span class="ov-wo-num">#${wo.id}</span>
+          <span class="ov-wo-num">WO#${wo.id}</span>
           ${staleHtml}
         </div>
       </div>`;
