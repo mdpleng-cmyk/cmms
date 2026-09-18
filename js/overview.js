@@ -78,7 +78,6 @@ function renderOpenWoList() {
       <div class="ov-open-row ${sevClass}" onclick="window.openWoDetailModal(${wo.id})">
         <div style="min-width:0; flex:1;">
           <div style="display:flex; align-items:center; gap:7px; flex-wrap:wrap;">
-            <span class="ov-wo-num">#${wo.id}</span>
             <span class="ov-open-asset${wo.type === 'other' ? ' other-type' : ''}">${escapeHtml(primaryText)}</span>
             ${catTag}
             ${statusBadge}
@@ -87,6 +86,7 @@ function renderOpenWoList() {
           ${logHtml}
         </div>
         <div style="display:flex; flex-direction:column; align-items:flex-end; gap:5px; flex-shrink:0;">
+          <span class="ov-wo-num">#${wo.id}</span>
           ${staleHtml}
         </div>
       </div>`;
