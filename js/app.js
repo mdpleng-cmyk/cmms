@@ -1,5 +1,5 @@
 import { sb } from './store.js';
-import { signIn, signOut, onSignedIn } from './auth.js';
+import { signIn, signOut, onSignedIn, isInPasswordRecovery, toggleForgotForm, sendResetEmail, setNewPassword } from './auth.js';
 import { openNewAssetForm, closeNewAssetForm, createAsset, loadAssets, openAssetHistoryModal, closeAssetHistoryModal, renderAssetDropdown, selectAsset, goToSchedule, toggleScheduleItems, switchAssetModalTab, toggleAssetClassFields, onEquipmentTypeChange, setAssetTabFilter, filterAssetsTab, manageAssetPmRoutines, openNewScheduleForCurrentAsset } from './assets.js';
 import { openNewScheduleForm, closeNewScheduleForm, createSchedule, loadSchedules, addChecklistItem, toggleNewItemUnit, generatePmWoNow, onPmTargetChange, openPickPmAssetModal, closePickPmAssetModal, addChecklistItemToClass, toggleClassNewItemUnit, togglePmTile, toggleAllPmTiles, addDraftScheduleItem, removeDraftScheduleItem, toggleModalDraftItemUnit, onSchedIntervalChange } from './schedules.js';
 import { openNewWoForm, closeNewWoForm, createWorkOrder, loadWorkOrders, filterWorkOrders, triggerUpdateFlow, closeUpdateModal, reviewUpdateWo, backToEditWo, confirmSaveWo, toggleChecklistItem, saveReadingValue, openWoDetailModal, closeWoDetailModal, triggerUpdateFromDetail, openNewWoFormForAsset, raiseWoFromAssetPage, toggleWoCloseTimes, togglePlannedDateField, startEditVisit, cancelEditVisit, saveVisitEdit, startEditWoMeta, cancelWoMetaEdit, saveWoMetaEdit, logWithoutAsset, clearNoAssetSelection, cancelNoAssetWarning, continueWithoutAsset, viewCreatedWorkOrder, reloadLatestWoDetail, openPmChecklistRunner, closePmChecklistRunner, toggleRunnerItem, saveRunnerReading, completePmFromRunner, openRunnerFromDetail } from './workOrders.js';
@@ -10,6 +10,9 @@ import { loadTelemetry } from './telemetry.js';
 // Bind to Window so HTML onclicks work
 window.signIn = signIn;
 window.signOut = signOut;
+window.toggleForgotForm = toggleForgotForm;
+window.sendResetEmail = sendResetEmail;
+window.setNewPassword = setNewPassword;
 
 window.openNewAssetForm = openNewAssetForm;
 window.closeNewAssetForm = closeNewAssetForm;
@@ -159,7 +162,7 @@ if (searchInput) {
   });
 }
 
-// Check session on load
-sb.auth.getSession().then(({ data }) => { if (data.session) onSignedIn(data.session.user); });
+// Check session on load — skip if we're in password-recovery mode
+sb.auth.getSession().then(({ data }) => { if (data.session && !isInPasswordRecovery()) onSignedIn(data.session.user); });
 
 document.getElementById('header-date').textContent = new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });

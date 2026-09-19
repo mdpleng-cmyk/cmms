@@ -19,10 +19,31 @@
   <h1 style="text-align:center; margin-bottom:6px;">CM<span>MS</span></h1>
   <p class="readout-empty" style="padding:0 0 24px;">Sign in to log and track work.</p>
   <div class="field"><label class="field-label">Email</label><input id="login-email" type="email"></div>
-  <div class="field"><label class="field-label">Password</label><input id="login-password" type="password"></div>
+  <div class="field"><label class="field-label">Password</label><input id="login-password" type="password" onkeydown="if(event.key==='Enter') window.signIn()"></div>
   <button id="btn-login" class="primary big" onclick="window.signIn()"><i data-lucide="log-in"></i> Sign In</button>
   <p id="login-error" style="color:var(--red); font-size:13px; text-align:center; margin-top:14px; min-height:18px;"></p>
+  <div style="text-align:center; margin-top:4px;">
+    <button class="ghost" style="font-size:12px; color:var(--text-muted); padding:4px 8px;" onclick="window.toggleForgotForm()">Forgot password?</button>
+  </div>
+  <div id="forgot-form" class="hidden" style="margin-top:14px; border-top:1px solid var(--border); padding-top:16px;">
+    <p style="font-size:12px; color:var(--text-muted); margin-bottom:12px; text-align:center;">Enter your email and we'll send a reset link.</p>
+    <div class="field"><label class="field-label">Email</label><input id="reset-email" type="email" onkeydown="if(event.key==='Enter') window.sendResetEmail()"></div>
+    <button id="btn-send-reset" class="primary big" onclick="window.sendResetEmail()"><i data-lucide="mail"></i> Send Reset Link</button>
+    <p id="reset-status" style="font-size:13px; text-align:center; margin-top:10px; min-height:18px;"></p>
+  </div>
 </div>
+
+<!-- SET NEW PASSWORD (shown when user arrives via recovery email link) -->
+<div id="set-password-screen" class="wrap login-wrap hidden">
+  <div class="eyebrow" style="text-align:center;">MDPL &middot; Maintenance</div>
+  <h1 style="text-align:center; margin-bottom:6px;">CM<span>MS</span></h1>
+  <p class="readout-empty" style="padding:0 0 24px;">Choose a new password.</p>
+  <div class="field"><label class="field-label">New Password</label><input id="new-password" type="password"></div>
+  <div class="field"><label class="field-label">Confirm Password</label><input id="confirm-password" type="password" onkeydown="if(event.key==='Enter') window.setNewPassword()"></div>
+  <button id="btn-set-password" class="primary big" onclick="window.setNewPassword()"><i data-lucide="key"></i> Set Password</button>
+  <p id="set-password-error" style="color:var(--red); font-size:13px; text-align:center; margin-top:14px; min-height:18px;"></p>
+</div>
+
 
 <!-- APP -->
 <div id="app" class="hidden">

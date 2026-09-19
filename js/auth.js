@@ -4,6 +4,22 @@ import { loadWorkOrders } from './workOrders.js';
 import { loadOverview } from './overview.js';
 import { startRealtime, stopRealtime } from './realtime.js';
 
+// Set to true when the user arrives via a password-recovery email link.
+// Prevents the normal session-restore path from loading the app while the
+// set-password screen is active.
+let inPasswordRecovery = false;
+export function isInPasswordRecovery() { return inPasswordRecovery; }
+
+// Intercept the PASSWORD_RECOVERY auth event (fires when the user lands on
+// the page after clicking a recovery / invite link).
+sb.auth.onAuthStateChange((event) => {
+  if (event === 'PASSWORD_RECOVERY') {
+    inPasswordRecovery = true;
+    document.getElementById('login-screen').classList.add('hidden');
+    document.getElementById('set-password-screen').classList.remove('hidden');
+  }
+});
+
 export async function signIn() {
   setButtonLoading('btn-login', true);
   const email = document.getElementById('login-email').value.trim();
@@ -38,6 +54,7 @@ export async function onSignedIn(user) {
   state.currentRole = roleRow.role;
   document.getElementById('who-name').innerHTML = `${roleRow.full_name || user.email} &middot; ${state.currentRole}`;
   document.getElementById('login-screen').classList.add('hidden');
+  document.getElementById('set-password-screen').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
 
   const canWrite = state.currentRole === 'admin' || state.currentRole === 'technician';
@@ -50,4 +67,70 @@ export async function onSignedIn(user) {
   await loadAssets();
   await loadWorkOrders();
   startRealtime();
+}
+
+// ── Forgot password ────────────────────────────────────────────────────────
+
+export function toggleForgotForm() {
+  const form = document.getElementById('forgot-form');
+  const isHidden = form.classList.toggle('hidden');
+  if (!isHidden) {
+    // Pre-fill with whatever the user typed in the login email field
+    const loginEmail = document.getElementById('login-email').value.trim();
+    if (loginEmail) document.getElementById('reset-email').value = loginEmail;
+    document.getElementById('reset-email').focus();
+  }
+}
+
+export async function sendResetEmail() {
+  const email = document.getElementById('reset-email').value.trim();
+  const statusEl = document.getElementById('reset-status');
+  statusEl.textContent = '';
+  statusEl.style.color = 'var(--red)';
+
+  if (!email) { statusEl.textContent = 'Enter your email address.'; return; }
+
+  setButtonLoading('btn-send-reset', true);
+  const { error } = await sb.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.origin + window.location.pathname,
+  });
+  setButtonLoading('btn-send-reset', false, '<i data-lucide="mail"></i> Send Reset Link');
+
+  if (error) {
+    statusEl.textContent = error.message;
+  } else {
+    statusEl.style.color = 'var(--green)';
+    statusEl.textContent = 'Reset link sent — check your email.';
+  }
+}
+
+// ── Set new password (recovery landing) ───────────────────────────────────
+
+export async function setNewPassword() {
+  const password = document.getElementById('new-password').value;
+  const confirm  = document.getElementById('confirm-password').value;
+  const errEl    = document.getElementById('set-password-error');
+  errEl.textContent = '';
+
+  if (!password || password.length < 6) {
+    errEl.textContent = 'Password must be at least 6 characters.';
+    return;
+  }
+  if (password !== confirm) {
+    errEl.textContent = 'Passwords do not match.';
+    return;
+  }
+
+  setButtonLoading('btn-set-password', true);
+  const { data, error } = await sb.auth.updateUser({ password });
+  setButtonLoading('btn-set-password', false, '<i data-lucide="key"></i> Set Password');
+
+  if (error) {
+    errEl.textContent = error.message;
+    return;
+  }
+
+  inPasswordRecovery = false;
+  toast('Password set successfully!');
+  await onSignedIn(data.user);
 }
