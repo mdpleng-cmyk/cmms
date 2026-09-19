@@ -1,9 +1,11 @@
 const SUPABASE_URL = "https://eizyetgfrqlrlhvrxjsq.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVpenlldGdmcnFscmxodnJ4anNxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgyMzMwMDUsImV4cCI6MjEwMzgwOTAwNX0.xYjQ5IF2SKYpiXQtxSvSLmT7dPwaHv8w9Z1kpNGdH_g";
 
-// Capture URL hash type BEFORE createClient() — Supabase clears the hash
+// Capture recovery flag BEFORE createClient() — Supabase clears the hash/query
 // during token exchange, so this must happen first.
-export const urlHashType = new URLSearchParams(window.location.hash.slice(1)).get('type');
+const _hash = new URLSearchParams(window.location.hash.slice(1));
+const _search = new URLSearchParams(window.location.search);
+export const isRecoveryLink = _hash.get('type') === 'recovery' || _search.get('type') === 'recovery';
 
 export const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 

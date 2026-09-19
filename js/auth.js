@@ -1,27 +1,32 @@
-import { sb, state, urlHashType, setButtonLoading, toast } from './store.js';
+import { sb, state, isRecoveryLink, setButtonLoading, toast } from './store.js';
 import { loadAssets } from './assets.js';
 import { loadWorkOrders } from './workOrders.js';
 import { loadOverview } from './overview.js';
 import { startRealtime, stopRealtime } from './realtime.js';
 
 // Set to true when the user arrives via a password-recovery email link.
-let inPasswordRecovery = false;
+let inPasswordRecovery = isRecoveryLink;
 export function isInPasswordRecovery() { return inPasswordRecovery; }
 
-// If this page load was triggered by a recovery link, show the set-password
-// screen immediately — before any session restore or auth events fire.
-if (urlHashType === 'recovery') {
+function showSetPasswordScreen() {
   inPasswordRecovery = true;
   document.getElementById('login-screen').classList.add('hidden');
-  document.getElementById('set-password-screen').classList.remove('hidden');
+  const appEl = document.getElementById('app');
+  if (appEl) appEl.classList.add('hidden');
+  const setPwdEl = document.getElementById('set-password-screen');
+  if (setPwdEl) setPwdEl.classList.remove('hidden');
+  if (window.lucide) lucide.createIcons();
 }
 
-// Backup: also intercept via onAuthStateChange in case the hash check misses.
+// If this page load was triggered by a recovery link, show set-password screen immediately
+if (isRecoveryLink) {
+  showSetPasswordScreen();
+}
+
+// Intercept Supabase PASSWORD_RECOVERY event
 sb.auth.onAuthStateChange((event) => {
   if (event === 'PASSWORD_RECOVERY') {
-    inPasswordRecovery = true;
-    document.getElementById('login-screen').classList.add('hidden');
-    document.getElementById('set-password-screen').classList.remove('hidden');
+    showSetPasswordScreen();
   }
 });
 
@@ -52,6 +57,10 @@ export async function signOut() {
 }
 
 export async function onSignedIn(user) {
+  if (inPasswordRecovery) {
+    // If a recovery link was used, do not show the dashboard until the password is set.
+    return;
+  }
   state.currentUser = user;
   const { data: roleRow, error } = await sb.from('user_roles').select('role, full_name').eq('user_id', user.id).single();
   if (error || !roleRow) { toast('No role assigned yet.', 'err'); return; }
@@ -136,6 +145,54 @@ export async function setNewPassword() {
   }
 
   inPasswordRecovery = false;
+  try {
+    window.history.replaceState(null, '', window.location.pathname);
+  } catch (e) {}
+
+  document.getElementById('set-password-screen').classList.add('hidden');
   toast('Password set successfully!');
   await onSignedIn(data.user);
+}
+
+// ── In-app Change Password (for already logged-in users) ───────────────────
+
+export function openChangePasswordModal() {
+  document.getElementById('change-pwd-new').value = '';
+  document.getElementById('change-pwd-confirm').value = '';
+  document.getElementById('change-pwd-error').textContent = '';
+  document.getElementById('modal-change-password').classList.remove('hidden');
+  lucide.createIcons({ root: document.getElementById('modal-change-password') });
+  document.getElementById('change-pwd-new').focus();
+}
+
+export function closeChangePasswordModal() {
+  document.getElementById('modal-change-password').classList.add('hidden');
+}
+
+export async function saveChangedPassword() {
+  const newPwd = document.getElementById('change-pwd-new').value;
+  const confirmPwd = document.getElementById('change-pwd-confirm').value;
+  const errEl = document.getElementById('change-pwd-error');
+  errEl.textContent = '';
+
+  if (!newPwd || newPwd.length < 6) {
+    errEl.textContent = 'Password must be at least 6 characters.';
+    return;
+  }
+  if (newPwd !== confirmPwd) {
+    errEl.textContent = 'Passwords do not match.';
+    return;
+  }
+
+  setButtonLoading('btn-save-changed-pwd', true);
+  const { error } = await sb.auth.updateUser({ password: newPwd });
+  setButtonLoading('btn-save-changed-pwd', false, '<i data-lucide="save"></i> Update Password');
+
+  if (error) {
+    errEl.textContent = error.message;
+    return;
+  }
+
+  closeChangePasswordModal();
+  toast('Password updated successfully!');
 }

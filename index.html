@@ -57,6 +57,9 @@
       <button id="btn-global-new-wo" class="primary" style="padding:8px 12px; font-size:12px;" onclick="window.openNewWoForm()">
         <i data-lucide="plus" style="width:14px;"></i> New WO
       </button>
+      <button class="ghost" style="padding:6px; color:var(--text-muted);" onclick="window.openChangePasswordModal()" title="Change Password">
+        <i data-lucide="key" style="width:18px;height:18px;"></i>
+      </button>
       <button class="ghost" style="padding:6px; color:var(--text-muted);" onclick="window.signOut()" title="Exit">
         <i data-lucide="log-out" style="width:18px;height:18px;"></i>
       </button>
@@ -736,6 +739,29 @@
       </button>
       <button class="pm-runner-btn pm-runner-btn-primary" id="pm-runner-complete-btn" onclick="window.completePmFromRunner()">
         Complete WO (0/0)
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- CHANGE PASSWORD MODAL (for logged in users) -->
+<div id="modal-change-password" class="modal-overlay hidden" onclick="if(event.target === this) window.closeChangePasswordModal()">
+  <div class="modal-box" style="max-width:380px;">
+    <div class="eyebrow" style="margin-bottom:6px;">Account Security</div>
+    <div class="card-title" style="margin-bottom:14px;">Change Password</div>
+    <div class="field">
+      <label class="field-label">New Password</label>
+      <input id="change-pwd-new" type="password" placeholder="At least 6 characters">
+    </div>
+    <div class="field">
+      <label class="field-label">Confirm New Password</label>
+      <input id="change-pwd-confirm" type="password" onkeydown="if(event.key==='Enter') window.saveChangedPassword()">
+    </div>
+    <p id="change-pwd-error" style="color:var(--red); font-size:12px; margin-top:4px; min-height:16px;"></p>
+    <div class="modal-actions" style="margin-top:14px;">
+      <button type="button" class="ghost" onclick="window.closeChangePasswordModal()">Cancel</button>
+      <button type="button" id="btn-save-changed-pwd" class="primary" onclick="window.saveChangedPassword()">
+        <i data-lucide="save"></i> Update Password
       </button>
     </div>
   </div>
