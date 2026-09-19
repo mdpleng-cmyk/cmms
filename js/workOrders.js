@@ -1103,6 +1103,32 @@ export async function openPmChecklistRunner(woId) {
     return;
   }
 
+  const previousTextByItem = {};
+  const itemIds = (results || [])
+    .map(result => result.checklist_items?.id)
+    .filter(id => id != null);
+  if (wo.schedule_id && itemIds.length) {
+    const { data: previousWo } = await sb.from('work_orders')
+      .select('id')
+      .eq('schedule_id', wo.schedule_id)
+      .eq('status', 'closed')
+      .neq('id', woId)
+      .order('closed_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (previousWo) {
+      const { data: previousResults } = await sb.from('wo_checklist_results')
+        .select('item_id, result_text')
+        .eq('wo_id', previousWo.id)
+        .in('item_id', itemIds)
+        .not('result_text', 'is', null);
+      (previousResults || []).forEach(result => {
+        previousTextByItem[result.item_id] = result.result_text;
+      });
+    }
+  }
+
   const sortedResults = (results || []).slice().sort((a, b) => {
     const orderA = a.checklist_items?.sort_order ?? 999999;
     const orderB = b.checklist_items?.sort_order ?? 999999;
@@ -1137,7 +1163,7 @@ export async function openPmChecklistRunner(woId) {
             ${items.map(r => {
               const item = r.checklist_items || {};
               if (item.item_type === 'text') {
-                const textValue = r.result_text || '';
+                const textValue = r.result_text || previousTextByItem[item.id] || '';
                 return `
                   <div class="pm-runner-item ${r.done ? 'done' : ''}" id="pm-runner-item-${r.id}" data-result-id="${r.id}">
                     <div class="pm-runner-check">
