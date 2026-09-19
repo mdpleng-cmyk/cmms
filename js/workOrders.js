@@ -822,7 +822,7 @@ export async function confirmSaveWo() {
 async function loadChecklistForWo(woId) {
   const box = document.getElementById('wo-detail-checklist');
   const { data, error } = await sb.from('wo_checklist_results')
-    .select('id, done, result_value, checklist_items(description, item_type, unit, section, tool, sort_order)')
+    .select('id, done, result_value, result_text, checklist_items(description, item_type, unit, section, tool, sort_order)')
     .eq('wo_id', woId);
   if (!box) return;
   if (error) {
@@ -874,6 +874,17 @@ async function loadChecklistForWo(woId) {
 
 function renderWoChecklistRow(r, readOnly) {
   const item = r.checklist_items || {};
+  if (item.item_type === 'text') {
+    const textValue = r.result_text || '';
+    return `
+    <div class="checklist-item" style="display:flex; align-items:center; gap:8px;">
+      <span style="flex:1;">${escapeHtml(item.description || '')}
+        ${item.tool ? `<span class="pm-tool-chip" style="font-size:10px; padding:1px 5px; margin-left:6px;">🔧 ${escapeHtml(item.tool)}</span>` : ''}
+      </span>
+      <input type="text" value="${escapeHtml(textValue)}" data-prev-value="${escapeHtml(textValue)}" placeholder="Enter condition" style="flex:1; min-width:140px;"
+        ${readOnly ? 'disabled' : ''} onchange="window.saveTextValue(${r.id}, this)">
+    </div>`;
+  }
   if (item.item_type === 'reading') {
     const valStr = (r.result_value != null && !Number.isNaN(Number(r.result_value))) ? String(r.result_value) : '';
     return `
@@ -922,6 +933,8 @@ export async function toggleChecklistItem(resultId, checkboxEl) {
     const { error } = await sb.from('wo_checklist_results').update({
       done,
       result_check: done,
+      result_value: null,
+      result_text: null,
       done_at: done ? new Date().toISOString() : null
     }).eq('id', resultId);
 
@@ -974,6 +987,7 @@ export async function saveReadingValue(resultId, inputEl) {
   try {
     const { error } = await sb.from('wo_checklist_results').update({
       result_value: value,
+      result_text: null,
       done: value !== null,
       done_at: value !== null ? new Date().toISOString() : null
     }).eq('id', resultId);
@@ -991,6 +1005,47 @@ export async function saveReadingValue(resultId, inputEl) {
   } finally {
     const currentClosed = state.woDetailCurrent?.status === 'closed';
     if (state.currentRole !== 'viewer' && !currentClosed) {
+      inputEl.disabled = false;
+    }
+    checklistInFlight.delete(resultId);
+  }
+}
+
+export async function saveTextValue(resultId, inputEl) {
+  const isClosed = state.woDetailCurrent?.status === 'closed';
+  const prevValue = inputEl.dataset.prevValue ?? '';
+  if (isClosed || state.currentRole === 'viewer') {
+    toast('Checklist cannot be modified on a closed work order', 'err');
+    inputEl.value = prevValue;
+    return;
+  }
+  if (checklistInFlight.has(resultId)) {
+    inputEl.value = prevValue;
+    return;
+  }
+
+  const value = inputEl.value.trim();
+  checklistInFlight.add(resultId);
+  inputEl.disabled = true;
+  try {
+    const { error } = await sb.from('wo_checklist_results').update({
+      result_text: value || null,
+      result_value: null,
+      done: !!value,
+      done_at: value ? new Date().toISOString() : null
+    }).eq('id', resultId);
+    if (error) {
+      inputEl.value = prevValue;
+      toast(error.message || 'Failed to save text result', 'err');
+    } else {
+      inputEl.dataset.prevValue = value;
+      if (!isWoDetailDirty()) hideRemoteUpdateBanner();
+    }
+  } catch (err) {
+    inputEl.value = prevValue;
+    toast(err.message || 'Failed to save text result', 'err');
+  } finally {
+    if (state.currentRole !== 'viewer' && state.woDetailCurrent?.status !== 'closed') {
       inputEl.disabled = false;
     }
     checklistInFlight.delete(resultId);
@@ -1039,7 +1094,7 @@ export async function openPmChecklistRunner(woId) {
 
   // Query checklist results
   const { data: results, error } = await sb.from('wo_checklist_results')
-    .select('id, done, result_value, checklist_items(id, description, item_type, unit, section, tool, sort_order)')
+    .select('id, done, result_value, result_text, checklist_items(id, description, item_type, unit, section, tool, sort_order)')
     .eq('wo_id', woId);
 
   if (error) {
@@ -1081,6 +1136,24 @@ export async function openPmChecklistRunner(woId) {
           <div class="pm-runner-card">
             ${items.map(r => {
               const item = r.checklist_items || {};
+              if (item.item_type === 'text') {
+                const textValue = r.result_text || '';
+                return `
+                  <div class="pm-runner-item ${r.done ? 'done' : ''}" id="pm-runner-item-${r.id}" data-result-id="${r.id}">
+                    <div class="pm-runner-check">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                      </svg>
+                    </div>
+                    <div class="pm-runner-item-text">
+                      <div class="pm-runner-item-label">${escapeHtml(item.description || '')}</div>
+                      ${item.tool ? `<div class="pm-tool-chip">🔧 ${escapeHtml(item.tool)}</div>` : ''}
+                      <input type="text" class="pm-reading-input" placeholder="Enter condition" value="${escapeHtml(textValue)}" data-prev-value="${escapeHtml(textValue)}"
+                        ${readOnly ? 'disabled' : ''} onclick="event.stopPropagation()" onchange="window.saveRunnerText(${r.id}, this)">
+                    </div>
+                  </div>
+                `;
+              }
               if (item.item_type === 'reading') {
                 const valStr = (r.result_value != null && !Number.isNaN(Number(r.result_value))) ? String(r.result_value) : '';
                 return `
@@ -1255,6 +1328,7 @@ export async function saveRunnerReading(resultId, inputEl) {
   try {
     const { error } = await sb.from('wo_checklist_results').update({
       result_value: value,
+      result_text: null,
       done: newDone,
       done_at: newDone ? new Date().toISOString() : null
     }).eq('id', resultId);
@@ -1272,6 +1346,55 @@ export async function saveRunnerReading(resultId, inputEl) {
     if (itemEl) itemEl.classList.toggle('done', wasDone);
     updateRunnerProgressUI();
     toast(err.message || 'Failed to save reading', 'err');
+  } finally {
+    if (state.currentRole !== 'viewer' && state.woDetailCurrent?.status !== 'closed') {
+      inputEl.disabled = false;
+    }
+    checklistInFlight.delete(resultId);
+  }
+}
+
+export async function saveRunnerText(resultId, inputEl) {
+  const isClosed = state.woDetailCurrent?.status === 'closed';
+  const prevValue = inputEl.dataset.prevValue ?? '';
+  if (isClosed || state.currentRole === 'viewer') {
+    toast('Checklist cannot be modified on a closed work order', 'err');
+    inputEl.value = prevValue;
+    return;
+  }
+  if (checklistInFlight.has(resultId)) {
+    inputEl.value = prevValue;
+    return;
+  }
+
+  const value = inputEl.value.trim();
+  const itemEl = inputEl.closest('.pm-runner-item');
+  const wasDone = itemEl?.classList.contains('done') || false;
+  const newDone = !!value;
+  itemEl?.classList.toggle('done', newDone);
+  updateRunnerProgressUI();
+  checklistInFlight.add(resultId);
+  inputEl.disabled = true;
+  try {
+    const { error } = await sb.from('wo_checklist_results').update({
+      result_text: value || null,
+      result_value: null,
+      done: newDone,
+      done_at: newDone ? new Date().toISOString() : null
+    }).eq('id', resultId);
+    if (error) {
+      inputEl.value = prevValue;
+      itemEl?.classList.toggle('done', wasDone);
+      updateRunnerProgressUI();
+      toast(error.message || 'Failed to save text result', 'err');
+    } else {
+      inputEl.dataset.prevValue = value;
+    }
+  } catch (err) {
+    inputEl.value = prevValue;
+    itemEl?.classList.toggle('done', wasDone);
+    updateRunnerProgressUI();
+    toast(err.message || 'Failed to save text result', 'err');
   } finally {
     if (state.currentRole !== 'viewer' && state.woDetailCurrent?.status !== 'closed') {
       inputEl.disabled = false;

@@ -272,6 +272,7 @@
               <select id="new-asset-item-type" style="width:auto;" onchange="window.toggleNewAssetItemUnit()">
                 <option value="check">Check</option>
                 <option value="reading">Reading</option>
+                <option value="text">Text / Condition</option>
               </select>
               <input id="new-asset-item-unit" placeholder="unit" style="width:64px; display:none;">
               <input id="new-asset-item-tool" placeholder="Tool (e.g. 10mm wrench)" style="width:150px;">
@@ -331,6 +332,7 @@
               <select id="new-type-item-type" style="width:auto;" onchange="window.toggleNewTypeItemUnit()">
                 <option value="check">Check</option>
                 <option value="reading">Reading</option>
+                <option value="text">Text / Condition</option>
               </select>
               <input id="new-type-item-unit" placeholder="unit" style="width:64px; display:none;">
               <input id="new-type-item-tool" placeholder="Tool (e.g. 7mm socket)" style="width:150px;">
@@ -670,6 +672,7 @@
           <select id="modal-task-type" style="flex:1; font-size:12px;" onchange="window.toggleModalDraftItemUnit()">
             <option value="check">Check (Pass/Fail)</option>
             <option value="reading">Reading</option>
+            <option value="text">Text / Condition</option>
           </select>
           <input id="modal-task-unit" class="hidden" placeholder="Unit (e.g. bar)" style="width:80px; font-size:12px;" onkeydown="if(event.key==='Enter'){event.preventDefault(); window.addDraftScheduleItem();}" />
         </div>

@@ -545,6 +545,7 @@ export async function loadSchedules() {
             <select id="new-item-type-${s.id}" style="width:auto;" onchange="window.toggleNewItemUnit(${s.id})">
               <option value="check">Check</option>
               <option value="reading">Reading</option>
+              <option value="text">Text / Condition</option>
             </select>
             <input id="new-item-unit-${s.id}" placeholder="unit" style="width:64px; display:none;">
             <button class="ghost" onclick="window.addChecklistItem(${s.id})" style="border:1px solid var(--border);"><i data-lucide="plus" style="width:14px;"></i></button>
@@ -579,6 +580,7 @@ export async function loadSchedules() {
             <select id="new-item-type-${s.id}" style="width:auto;" onchange="window.toggleNewItemUnit(${s.id})">
               <option value="check">Check</option>
               <option value="reading">Reading</option>
+              <option value="text">Text / Condition</option>
             </select>
             <input id="new-item-unit-${s.id}" placeholder="unit" style="width:64px; display:none;">
             <button class="ghost" onclick="window.addChecklistItem(${s.id})" style="border:1px solid var(--border);"><i data-lucide="plus" style="width:14px;"></i></button>
@@ -632,6 +634,7 @@ export async function loadSchedules() {
               <select id="class-add-${group.schedules[0].id}-type" style="width:auto;" onchange="window.toggleClassNewItemUnit('${escapeHtml(group.key)}')">
                 <option value="check">Check</option>
                 <option value="reading">Reading</option>
+                <option value="text">Text / Condition</option>
               </select>
               <input id="class-add-${group.schedules[0].id}-unit" placeholder="unit" style="width:64px; display:none;">
               <button class="ghost" onclick="window.addChecklistItemToClass('${escapeHtml(group.key)}')" style="border:1px solid var(--border); white-space:nowrap;">
@@ -786,7 +789,7 @@ export async function loadChecklistItems(scheduleId) {
   if (!hasSections) {
     box.innerHTML = data.map(i => `
       <div class="checklist-item" style="display:flex; align-items:center; gap:6px;">
-        <i data-lucide="${i.item_type === 'reading' ? 'gauge' : 'minus'}" style="width:12px; color:var(--text-muted); flex-shrink:0;"></i>
+        <i data-lucide="${i.item_type === 'reading' ? 'gauge' : i.item_type === 'text' ? 'file-text' : 'minus'}" style="width:12px; color:var(--text-muted); flex-shrink:0;"></i>
         <span style="flex:1;">${escapeHtml(i.description)}</span>
         ${i.item_type === 'reading' ? ` <span class="card-meta">(${escapeHtml(i.unit || '')})</span>` : ''}
         ${i.tool ? ` <span class="pm-tool-chip" style="font-size:10px; padding:1px 5px;">🔧 ${escapeHtml(i.tool)}</span>` : ''}
@@ -806,7 +809,7 @@ export async function loadChecklistItems(scheduleId) {
         </div>
         ${items.map(i => `
           <div class="checklist-item" style="display:flex; align-items:center; gap:6px; padding-left:6px;">
-            <i data-lucide="${i.item_type === 'reading' ? 'gauge' : 'minus'}" style="width:12px; color:var(--text-muted); flex-shrink:0;"></i>
+            <i data-lucide="${i.item_type === 'reading' ? 'gauge' : i.item_type === 'text' ? 'file-text' : 'minus'}" style="width:12px; color:var(--text-muted); flex-shrink:0;"></i>
             <span style="flex:1;">${escapeHtml(i.description)}</span>
             ${i.item_type === 'reading' ? ` <span class="card-meta">(${escapeHtml(i.unit || '')})</span>` : ''}
             ${i.tool ? ` <span class="pm-tool-chip" style="font-size:10px; padding:1px 5px;">🔧 ${escapeHtml(i.tool)}</span>` : ''}

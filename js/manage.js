@@ -309,6 +309,7 @@ function renderTypeTemplateItems() {
                 <select id="edit-type-item-type-${i.id}" style="width:auto;" onchange="window.toggleEditTypeItemUnit(${i.id})">
                   <option value="check" ${i.item_type === 'check' ? 'selected' : ''}>Check</option>
                   <option value="reading" ${i.item_type === 'reading' ? 'selected' : ''}>Reading</option>
+                  <option value="text" ${i.item_type === 'text' ? 'selected' : ''}>Text / Condition</option>
                 </select>
                 <input id="edit-type-item-unit-${i.id}" placeholder="unit" value="${escapeHtml(i.unit || '')}" style="width:64px; display:${i.item_type === 'reading' ? '' : 'none'};">
                 <input id="edit-type-item-tool-${i.id}" placeholder="Tool" value="${escapeHtml(i.tool || '')}" style="width:110px;">
@@ -318,7 +319,7 @@ function renderTypeTemplateItems() {
           }
           return `
             <div class="checklist-item" style="display:flex; align-items:center; gap:8px; padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.04);">
-              <i data-lucide="${i.item_type === 'reading' ? 'gauge' : 'minus'}" style="width:12px; color:var(--text-muted); flex-shrink:0;"></i>
+              <i data-lucide="${i.item_type === 'reading' ? 'gauge' : i.item_type === 'text' ? 'file-text' : 'minus'}" style="width:12px; color:var(--text-muted); flex-shrink:0;"></i>
               <div style="flex:1; min-width:0;">
                 <span style="color:var(--text); font-size:13.5px;">${escapeHtml(i.description)}</span>
                 ${i.item_type === 'reading' ? ` <span class="card-meta">(${escapeHtml(i.unit || '')})</span>` : ''}

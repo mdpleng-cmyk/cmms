@@ -31,10 +31,10 @@ wo_visits                       id, wo_id→work_orders, visit_type (update|clos
                                action_taken, parts_used, technician, logged_by→auth.users, visited_at
 recurring_schedules              id, asset_id→assets, title, interval_days, recalc_from, next_due_at,
                                reminder_days_before, snoozed_until (timestamptz, nullable), active
-checklist_items                  id, schedule_id→recurring_schedules, description, item_type (check|reading),
+checklist_items                  id, schedule_id→recurring_schedules, description, item_type (check|reading|text),
                                unit, active, added_at
 wo_checklist_results              id, wo_id→work_orders, item_id→checklist_items, done, done_at, note,
-                               result_check (bool), result_value (numeric)
+                               result_check (bool), result_value (numeric), result_text (text)
 asset_specs                      id, asset_id→assets, label, value, unit, sort_order, created_at
 notes                            id, text, done, created_by→auth.users, created_at
 user_roles                       user_id→auth.users (uuid, the one legit uuid FK), role, full_name
