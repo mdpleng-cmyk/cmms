@@ -1118,9 +1118,9 @@ button.big { width: 100%; padding: 14px; font-size: 15px; }
 }
 .pm-condition-input {
   display: block;
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   box-sizing: border-box;
-  margin-top: 8px;
   background: var(--bg);
   border: 1px solid var(--border);
   color: var(--text);
@@ -1131,6 +1131,19 @@ button.big { width: 100%; padding: 14px; font-size: 15px; }
 .pm-condition-input:focus {
   outline: none;
   border-color: var(--amber);
+}
+.pm-condition-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+.pm-condition-confirm {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 7px 9px;
+  color: var(--green);
 }
 .pm-reading-unit {
   font-size: 12px;

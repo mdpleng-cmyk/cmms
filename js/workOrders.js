@@ -1174,8 +1174,14 @@ export async function openPmChecklistRunner(woId) {
                     <div class="pm-runner-item-text">
                       <div class="pm-runner-item-label">${escapeHtml(item.description || '')}</div>
                       ${item.tool ? `<div class="pm-tool-chip">🔧 ${escapeHtml(item.tool)}</div>` : ''}
-                      <input type="text" class="pm-condition-input" placeholder="Enter condition" value="${escapeHtml(textValue)}" data-prev-value="${escapeHtml(textValue)}"
-                        ${readOnly ? 'disabled' : ''} onclick="event.stopPropagation()" onchange="window.saveRunnerText(${r.id}, this)">
+                      <div class="pm-condition-row" onclick="event.stopPropagation()">
+                        <input type="text" class="pm-condition-input" placeholder="Enter condition" value="${escapeHtml(textValue)}" data-prev-value="${escapeHtml(textValue)}"
+                          ${readOnly ? 'disabled' : ''} onchange="window.saveRunnerText(${r.id}, this)">
+                        <button type="button" class="ghost pm-condition-confirm" title="Confirm condition" aria-label="Confirm condition"
+                          ${readOnly ? 'disabled' : ''} onclick="window.saveRunnerText(${r.id}, this.previousElementSibling)">
+                          <i data-lucide="check" style="width:14px;"></i>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 `;
