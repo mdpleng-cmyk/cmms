@@ -162,7 +162,12 @@ if (searchInput) {
   });
 }
 
-// Check session on load — skip if we're in password-recovery mode
-sb.auth.getSession().then(({ data }) => { if (data.session && !isInPasswordRecovery()) onSignedIn(data.session.user); });
+// Check session on load — but NOT if this is a recovery link (type=recovery in URL hash).
+// If it's a recovery link, the onAuthStateChange PASSWORD_RECOVERY handler in auth.js
+// intercepts it and shows the set-password screen instead.
+const _urlHash = new URLSearchParams(window.location.hash.slice(1));
+if (_urlHash.get('type') !== 'recovery') {
+  sb.auth.getSession().then(({ data }) => { if (data.session) onSignedIn(data.session.user); });
+}
 
 document.getElementById('header-date').textContent = new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
