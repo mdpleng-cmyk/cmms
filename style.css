@@ -90,6 +90,10 @@ button.big { width: 100%; padding: 14px; font-size: 15px; }
 .checklist-item { display: flex; align-items: flex-start; gap: 8px; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
 .checklist-item:last-child { border-bottom: none; }
 .checklist-item.done { color: var(--text-muted); text-decoration: line-through; }
+.pm-sortable-item { cursor: grab; }
+.pm-sortable-item:active { cursor: grabbing; }
+.pm-drag-handle { display: inline-flex; color: var(--text-muted); opacity: 0.65; flex-shrink: 0; }
+.pm-sortable-item.pm-dragging { opacity: 0.45; }
 
 .tab-nav { display: flex; gap: 4px; border-bottom: 1px solid var(--border); padding: 0 14px; background: var(--panel); position: sticky; top: 0; z-index: 10; }
 .tab-btn { flex: 1; background: transparent; border: none; border-radius: 0; padding: 14px 4px; color: var(--text-muted); border-bottom: 2px solid transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; }
@@ -1109,6 +1113,22 @@ button.big { width: 100%; padding: 14px; font-size: 15px; }
   border-radius: 6px;
 }
 .pm-reading-input:focus {
+  outline: none;
+  border-color: var(--amber);
+}
+.pm-condition-input {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 8px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 13.5px;
+  padding: 8px 10px;
+  border-radius: 6px;
+}
+.pm-condition-input:focus {
   outline: none;
   border-color: var(--amber);
 }

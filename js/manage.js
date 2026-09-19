@@ -252,6 +252,7 @@ export function toggleNewTypeItemUnit() {
 
 let cachedTemplateItems = [];
 let editingTemplateItemId = null;
+let draggedChecklistItemId = null;
 
 async function refreshTypeTemplateItems() {
   const box = document.getElementById('type-template-items');
@@ -318,7 +319,9 @@ function renderTypeTemplateItems() {
               </div>`;
           }
           return `
-            <div class="checklist-item" style="display:flex; align-items:center; gap:8px; padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.04);">
+            <div class="checklist-item pm-sortable-item" draggable="true" data-checklist-id="${i.id}" data-checklist-section="${escapeHtml(secName)}"
+              ondragstart="window.startChecklistDrag(event, ${i.id})" ondragover="window.allowChecklistDrop(event)" ondrop="window.dropChecklistItem(event, ${i.id}, 'template')">
+              <span class="pm-drag-handle" title="Drag to reorder" aria-label="Drag to reorder"><i data-lucide="grip-vertical" style="width:14px;"></i></span>
               <i data-lucide="${i.item_type === 'reading' ? 'gauge' : i.item_type === 'text' ? 'file-text' : 'minus'}" style="width:12px; color:var(--text-muted); flex-shrink:0;"></i>
               <div style="flex:1; min-width:0;">
                 <span style="color:var(--text); font-size:13.5px;">${escapeHtml(i.description)}</span>
@@ -352,6 +355,62 @@ export function startEditTypeTemplateItem(itemId) {
 export function cancelEditTypeTemplateItem() {
   editingTemplateItemId = null;
   renderTypeTemplateItems();
+}
+
+export function startChecklistDrag(event, itemId) {
+  draggedChecklistItemId = itemId;
+  event.dataTransfer.effectAllowed = 'move';
+  event.dataTransfer.setData('text/plain', String(itemId));
+  event.currentTarget.classList.add('pm-dragging');
+}
+
+export function allowChecklistDrop(event) {
+  event.preventDefault();
+  event.dataTransfer.dropEffect = 'move';
+}
+
+export async function dropChecklistItem(event, targetId, mode) {
+  event.preventDefault();
+  document.querySelectorAll('.pm-dragging').forEach(el => el.classList.remove('pm-dragging'));
+  const sourceId = draggedChecklistItemId;
+  draggedChecklistItemId = null;
+  if (!sourceId || sourceId === targetId) return;
+
+  const items = mode === 'template' ? cachedTemplateItems : cachedAssetScheduleItems;
+  const source = items.find(item => item.id === sourceId);
+  const target = items.find(item => item.id === targetId);
+  if (!source || !target) return;
+  if ((source.section || 'General') !== (target.section || 'General')) {
+    toast('Move items within the same section', 'err');
+    return;
+  }
+
+  const reordered = items.slice();
+  const sourceIndex = reordered.findIndex(item => item.id === sourceId);
+  const [moved] = reordered.splice(sourceIndex, 1);
+  const targetIndex = reordered.findIndex(item => item.id === targetId);
+  reordered.splice(targetIndex, 0, moved);
+  reordered.forEach((item, index) => { item.sort_order = index + 1; });
+
+  if (mode === 'template') {
+    cachedTemplateItems = reordered;
+    renderTypeTemplateItems();
+  } else {
+    cachedAssetScheduleItems = reordered;
+    renderAssetScheduleItems();
+  }
+
+  const table = mode === 'template' ? 'equipment_type_pm_template_items' : 'checklist_items';
+  const updates = reordered.map(item => sb.from(table).update({ sort_order: item.sort_order }).eq('id', item.id));
+  const results = await Promise.all(updates);
+  const failed = results.find(result => result.error);
+  if (failed) {
+    toast(failed.error.message || 'Failed to save checklist order', 'err');
+    if (mode === 'template') refreshTypeTemplateItems();
+    else refreshAssetScheduleItems();
+    return;
+  }
+  toast('Checklist order saved');
 }
 
 export function toggleEditTypeItemUnit(itemId) {
@@ -953,8 +1012,11 @@ function renderAssetScheduleItems() {
         ${items.map(i => {
           const isInherited = !!i.template_item_id;
           return `
-            <div class="checklist-item" style="padding:8px 0; display:flex; justify-content:space-between; align-items:center; gap:8px;">
+            <div class="checklist-item pm-sortable-item" draggable="true" data-checklist-id="${i.id}" data-checklist-section="${escapeHtml(secName)}"
+              ondragstart="window.startChecklistDrag(event, ${i.id})" ondragover="window.allowChecklistDrop(event)" ondrop="window.dropChecklistItem(event, ${i.id}, 'asset')"
+              style="padding:8px 0; display:flex; justify-content:space-between; align-items:center; gap:8px;">
               <div style="display:flex; align-items:center; gap:8px; flex:1; min-width:0;">
+                <span class="pm-drag-handle" title="Drag to reorder" aria-label="Drag to reorder"><i data-lucide="grip-vertical" style="width:14px;"></i></span>
                 <i data-lucide="${i.item_type === 'reading' ? 'gauge' : 'check-square'}" style="width:14px; color:var(--text-muted); flex-shrink:0;"></i>
                 <div style="min-width:0;">
                   <div style="font-size:13px; color:var(--text);">${escapeHtml(i.description)} ${i.item_type === 'reading' ? `<span class="card-meta">(${escapeHtml(i.unit || '')})</span>` : ''}</div>
