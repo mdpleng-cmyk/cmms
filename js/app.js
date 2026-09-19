@@ -1,4 +1,4 @@
-import { sb } from './store.js';
+import { sb, urlHashType } from './store.js';
 import { signIn, signOut, onSignedIn, isInPasswordRecovery, toggleForgotForm, sendResetEmail, setNewPassword } from './auth.js';
 import { openNewAssetForm, closeNewAssetForm, createAsset, loadAssets, openAssetHistoryModal, closeAssetHistoryModal, renderAssetDropdown, selectAsset, goToSchedule, toggleScheduleItems, switchAssetModalTab, toggleAssetClassFields, onEquipmentTypeChange, setAssetTabFilter, filterAssetsTab, manageAssetPmRoutines, openNewScheduleForCurrentAsset } from './assets.js';
 import { openNewScheduleForm, closeNewScheduleForm, createSchedule, loadSchedules, addChecklistItem, toggleNewItemUnit, generatePmWoNow, onPmTargetChange, openPickPmAssetModal, closePickPmAssetModal, addChecklistItemToClass, toggleClassNewItemUnit, togglePmTile, toggleAllPmTiles, addDraftScheduleItem, removeDraftScheduleItem, toggleModalDraftItemUnit, onSchedIntervalChange } from './schedules.js';
@@ -162,11 +162,9 @@ if (searchInput) {
   });
 }
 
-// Check session on load — but NOT if this is a recovery link (type=recovery in URL hash).
-// If it's a recovery link, the onAuthStateChange PASSWORD_RECOVERY handler in auth.js
-// intercepts it and shows the set-password screen instead.
-const _urlHash = new URLSearchParams(window.location.hash.slice(1));
-if (_urlHash.get('type') !== 'recovery') {
+// Check session on load — but NOT if this is a recovery link.
+// urlHashType was captured in store.js before createClient() cleared the hash.
+if (urlHashType !== 'recovery') {
   sb.auth.getSession().then(({ data }) => { if (data.session) onSignedIn(data.session.user); });
 }
 

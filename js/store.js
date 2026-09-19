@@ -1,6 +1,10 @@
 const SUPABASE_URL = "https://eizyetgfrqlrlhvrxjsq.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVpenlldGdmcnFscmxodnJ4anNxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgyMzMwMDUsImV4cCI6MjEwMzgwOTAwNX0.xYjQ5IF2SKYpiXQtxSvSLmT7dPwaHv8w9Z1kpNGdH_g";
 
+// Capture URL hash type BEFORE createClient() — Supabase clears the hash
+// during token exchange, so this must happen first.
+export const urlHashType = new URLSearchParams(window.location.hash.slice(1)).get('type');
+
 export const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // Read-only link to the telemetry/meter-reading project — separate Supabase

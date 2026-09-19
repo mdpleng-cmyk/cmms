@@ -1,17 +1,22 @@
-import { sb, state, setButtonLoading, toast } from './store.js';
+import { sb, state, urlHashType, setButtonLoading, toast } from './store.js';
 import { loadAssets } from './assets.js';
 import { loadWorkOrders } from './workOrders.js';
 import { loadOverview } from './overview.js';
 import { startRealtime, stopRealtime } from './realtime.js';
 
 // Set to true when the user arrives via a password-recovery email link.
-// Prevents the normal session-restore path from loading the app while the
-// set-password screen is active.
 let inPasswordRecovery = false;
 export function isInPasswordRecovery() { return inPasswordRecovery; }
 
-// Intercept the PASSWORD_RECOVERY auth event (fires when the user lands on
-// the page after clicking a recovery / invite link).
+// If this page load was triggered by a recovery link, show the set-password
+// screen immediately — before any session restore or auth events fire.
+if (urlHashType === 'recovery') {
+  inPasswordRecovery = true;
+  document.getElementById('login-screen').classList.add('hidden');
+  document.getElementById('set-password-screen').classList.remove('hidden');
+}
+
+// Backup: also intercept via onAuthStateChange in case the hash check misses.
 sb.auth.onAuthStateChange((event) => {
   if (event === 'PASSWORD_RECOVERY') {
     inPasswordRecovery = true;
