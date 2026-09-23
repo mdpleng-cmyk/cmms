@@ -1,4 +1,4 @@
-import { sb, state, escapeHtml, formatDate, formatTime12, formatLogDateTime, getTechnicianName } from './store.js';
+import { sb, state, escapeHtml, formatDate, formatTime12, formatLogDateTime, getTechnicianName, getAssetDisplayName } from './store.js';
 
 const PM_DUE_WINDOW_DAYS = 7;
 const STALE_DAYS = 2;
@@ -16,7 +16,7 @@ function staleDaysFor(wo, latestVisit, todayStart) {
 }
 let cachedOpenWOs = [];
 let cachedLatestVisitByWo = {};
-let openWoFilter = 'all';
+let openWoFilter = 'open';
 
 function priorityRank(p) {
   return { P1: 1, P2: 2, P3: 3, P4: 4 }[p] || 5;
@@ -48,7 +48,7 @@ function renderOpenWoList() {
     const lv = cachedLatestVisitByWo[wo.id];
     const stale = staleDaysFor(wo, lv, todayStart);
     const hasAsset = wo.asset_id != null;
-    const primaryText = hasAsset ? (wo.assets?.name || 'Unknown asset') : (wo.description || 'No asset');
+    const primaryText = hasAsset ? getAssetDisplayName(wo.assets, wo.asset_id) : (wo.description || 'No asset');
     const secondaryText = hasAsset ? (wo.description || 'No description') : null;
 
     // Severity left-border class: P1/P2 → critical, 5+ days stale → warning
@@ -116,9 +116,9 @@ export async function loadOverview() {
 
   const todayStart = new Date(); todayStart.setHours(0,0,0,0);
   const [openRes, schedRes, visitsRes, notesRes, usersRes] = await Promise.all([
-    sb.from('work_orders').select('id, type, status, priority, description, opened_at, asset_id, planned_date, assets(name, criticality, category)').in('status', ['open','in_progress','waiting_parts']).order('opened_at', { ascending: true }),
-    sb.from('recurring_schedules').select('id, title, next_due_at, active, asset_id, snoozed_until, assets(name)').eq('active', true).order('next_due_at', { ascending: true }),
-    sb.from('wo_visits').select('id, visit_type, action_taken, technician, logged_by, visited_at, wo_id, work_orders(id, asset_id, description, status, assets(name))').order('visited_at', { ascending: false }).limit(20),
+    sb.from('work_orders').select('id, type, status, priority, description, opened_at, asset_id, planned_date, assets(name, criticality, category, equipment_types(name))').in('status', ['open','in_progress','waiting_parts']).order('opened_at', { ascending: true }),
+    sb.from('recurring_schedules').select('id, title, next_due_at, active, asset_id, snoozed_until, assets(name, equipment_types(name))').eq('active', true).order('next_due_at', { ascending: true }),
+    sb.from('wo_visits').select('id, visit_type, action_taken, technician, logged_by, visited_at, wo_id, work_orders(id, asset_id, description, status, assets(name, equipment_types(name)))').order('visited_at', { ascending: false }).limit(20),
     sb.from('notes').select('id, text, done, created_at').order('created_at', { ascending: false }),
     sb.from('user_roles').select('user_id, full_name'),
   ]);
@@ -161,7 +161,7 @@ export async function loadOverview() {
         <div class="ov-pm-hero">
           <div class="ov-pm-hero-top">
             <div>
-              <div class="ov-pm-hero-asset">${escapeHtml(h.assets?.name || 'Unknown asset')}</div>
+              <div class="ov-pm-hero-asset">${escapeHtml(getAssetDisplayName(h.assets, h.asset_id) || 'Unknown asset')}</div>
               <div class="ov-pm-hero-cycle">${escapeHtml(h.title)}</div>
             </div>
             <div class="ov-pm-hero-overdue">${absDays}d overdue</div>
@@ -180,7 +180,7 @@ export async function loadOverview() {
       const dueCls = s.days < 0 ? 'over' : s.days === 0 ? 'soon' : '';
       return `
         <div class="ov-pm-list-row">
-          <span>${escapeHtml(s.assets?.name || 'Unknown')} &mdash; ${escapeHtml(s.title)}</span>
+          <span>${escapeHtml(getAssetDisplayName(s.assets, s.asset_id) || 'Unknown')} &mdash; ${escapeHtml(s.title)}</span>
           <span class="ov-pm-list-due ${dueCls}">${label}</span>
         </div>`;
     }).join('');
@@ -193,7 +193,7 @@ export async function loadOverview() {
   // ---- Recent activity (mobile-friendly logbook layout) ----
   const activityHtml = visits.length ? visits.map(v => {
     const assetName = v.work_orders
-      ? (v.work_orders.asset_id == null ? 'General (No Asset)' : (v.work_orders.assets?.name || 'Unknown asset'))
+      ? (v.work_orders.asset_id == null ? 'General (No Asset)' : (getAssetDisplayName(v.work_orders.assets, v.work_orders.asset_id) || 'Unknown asset'))
       : 'WO #' + v.wo_id;
     const problemDesc = v.work_orders?.description || '';
     const updateText = v.action_taken || '';
@@ -215,10 +215,10 @@ export async function loadOverview() {
         <div class="ov-activity-asset">${escapeHtml(assetName)}</div>
         ${problemDesc ? `<div class="ov-activity-problem">${escapeHtml(problemDesc)}</div>` : ''}
         <div class="ov-activity-bottom">
-          <span class="ov-activity-subtime">${subTime}</span>
           <span class="ov-activity-action">${escapeHtml(updateText || v.visit_type.replace('_',' '))}</span>
           <span class="ov-activity-sep">&mdash;</span>
           <span class="ov-activity-tech">${escapeHtml(techName)}</span>
+          <span class="ov-activity-subtime">&middot; ${subTime}</span>
           <span class="badge ${statusCls} ov-activity-status">${statusLabel}</span>
         </div>
       </div>`;
@@ -247,10 +247,10 @@ export async function loadOverview() {
         <div class="ov-panel-head">
           <div class="ov-panel-title-row"><div class="ov-icon-badge blue"><i data-lucide="clipboard-list"></i></div><div class="ov-panel-title">Open Work Orders</div></div>
           <div class="ov-subtabs">
-            <button class="ov-subtab active" data-filter="all" onclick="window.filterOpenWos('all')">All (${openWOs.length})</button>
-            <button class="ov-subtab" data-filter="open" onclick="window.filterOpenWos('open')">Open (${cntOpen})</button>
+            <button class="ov-subtab active" data-filter="open" onclick="window.filterOpenWos('open')">Open (${cntOpen})</button>
             <button class="ov-subtab" data-filter="in_progress" onclick="window.filterOpenWos('in_progress')">In Progress (${cntProgress})</button>
             <button class="ov-subtab" data-filter="waiting_parts" onclick="window.filterOpenWos('waiting_parts')">Awaiting Spares (${cntWaiting})</button>
+            <button class="ov-subtab" data-filter="all" onclick="window.filterOpenWos('all')">All (${openWOs.length})</button>
           </div>
         </div>
         <div id="ov-open-list">${openHtml}</div>

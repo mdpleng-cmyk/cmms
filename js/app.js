@@ -2,7 +2,7 @@ import { sb, isRecoveryLink } from './store.js';
 import { signIn, signOut, onSignedIn, isInPasswordRecovery, toggleForgotForm, sendResetEmail, setNewPassword, openChangePasswordModal, closeChangePasswordModal, saveChangedPassword } from './auth.js';
 import { openNewAssetForm, closeNewAssetForm, createAsset, loadAssets, openAssetHistoryModal, closeAssetHistoryModal, renderAssetDropdown, selectAsset, goToSchedule, toggleScheduleItems, switchAssetModalTab, toggleAssetClassFields, onEquipmentTypeChange, setAssetTabFilter, filterAssetsTab, manageAssetPmRoutines, openNewScheduleForCurrentAsset } from './assets.js';
 import { openNewScheduleForm, closeNewScheduleForm, createSchedule, loadSchedules, addChecklistItem, toggleNewItemUnit, generatePmWoNow, onPmTargetChange, openPickPmAssetModal, closePickPmAssetModal, addChecklistItemToClass, toggleClassNewItemUnit, togglePmTile, toggleAllPmTiles, addDraftScheduleItem, removeDraftScheduleItem, toggleModalDraftItemUnit, onSchedIntervalChange } from './schedules.js';
-import { openNewWoForm, closeNewWoForm, createWorkOrder, loadWorkOrders, filterWorkOrders, triggerUpdateFlow, closeUpdateModal, reviewUpdateWo, backToEditWo, confirmSaveWo, toggleChecklistItem, saveReadingValue, saveTextValue, openWoDetailModal, closeWoDetailModal, triggerUpdateFromDetail, openNewWoFormForAsset, raiseWoFromAssetPage, toggleWoCloseTimes, togglePlannedDateField, startEditVisit, cancelEditVisit, saveVisitEdit, startEditWoMeta, cancelWoMetaEdit, saveWoMetaEdit, logWithoutAsset, clearNoAssetSelection, cancelNoAssetWarning, continueWithoutAsset, viewCreatedWorkOrder, reloadLatestWoDetail, openPmChecklistRunner, closePmChecklistRunner, toggleRunnerItem, saveRunnerReading, saveRunnerText, completePmFromRunner, openRunnerFromDetail } from './workOrders.js';
+import { openNewWoForm, closeNewWoForm, createWorkOrder, loadWorkOrders, filterWorkOrders, triggerUpdateFlow, closeUpdateModal, reviewUpdateWo, backToEditWo, confirmSaveWo, toggleChecklistItem, saveReadingValue, saveTextValue, openWoDetailModal, closeWoDetailModal, triggerUpdateFromDetail, openNewWoFormForAsset, raiseWoFromAssetPage, toggleWoCloseTimes, togglePlannedDateField, startEditVisit, cancelEditVisit, saveVisitEdit, startEditWoMeta, cancelWoMetaEdit, saveWoMetaEdit, renderEditAssetDropdown, selectEditAsset, logWithoutAsset, clearNoAssetSelection, cancelNoAssetWarning, continueWithoutAsset, viewCreatedWorkOrder, reloadLatestWoDetail, openPmChecklistRunner, closePmChecklistRunner, toggleRunnerItem, saveRunnerReading, saveRunnerText, completePmFromRunner, openRunnerFromDetail } from './workOrders.js';
 import { loadManageAssetList, openManageAsset, backToManageList, saveManageCategory, saveManageSpecField, deleteManageSpec, addManageSpec, switchManageMode, createEquipmentType, openManageType, backToTypesList, saveTypeTemplateMeta, toggleNewTypeItemUnit, addTypeTemplateItem, deleteTypeTemplateItem, startEditTypeTemplateItem, cancelEditTypeTemplateItem, toggleEditTypeItemUnit, saveTypeTemplateItem, saveManageAssetField, setManageAssetFilter, filterManageAssets, prefillTypeItemSection, selectTypeTemplate, startNewTypeTemplate, deleteTypeTemplate, loadAssetSchedules, selectAssetSchedule, startNewAssetSchedule, saveAssetScheduleMeta, deleteAssetSchedule, toggleNewAssetItemUnit, refreshAssetScheduleItems, prefillAssetItemSection, addAssetScheduleItem, deleteAssetScheduleItem, startChecklistDrag, allowChecklistDrop, dropChecklistItem } from './manage.js';
 import { loadOverview } from './overview.js';
 import { loadTelemetry } from './telemetry.js';
@@ -82,6 +82,8 @@ window.saveVisitEdit = saveVisitEdit;
 window.startEditWoMeta = startEditWoMeta;
 window.cancelWoMetaEdit = cancelWoMetaEdit;
 window.saveWoMetaEdit = saveWoMetaEdit;
+window.renderEditAssetDropdown = renderEditAssetDropdown;
+window.selectEditAsset = selectEditAsset;
 window.reloadLatestWoDetail = reloadLatestWoDetail;
 window.openPmChecklistRunner = openPmChecklistRunner;
 window.closePmChecklistRunner = closePmChecklistRunner;
@@ -165,6 +167,10 @@ if (searchInput) {
   document.addEventListener('click', (e) => {
     if (!e.target.closest('.custom-select-wrapper')) {
       dropdownList.classList.add('hidden');
+    }
+    const editDropdown = document.getElementById('edit-wo-asset-dropdown');
+    if (editDropdown && !e.target.closest('#edit-wo-asset-container')) {
+      editDropdown.classList.add('hidden');
     }
   });
 }

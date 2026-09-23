@@ -35,6 +35,29 @@ export const state = {
 
 // { label, cls } for a P1-P4 (or null) priority value — used anywhere a
 // priority badge is rendered, so the mapping stays in one place.
+export function getAssetDisplayName(asset, assetId = null) {
+  if (!asset && assetId && state.assetsCache && state.assetsCache.length) {
+    const found = state.assetsCache.find(a => a.id === assetId);
+    if (found) asset = found;
+  }
+  if (!asset) return '';
+  if (typeof asset === 'string') {
+    if (assetId == null && state.assetsCache && state.assetsCache.length) {
+      const found = state.assetsCache.find(a => a.id === asset);
+      if (found) return found.displayName || getAssetDisplayName(found);
+    }
+    return asset;
+  }
+  if (asset.displayName) return asset.displayName;
+  const name = asset.name || '';
+  const className = asset.equipment_types?.name || asset.class_name;
+  if (className && name) {
+    if (name.startsWith(className + ' - ')) return name;
+    return `${className} - ${name}`;
+  }
+  return name;
+}
+
 export function priorityMeta(p) {
   if (p === 'P1') return { label: 'Critical', cls: 'prio-crit' };
   if (p === 'P2') return { label: 'High', cls: 'prio-warn' };

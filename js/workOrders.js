@@ -1,6 +1,7 @@
-import { sb, state, toast, setButtonLoading, getLoaderHtml, escapeHtml, formatDate, formatTime12, formatDateOnly, getTechnicianName, priorityMeta } from './store.js';
+import { sb, state, toast, setButtonLoading, getLoaderHtml, escapeHtml, formatDate, formatTime12, formatDateOnly, getTechnicianName, priorityMeta, getAssetDisplayName } from './store.js';
 import { loadOverview } from './overview.js';
 import { loadSchedules, advanceScheduleForCompletedPm } from './schedules.js';
+import { loadAssets } from './assets.js';
 
 let noAssetSelected = false;
 let noAssetWarningOpen = false;
@@ -165,7 +166,7 @@ export async function createWorkOrder(skipNoAssetWarning = false) {
 
   const { data: wo, error } = await sb.from('work_orders')
     .insert(payload)
-    .select('id, asset_id, type, status, description, priority, opened_at, closed_at, assets(name)')
+    .select('id, asset_id, type, status, description, priority, opened_at, closed_at, assets(name, equipment_types(name))')
     .single();
   if (error) { toast(error.message, 'err'); setButtonLoading('btn-create-wo', false); return; }
 
@@ -196,7 +197,7 @@ export async function createWorkOrder(skipNoAssetWarning = false) {
 }
 
 function renderCreatedWoConfirmation(wo) {
-  const assetName = wo.asset_id == null ? 'No asset' : (wo.assets?.name || 'Unknown asset');
+  const assetName = wo.asset_id == null ? 'No asset' : getAssetDisplayName(wo.assets, wo.asset_id);
   const typeName = wo.type === 'breakdown' ? 'Breakdown / Fix' : wo.type === 'other' ? 'Other' : wo.type;
   const timingRows = wo.status === 'closed'
     ? `<div><dt>Started</dt><dd>${formatDate(wo.opened_at)}</dd></div>
@@ -238,7 +239,7 @@ export async function loadWorkOrders() {
   
   const statuses = document.getElementById('wo-filter').value.split(',');
   const { data, error } = await sb.from('work_orders')
-    .select('id, type, status, description, opened_at, closed_at, asset_id, schedule_id, priority, planned_date, assets(name)')
+    .select('id, type, status, description, opened_at, closed_at, asset_id, schedule_id, priority, planned_date, assets(name, equipment_types(name))')
     .in('status', statuses).order('opened_at', { ascending: false }).limit(50);
 
   if (error) { list.innerHTML = `<div class="readout-empty">${error.message}</div>`; return; }
@@ -251,9 +252,9 @@ function renderWorkOrders() {
   if (!state.activeWorkOrders.length) { list.innerHTML = '<div class="readout-empty"><i data-lucide="inbox" style="width:32px;height:32px;"></i> No work orders match.</div>'; lucide.createIcons(); return; }
 
   list.innerHTML = state.activeWorkOrders.map(wo => {
-    const assetName = wo.asset_id == null ? 'No asset' : (wo.assets?.name || 'Unknown asset');
+    const assetName = wo.asset_id == null ? 'No asset' : getAssetDisplayName(wo.assets, wo.asset_id);
     return `
-    <div class="panel wo-card" style="cursor:pointer;" data-search="${`${wo.id} ${wo.assets?.name || ''} ${wo.description || ''}`.toLowerCase()}" onclick="window.openWoDetailModal(${wo.id})">
+    <div class="panel wo-card" style="cursor:pointer;" data-search="${`${wo.id} ${assetName} ${wo.description || ''}`.toLowerCase()}" onclick="window.openWoDetailModal(${wo.id})">
       <div class="row" style="margin-bottom:8px;justify-content:space-between">
         <div style="display:flex; gap:6px;">
           <span class="badge ${wo.type}">${wo.type === 'pm' ? '<i data-lucide="calendar-clock" style="width:12px;"></i>' : wo.type === 'other' ? '<i data-lucide="package" style="width:12px;"></i>' : '<i data-lucide="wrench" style="width:12px;"></i>'} ${wo.type}</span>
@@ -276,7 +277,7 @@ export async function openWoDetailModal(id) {
   hideRemoteUpdateBanner();
   let wo = state.activeWorkOrders.find(w => w.id === id);
   if (!wo) {
-    const { data } = await sb.from('work_orders').select('id, type, status, description, opened_at, closed_at, asset_id, schedule_id, priority, planned_date, assets(name)').eq('id', id).single();
+    const { data } = await sb.from('work_orders').select('id, type, status, description, opened_at, closed_at, asset_id, schedule_id, priority, planned_date, assets(name, equipment_types(name))').eq('id', id).single();
     wo = data;
   }
   if (!wo) { toast('Work order not found', 'err'); return; }
@@ -403,7 +404,7 @@ async function performWoDetailRefresh(currentId) {
   if (!currentId || state.woDetailCurrent?.id !== currentId) return;
 
   const { data: wo, error } = await sb.from('work_orders')
-    .select('id, type, status, description, opened_at, closed_at, asset_id, schedule_id, priority, planned_date, assets(name)')
+    .select('id, type, status, description, opened_at, closed_at, asset_id, schedule_id, priority, planned_date, assets(name, equipment_types(name))')
     .eq('id', currentId)
     .single();
   if (error || !wo || state.woDetailCurrent?.id !== currentId) return;
@@ -428,12 +429,76 @@ async function performWoDetailRefresh(currentId) {
   lucide.createIcons({ root: document.getElementById('modal-wo-detail') });
 }
 
+function attachEditWoAssetEvents() {
+  const searchInput = document.getElementById('edit-wo-asset-search');
+  const dropdown = document.getElementById('edit-wo-asset-dropdown');
+  const hiddenVal = document.getElementById('edit-wo-asset-value');
+  if (!searchInput || !dropdown) return;
+
+  searchInput.addEventListener('focus', () => {
+    renderEditAssetDropdown(searchInput.value);
+    dropdown.classList.remove('hidden');
+  });
+
+  searchInput.addEventListener('input', (e) => {
+    hiddenVal.value = '';
+    renderEditAssetDropdown(e.target.value);
+    dropdown.classList.remove('hidden');
+  });
+}
+
+export function renderEditAssetDropdown(filter = '') {
+  const dropdown = document.getElementById('edit-wo-asset-dropdown');
+  if (!dropdown) return;
+  const term = (filter || '').toLowerCase().trim();
+  const assets = state.assetsCache || [];
+  const filtered = term
+    ? assets.filter(a => ((a.displayName || a.name) && (a.displayName || a.name).toLowerCase().includes(term)) || (a.location && a.location.toLowerCase().includes(term)))
+    : assets;
+
+  let html = `
+    <div class="custom-select-item" style="color:var(--amber); font-weight:500;" onclick="window.selectEditAsset(null, 'No asset')">
+      + No asset / General
+    </div>
+  `;
+
+  if (filtered.length) {
+    html += filtered.slice(0, 50).map(a => {
+      const displayName = a.displayName || (a.equipment_types?.name ? `${a.equipment_types.name} - ${a.name}` : a.name);
+      const down = state.assetStatusCache?.[a.id]?.hasBreakdown;
+      const dot = down
+        ? '<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--red);margin-right:6px;" title="Has an open breakdown"></span>'
+        : '';
+      return `<div class="custom-select-item" onclick="window.selectEditAsset(${a.id}, '${escapeHtml(displayName).replace(/'/g, "\\'")}')">
+        ${dot}${escapeHtml(displayName)}
+        ${a.location ? `<span style="color:var(--text-muted); font-size:12px; display:block; margin-top:2px;">${escapeHtml(a.location)}</span>` : ''}
+      </div>`;
+    }).join('');
+  } else if (term) {
+    html += `<div style="padding:10px 12px; font-size:13px; color:var(--text-muted);">No matching assets found</div>`;
+  }
+
+  dropdown.innerHTML = html;
+}
+
+export function selectEditAsset(id, name) {
+  const searchInput = document.getElementById('edit-wo-asset-search');
+  const hiddenVal = document.getElementById('edit-wo-asset-value');
+  const dropdown = document.getElementById('edit-wo-asset-dropdown');
+  if (searchInput) searchInput.value = id == null ? 'No asset' : name;
+  if (hiddenVal) hiddenVal.value = id == null ? '' : id;
+  if (dropdown) dropdown.classList.add('hidden');
+}
+
 function renderWoDetailHeader(wo, editing) {
   const canEdit = state.currentRole === 'admin' || state.currentRole === 'technician';
   const el = document.getElementById('wo-detail-header');
-  const assetName = wo.asset_id == null ? 'No asset' : (wo.assets?.name || 'Unknown asset');
+  const assetName = wo.asset_id == null ? 'No asset' : getAssetDisplayName(wo.assets, wo.asset_id);
 
   if (editing) {
+    const isPm = wo.type === 'pm';
+    const currentAssetDisplayName = wo.asset_id == null ? 'No asset' : getAssetDisplayName(wo.assets, wo.asset_id);
+
     el.innerHTML = `
       <div class="row" style="margin:8px 0;justify-content:space-between">
         <div style="display:flex; gap:6px;">
@@ -442,7 +507,27 @@ function renderWoDetailHeader(wo, editing) {
         </div>
         <span class="card-meta">#${wo.id}</span>
       </div>
-      <div class="card-title">${escapeHtml(assetName)}</div>
+
+      ${isPm ? `
+        <div class="field" style="margin-top:10px;">
+          <label class="field-label">Asset</label>
+          <div style="font-size:13px; font-weight:600; color:var(--text); padding:4px 0;">
+            ${escapeHtml(assetName)} <span style="font-size:11px; font-weight:normal; color:var(--text-muted);">(Locked to PM schedule)</span>
+          </div>
+          <input type="hidden" id="edit-wo-asset-value" value="${wo.asset_id ?? ''}">
+        </div>
+      ` : `
+        <div class="field custom-select-wrapper" style="margin-top:10px;">
+          <label class="field-label">Asset</label>
+          <div style="position:relative;">
+            <i data-lucide="search" style="position:absolute; left:10px; top:9px; width:14px; color:var(--text-muted);"></i>
+            <input type="text" id="edit-wo-asset-search" placeholder="Search asset or select 'No asset'..." autocomplete="off" style="padding-left:32px;" value="${wo.asset_id == null ? '' : escapeHtml(currentAssetDisplayName)}">
+          </div>
+          <input type="hidden" id="edit-wo-asset-value" value="${wo.asset_id ?? ''}">
+          <div id="edit-wo-asset-dropdown" class="custom-select-dropdown hidden"></div>
+        </div>
+      `}
+
       <div class="field" style="margin-top:10px;">
         <label class="field-label">Priority</label>
         <select id="edit-wo-priority">
@@ -462,6 +547,8 @@ function renderWoDetailHeader(wo, editing) {
         <button class="ghost" style="padding:6px 12px; font-size:12px;" onclick="window.cancelWoMetaEdit()">Cancel</button>
       </div>
     `;
+    lucide.createIcons({ root: el });
+    if (!isPm) attachEditWoAssetEvents();
     return;
   }
 
@@ -493,7 +580,11 @@ function renderWoDetailHeader(wo, editing) {
   lucide.createIcons({ root: el });
 }
 
-export function startEditWoMeta() {
+export async function startEditWoMeta() {
+  if (!state.assetsCache || !state.assetsCache.length) {
+    await loadAssets(false);
+  }
+  await refreshAssetStatusCache();
   renderWoDetailHeader(state.woDetailCurrent, true);
 }
 
@@ -509,12 +600,41 @@ export async function saveWoMetaEdit() {
   const priority = document.getElementById('edit-wo-priority').value || null;
   const before = state.woDetailCurrent;
 
-  const { error } = await sb.from('work_orders').update({ description, priority }).eq('id', before.id);
+  let newAssetId = before.asset_id;
+  let assetChanged = false;
+  let newAssetName = before.asset_id == null ? 'No asset' : getAssetDisplayName(before.assets, before.asset_id);
+
+  if (before.type !== 'pm') {
+    const rawVal = document.getElementById('edit-wo-asset-value')?.value;
+    const parsedId = (rawVal !== '' && rawVal != null) ? parseInt(rawVal, 10) : null;
+    if (parsedId !== before.asset_id) {
+      assetChanged = true;
+      newAssetId = parsedId;
+      if (newAssetId == null) {
+        newAssetName = 'No asset';
+      } else {
+        const found = state.assetsCache.find(a => a.id === newAssetId);
+        newAssetName = found ? (found.displayName || getAssetDisplayName(found)) : 'Asset #' + newAssetId;
+      }
+    }
+  }
+
+  const updatePayload = { description, priority };
+  if (assetChanged) {
+    updatePayload.asset_id = newAssetId;
+  }
+
+  const { error } = await sb.from('work_orders').update(updatePayload).eq('id', before.id);
   if (error) { toast(error.message, 'err'); return; }
 
   const changes = [];
+  if (assetChanged) {
+    const oldName = before.asset_id == null ? 'No asset' : getAssetDisplayName(before.assets, before.asset_id);
+    changes.push(`Asset: ${oldName} \u2192 ${newAssetName}`);
+  }
   if (before.priority !== priority) changes.push(`Priority: ${before.priority || 'Unset'} \u2192 ${priority || 'Unset'}`);
   if ((before.description || '') !== description) changes.push('Description updated');
+
   if (changes.length) {
     const { error: visitErr } = await sb.from('wo_visits').insert({
       wo_id: before.id,
@@ -523,10 +643,14 @@ export async function saveWoMetaEdit() {
       logged_by: state.currentUser.id,
     });
     if (visitErr) {
-      const { error: rollbackErr } = await sb.from('work_orders').update({
+      const rollbackPayload = {
         description: before.description,
         priority: before.priority,
-      }).eq('id', before.id);
+      };
+      if (assetChanged) {
+        rollbackPayload.asset_id = before.asset_id;
+      }
+      const { error: rollbackErr } = await sb.from('work_orders').update(rollbackPayload).eq('id', before.id);
       toast(rollbackErr
         ? `Work order changed, but edit history failed: ${visitErr.message}`
         : `Work order edit rolled back: ${visitErr.message}`, 'err');
@@ -536,6 +660,27 @@ export async function saveWoMetaEdit() {
 
   state.woDetailCurrent.description = description;
   state.woDetailCurrent.priority = priority;
+  if (assetChanged) {
+    const foundAsset = newAssetId ? state.assetsCache.find(a => a.id === newAssetId) : null;
+    state.woDetailCurrent.asset_id = newAssetId;
+    state.woDetailCurrent.assets = foundAsset ? { name: foundAsset.name, equipment_types: foundAsset.equipment_types } : null;
+    const activeWo = state.activeWorkOrders.find(w => w.id === before.id);
+    if (activeWo) {
+      activeWo.asset_id = newAssetId;
+      activeWo.assets = foundAsset ? { name: foundAsset.name, equipment_types: foundAsset.equipment_types } : null;
+      activeWo.priority = priority;
+      activeWo.description = description;
+    }
+    await refreshAssetStatusCache();
+    loadAssets(false);
+  } else {
+    const activeWo = state.activeWorkOrders.find(w => w.id === before.id);
+    if (activeWo) {
+      activeWo.priority = priority;
+      activeWo.description = description;
+    }
+  }
+
   renderWoDetailHeader(state.woDetailCurrent, false);
   loadVisitsForWo(before.id);
   hideRemoteUpdateBanner();
@@ -655,7 +800,7 @@ export function triggerUpdateFlow(id) {
   document.getElementById('modal-planned-date-field').classList.toggle('hidden', !hasPlannedDate);
   document.getElementById('modal-planned-date-toggle').classList.toggle('hidden', hasPlannedDate);
   
-  const updateAssetName = state.woToUpdate.asset_id == null ? 'No asset' : (state.woToUpdate.assets?.name || 'Unknown asset');
+  const updateAssetName = state.woToUpdate.asset_id == null ? 'No asset' : getAssetDisplayName(state.woToUpdate.assets, state.woToUpdate.asset_id);
   document.getElementById('modal-wo-title').innerText = `WO #${state.woToUpdate.id} - ${updateAssetName}`;
   document.getElementById('modal-wo-original-desc').innerText = state.woToUpdate.description || "No initial description provided.";
   
@@ -1074,7 +1219,7 @@ export async function openPmChecklistRunner(woId) {
   let wo = (state.woDetailCurrent?.id === woId) ? state.woDetailCurrent : state.activeWorkOrders.find(w => w.id === woId);
   if (!wo) {
     const { data } = await sb.from('work_orders')
-      .select('*, assets(name), recurring_schedules(title, interval_days)')
+      .select('*, assets(name, equipment_types(name)), recurring_schedules(title, interval_days)')
       .eq('id', woId)
       .single();
     wo = data;
@@ -1089,7 +1234,7 @@ export async function openPmChecklistRunner(woId) {
   const readOnly = state.currentRole === 'viewer' || isClosed;
 
   // Set topbar info
-  const assetName = wo.assets?.name || 'No asset';
+  const assetName = wo.asset_id == null ? 'No asset' : getAssetDisplayName(wo.assets, wo.asset_id);
   const metaText = `WO #${wo.id} · ${(wo.status || 'open').replace('_', ' ').toUpperCase()}`;
   const sched = (state.schedulesCache || []).find(s => s.id === wo.schedule_id);
   const intervalDays = wo.recurring_schedules?.interval_days || sched?.interval_days;

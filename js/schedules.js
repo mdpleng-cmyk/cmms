@@ -1,4 +1,4 @@
-import { sb, state, toast, setButtonLoading, getLoaderHtml, escapeHtml } from './store.js';
+import { sb, state, toast, setButtonLoading, getLoaderHtml, escapeHtml, getAssetDisplayName } from './store.js';
 
 const pmGenerationInFlight = new Set();
 const pmCompletionHandled = new Set();
@@ -530,18 +530,18 @@ export async function loadSchedules() {
       return `
       <div class="panel" id="schedule-card-${s.id}" style="background:var(--bg); border:1px solid var(--border); margin-bottom:0; padding:12px;">
         <div class="row" style="justify-content:space-between; margin-bottom:2px;">
-          <div class="card-title" style="margin:0; font-size:14px;">${escapeHtml(s.title)} &mdash; <span style="font-size:13px; font-weight:500; color:var(--text);">${escapeHtml(s.assets?.name || 'Unknown')}</span></div>
+          <div class="card-title" style="margin:0; font-size:14px;">${escapeHtml(s.title)} &mdash; <span style="font-size:13px; font-weight:500; color:var(--text);">${escapeHtml(getAssetDisplayName(s.assets, s.asset_id) || 'Unknown')}</span></div>
           ${state.currentRole !== 'viewer' ? `<button class="ghost" style="padding:4px 8px; font-size:11px; border:1px solid var(--border);" onclick="window.generatePmWoNow(${s.id})"><i data-lucide="zap" style="width:12px;"></i> Generate WO Now</button>` : ''}
         </div>
         <div class="card-meta">
-          <i data-lucide="server" style="width:12px; display:inline-block; vertical-align:-2px;"></i> ${escapeHtml(s.assets?.name || 'No asset')} &middot; 
+          <i data-lucide="server" style="width:12px; display:inline-block; vertical-align:-2px;"></i> ${escapeHtml(getAssetDisplayName(s.assets, s.asset_id) || 'No asset')} &middot; 
           <i data-lucide="rotate-cw" style="width:12px; display:inline-block; vertical-align:-2px;"></i> ${s.interval_days}d &middot; 
           Due: ${s.next_due_at}
         </div>
         <div id="items-${s.id}" style="margin-top:10px"></div>
         ${state.currentRole !== 'viewer' ? `
           <div class="row" style="margin-top:12px">
-            <input id="new-item-${s.id}" placeholder="Add task only to ${escapeHtml(s.assets?.name || 'this unit')}..." style="flex:1;">
+            <input id="new-item-${s.id}" placeholder="Add task only to ${escapeHtml(getAssetDisplayName(s.assets, s.asset_id) || 'this unit')}..." style="flex:1;">
             <select id="new-item-type-${s.id}" style="width:auto;" onchange="window.toggleNewItemUnit(${s.id})">
               <option value="check">Check</option>
               <option value="reading">Reading</option>
@@ -562,7 +562,7 @@ export async function loadSchedules() {
           <div style="min-width:0;">
             <div class="card-title" style="margin:0; font-size:15px;">${escapeHtml(s.title)}</div>
             <div class="card-meta" style="margin-top:3px;">
-              <i data-lucide="server" style="width:12px; display:inline-block; vertical-align:-2px;"></i> ${escapeHtml(s.assets?.name || 'No asset')}${typeName ? ` <span class="badge" style="font-size:9px; vertical-align:1px;">${escapeHtml(typeName)}</span>` : ''} &middot; 
+              <i data-lucide="server" style="width:12px; display:inline-block; vertical-align:-2px;"></i> ${escapeHtml(getAssetDisplayName(s.assets, s.asset_id) || 'No asset')}${typeName ? ` <span class="badge" style="font-size:9px; vertical-align:1px;">${escapeHtml(typeName)}</span>` : ''} &middot; 
               <i data-lucide="rotate-cw" style="width:12px; display:inline-block; vertical-align:-2px;"></i> ${s.interval_days}d &middot; 
               Due: ${s.next_due_at}
             </div>
@@ -683,7 +683,7 @@ export function openPickPmAssetModal(groupKey) {
            onmouseout="this.style.borderColor='var(--border)'"
            onclick="window.closePickPmAssetModal(); window.generatePmWoNow(${s.id});">
         <div>
-          <div style="font-weight:600; font-size:13.5px; color:var(--text);">${escapeHtml(s.assets?.name || 'Unknown asset')}</div>
+          <div style="font-weight:600; font-size:13.5px; color:var(--text);">${escapeHtml(getAssetDisplayName(s.assets, s.asset_id) || 'Unknown asset')}</div>
           <div style="font-size:11.5px; margin-top:2px;">${dueLabel}</div>
         </div>
         <button class="primary" style="padding:4px 10px; font-size:11px; pointer-events:none;">

@@ -1,4 +1,4 @@
-import { sb, state, toast, setButtonLoading, getLoaderHtml, escapeHtml, formatDate, formatDateOnly, formatTime12 } from './store.js';
+import { sb, state, toast, setButtonLoading, getLoaderHtml, escapeHtml, formatDate, formatDateOnly, formatTime12, getAssetDisplayName } from './store.js';
 import { loadSchedules } from './schedules.js';
 import { getAssetStatus, getAllWatchItemsForAsset } from './assetDetailHelpers.js';
 import { getAssetSpecs } from './assetSpecs.js';
@@ -112,7 +112,7 @@ export function renderAssetsTable() {
 
   if (search) {
     list = list.filter(a =>
-      (a.name && a.name.toLowerCase().includes(search)) ||
+      ((a.displayName || a.name) && (a.displayName || a.name).toLowerCase().includes(search)) ||
       (a.category && a.category.toLowerCase().includes(search)) ||
       (a.location && a.location.toLowerCase().includes(search)) ||
       (a.department && a.department.toLowerCase().includes(search)) ||
@@ -133,6 +133,7 @@ export function renderAssetsTable() {
   }
 
   const rows = list.map(a => {
+    const displayName = a.displayName || (a.equipment_types?.name ? `${a.equipment_types.name} - ${a.name}` : a.name);
     const dotCls = a.status === 'down' ? 'down' : a.status === 'maintenance' ? 'maintenance' : '';
     const dotTitle = a.status === 'down' ? 'Down (Open breakdown)' : a.status === 'maintenance' ? 'Under maintenance (Open PM)' : 'Running';
     const critCls = a.criticality ? `crit-${a.criticality.toLowerCase()}` : '';
@@ -142,11 +143,11 @@ export function renderAssetsTable() {
     const catTag = a.category ? `<span class="asset-class">${escapeHtml(a.category.toUpperCase().replace(/_/g, ''))}</span>` : '';
 
     return `
-      <tr onclick="window.openAssetHistoryModal(${a.id}, '${escapeHtml(a.name).replace(/'/g, "\\'")}')">
+      <tr onclick="window.openAssetHistoryModal(${a.id}, '${escapeHtml(displayName).replace(/'/g, "\\'")}')">
         <td>
           <div class="asset-cell">
             <span class="status-dot ${dotCls}" title="${dotTitle}"></span>
-            <span class="asset-name">${escapeHtml(a.name)}</span>
+            <span class="asset-name">${escapeHtml(displayName)}</span>
             ${catTag}
           </div>
         </td>
@@ -185,7 +186,7 @@ export async function loadAssets(render) {
   if (render && list) list.innerHTML = getLoaderHtml('Loading assets...');
   
   const [assetsRes, breakdownRes, pmRes] = await Promise.all([
-    sb.from('assets').select('*').order('name'),
+    sb.from('assets').select('*, equipment_types(id, name)').order('name'),
     sb.from('work_orders').select('asset_id').eq('type', 'breakdown').in('status', ['open', 'in_progress']),
     sb.from('work_orders').select('asset_id').eq('type', 'pm').in('status', ['open', 'in_progress']),
   ]);
@@ -200,6 +201,7 @@ export async function loadAssets(render) {
   
   state.assetsCache = (assetsRes.data || []).map(a => ({
     ...a,
+    displayName: a.equipment_types?.name ? `${a.equipment_types.name} - ${a.name}` : a.name,
     status: downSet.has(a.id) ? 'down' : pmSet.has(a.id) ? 'maintenance' : 'running'
   }));
   
@@ -433,7 +435,7 @@ export async function goToSchedule(scheduleId) {
 export function renderAssetDropdown(filter = '') {
   const dropdownList = document.getElementById('wo-asset-dropdown');
   const term = filter.toLowerCase();
-  const filtered = state.assetsCache.filter(a => a.name.toLowerCase().includes(term));
+  const filtered = state.assetsCache.filter(a => (a.displayName || a.name).toLowerCase().includes(term));
   
   if (!filtered.length) {
     dropdownList.innerHTML = term
@@ -444,12 +446,13 @@ export function renderAssetDropdown(filter = '') {
   }
   
   dropdownList.innerHTML = filtered.map(a => {
+    const displayName = a.displayName || (a.equipment_types?.name ? `${a.equipment_types.name} - ${a.name}` : a.name);
     const down = state.assetStatusCache[a.id]?.hasBreakdown;
     const dot = down
       ? '<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--red);margin-right:6px;" title="Has an open breakdown"></span>'
       : '';
-    return `<div class="custom-select-item" onclick="window.selectAsset(${a.id}, '${escapeHtml(a.name).replace(/'/g, "\\'")}')">
-      ${dot}${escapeHtml(a.name)}
+    return `<div class="custom-select-item" onclick="window.selectAsset(${a.id}, '${escapeHtml(displayName).replace(/'/g, "\\'")}')">
+      ${dot}${escapeHtml(displayName)}
       ${a.location ? `<span style="color:var(--text-muted); font-size:12px; display:block; margin-top:2px;">${escapeHtml(a.location)}</span>` : ''}
     </div>`;
   }).join('');

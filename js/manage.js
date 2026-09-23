@@ -544,6 +544,7 @@ export function renderManageAssetTable() {
 
   if (search) {
     list = list.filter(a =>
+      (a.displayName && a.displayName.toLowerCase().includes(search)) ||
       (a.name && a.name.toLowerCase().includes(search)) ||
       (a.category && a.category.toLowerCase().includes(search)) ||
       (a.location && a.location.toLowerCase().includes(search)) ||
@@ -573,12 +574,13 @@ export function renderManageAssetTable() {
     const deptFormatted = a.department ? escapeHtml(a.department) : '—';
     const catTag = a.category ? `<span class="asset-class">${escapeHtml(a.category.toUpperCase().replace(/_/g, ''))}</span>` : '';
 
+    const aName = a.displayName || a.name;
     return `
-      <tr onclick="window.openManageAsset(${a.id}, '${escapeHtml(a.name).replace(/'/g, "\\'")}')">
+      <tr onclick="window.openManageAsset(${a.id}, '${escapeHtml(aName).replace(/'/g, "\\'")}')">
         <td>
           <div class="asset-cell">
             <span class="status-dot ${dotCls}" title="${dotTitle}"></span>
-            <span class="asset-name">${escapeHtml(a.name)}</span>
+            <span class="asset-name">${escapeHtml(aName)}</span>
             ${catTag}
           </div>
         </td>
@@ -617,7 +619,7 @@ export async function loadManageAssetList() {
   list.innerHTML = getLoaderHtml('Loading assets...');
 
   const [assetsRes, breakdownWosRes, pmWosRes] = await Promise.all([
-    sb.from('assets').select('id, name, location, department, criticality, category').order('name'),
+    sb.from('assets').select('id, name, location, department, criticality, category, equipment_types(name)').order('name'),
     sb.from('work_orders').select('asset_id').eq('type', 'breakdown').in('status', ['open', 'in_progress']),
     sb.from('work_orders').select('asset_id').eq('type', 'pm').in('status', ['open', 'in_progress']),
   ]);
@@ -636,10 +638,15 @@ export async function loadManageAssetList() {
   const downSet = new Set((breakdownWosRes.data || []).map(w => w.asset_id));
   const pmSet = new Set((pmWosRes.data || []).map(w => w.asset_id));
 
-  cachedManageAssets = (assetsRes.data || []).map(a => ({
-    ...a,
-    status: downSet.has(a.id) ? 'down' : pmSet.has(a.id) ? 'maintenance' : 'running'
-  }));
+  cachedManageAssets = (assetsRes.data || []).map(a => {
+    const className = a.equipment_types?.name;
+    const displayName = className ? `${className} - ${a.name}` : a.name;
+    return {
+      ...a,
+      displayName,
+      status: downSet.has(a.id) ? 'down' : pmSet.has(a.id) ? 'maintenance' : 'running'
+    };
+  });
 
   renderManageAssetTable();
 }

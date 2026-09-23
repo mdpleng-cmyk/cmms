@@ -87,6 +87,7 @@
           <input type="text" id="wo-search" placeholder="Search ID or description..." style="padding-left:34px;" oninput="window.filterWorkOrders()">
         </div>
         <select id="wo-filter" style="width:auto;" onchange="window.loadWorkOrders()">
+          <option value="open" selected>Open</option>
           <option value="open,in_progress">Active</option>
           <option value="closed">Closed</option>
           <option value="open,in_progress,closed,waiting_parts">All</option>
