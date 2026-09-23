@@ -66,6 +66,14 @@ export async function onSignedIn(user) {
   if (error || !roleRow) { toast('No role assigned yet.', 'err'); return; }
   
   state.currentRole = roleRow.role;
+  state.currentUserFullName = roleRow.full_name || '';
+  if (roleRow.full_name) state.usersCache[user.id] = roleRow.full_name;
+
+  // Pre-load all user names for activity and visit logs
+  sb.from('user_roles').select('user_id, full_name').then(({ data }) => {
+    if (data) data.forEach(u => { if (u.user_id && u.full_name) state.usersCache[u.user_id] = u.full_name; });
+  }).catch(() => {});
+
   document.getElementById('who-name').innerHTML = `${roleRow.full_name || user.email} &middot; ${state.currentRole}`;
   document.getElementById('login-screen').classList.add('hidden');
   document.getElementById('set-password-screen').classList.add('hidden');

@@ -1,4 +1,4 @@
-import { sb, state, escapeHtml, formatDate } from './store.js';
+import { sb, state, escapeHtml, formatDate, formatLogDateTime, getTechnicianName } from './store.js';
 
 const PM_DUE_WINDOW_DAYS = 7;
 const STALE_DAYS = 2;
@@ -114,12 +114,17 @@ export async function loadOverview() {
   el.innerHTML = `<div class="readout-empty" style="padding-top:60px;">Loading overview...</div>`;
 
   const todayStart = new Date(); todayStart.setHours(0,0,0,0);
-  const [openRes, schedRes, visitsRes, notesRes] = await Promise.all([
+  const [openRes, schedRes, visitsRes, notesRes, usersRes] = await Promise.all([
     sb.from('work_orders').select('id, type, status, priority, description, opened_at, asset_id, planned_date, assets(name, criticality, category)').in('status', ['open','in_progress','waiting_parts']).order('opened_at', { ascending: true }),
     sb.from('recurring_schedules').select('id, title, next_due_at, active, asset_id, snoozed_until, assets(name)').eq('active', true).order('next_due_at', { ascending: true }),
-    sb.from('wo_visits').select('visit_type, action_taken, technician, visited_at, wo_id, work_orders(id, asset_id, description, assets(name))').order('visited_at', { ascending: false }).limit(20),
+    sb.from('wo_visits').select('id, visit_type, action_taken, technician, logged_by, visited_at, wo_id, work_orders(id, asset_id, description, status, assets(name))').order('visited_at', { ascending: false }).limit(20),
     sb.from('notes').select('id, text, done, created_at').order('created_at', { ascending: false }),
+    sb.from('user_roles').select('user_id, full_name'),
   ]);
+
+  if (usersRes.data) {
+    usersRes.data.forEach(u => { if (u.user_id && u.full_name) state.usersCache[u.user_id] = u.full_name; });
+  }
 
   const openWOs = openRes.data || [];
   const schedules = schedRes.data || [];
@@ -184,22 +189,40 @@ export async function loadOverview() {
     ? `<div class="ov-pm-snoozed">Snoozed: ${snoozedItems.map(s => `${escapeHtml(s.title)} (until ${formatDate(s.snoozed_until)})`).join(', ')}</div>`
     : '';
 
-  // ---- Recent activity ----
-  const activityHtml = visits.length ? visits.slice(0, 6).map(v => {
+  // ---- Recent activity (logbook layout for shift / daily reporting) ----
+  const activityHtml = visits.length ? visits.map(v => {
     const assetName = v.work_orders
-      ? (v.work_orders.asset_id == null ? 'No asset' : (v.work_orders.assets?.name || 'Unknown asset'))
+      ? (v.work_orders.asset_id == null ? 'General (No Asset)' : (v.work_orders.assets?.name || 'Unknown asset'))
       : 'WO #' + v.wo_id;
-    const desc = v.work_orders?.description || v.visit_type;
-    // Chip type: closed → green, waiting_parts → purple, everything else → amber update
-    const chipCls = v.visit_type === 'closed' ? 'closed' : v.visit_type === 'waiting_parts' ? 'waiting' : 'update';
-    const chipLabel = v.visit_type.replace('_', ' ');
+    const problemDesc = v.work_orders?.description || '';
+    const updateText = v.action_taken || '';
+    const techName = getTechnicianName(v);
+    const timeStr = formatLogDateTime(v.visited_at);
+
+    // Current status badge
+    const rawStatus = v.work_orders?.status || (v.visit_type === 'closed' ? 'closed' : 'open');
+    const statusCls = rawStatus === 'closed' ? 'closed' : rawStatus === 'waiting_parts' ? 'waiting_parts' : rawStatus === 'in_progress' ? 'in_progress' : 'open';
+    const statusLabel = rawStatus.replace('_', ' ');
+
     return `
       <div class="ov-activity-row" onclick="window.openWoDetailModal(${v.wo_id})">
         <div style="min-width:0; flex:1;">
-          <div class="ov-activity-title"><b>${escapeHtml(assetName)}</b> &mdash; ${escapeHtml(desc)}</div>
-          <div class="ov-activity-meta">${escapeHtml(v.technician || 'unassigned')} · ${formatDate(v.visited_at)}</div>
+          <div class="ov-activity-top">
+            <div class="ov-activity-heading">
+              <span class="ov-activity-time">${timeStr}</span>
+              <span class="ov-activity-asset">${escapeHtml(assetName)}</span>
+            </div>
+            <div class="ov-activity-tags">
+              <span class="badge ${statusCls}">${statusLabel}</span>
+              <span class="ov-wo-num">WO#${v.wo_id}</span>
+            </div>
+          </div>
+          ${problemDesc ? `<div class="ov-activity-problem"><span class="ov-activity-field-label">Problem:</span> ${escapeHtml(problemDesc)}</div>` : ''}
+          <div class="ov-activity-update">
+            ${updateText ? `<span class="ov-activity-field-label">Update:</span> ${escapeHtml(updateText)}` : `<span style="color:var(--ov-text-muted); font-style:italic;">${escapeHtml(v.visit_type.replace('_',' '))}</span>`}
+            <span class="ov-activity-tech">&mdash; ${escapeHtml(techName)}</span>
+          </div>
         </div>
-        <span class="ov-activity-chip ${chipCls}">${escapeHtml(chipLabel)}</span>
       </div>`;
   }).join('') : `<div class="ov-pm-list-row" style="color:var(--ov-text-muted); font-size:12px;">No recent activity.</div>`;
 
@@ -242,8 +265,11 @@ export async function loadOverview() {
 
     <div class="ov-row-2-wide">
       <div class="ov-panel">
-        <div class="ov-panel-head"><div class="ov-panel-title-row"><div class="ov-icon-badge green"><i data-lucide="activity"></i></div><div class="ov-panel-title">Recent Activity</div></div></div>
-        <div style="padding-bottom:6px;">${activityHtml}</div>
+        <div class="ov-panel-head">
+          <div class="ov-panel-title-row"><div class="ov-icon-badge green"><i data-lucide="activity"></i></div><div class="ov-panel-title">Recent Activity</div></div>
+          <span style="font-size:11px; color:var(--ov-text-muted); font-family:var(--ov-font-data);">Last ${visits.length} updates</span>
+        </div>
+        <div class="ov-activity-scroll">${activityHtml}</div>
       </div>
       <div class="ov-panel">
         <div class="ov-panel-head"><div class="ov-panel-title-row"><div class="ov-icon-badge purple"><i data-lucide="bell"></i></div><div class="ov-panel-title">Reminders</div></div></div>

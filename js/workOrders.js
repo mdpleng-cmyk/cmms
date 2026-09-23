@@ -1,4 +1,4 @@
-import { sb, state, toast, setButtonLoading, getLoaderHtml, escapeHtml, formatDate, priorityMeta } from './store.js';
+import { sb, state, toast, setButtonLoading, getLoaderHtml, escapeHtml, formatDate, formatTime12, formatDateOnly, getTechnicianName, priorityMeta } from './store.js';
 import { loadOverview } from './overview.js';
 import { loadSchedules, advanceScheduleForCompletedPm } from './schedules.js';
 
@@ -560,7 +560,7 @@ async function loadVisitsForWo(woId) {
   const box = document.getElementById('wo-detail-visits');
   box.innerHTML = getLoaderHtml('Loading activity...');
   const { data } = await sb.from('wo_visits')
-    .select('id, visit_type, action_taken, parts_used, technician, visited_at')
+    .select('id, visit_type, action_taken, parts_used, technician, logged_by, visited_at')
     .eq('wo_id', woId)
     .order('visited_at', { ascending: false });
   currentVisits = data || [];
@@ -573,10 +573,17 @@ function renderVisitsList() {
   const EDIT_WINDOW_MS = 8 * 3600000;
   if (!currentVisits.length) { box.innerHTML = '<div class="card-meta">No updates logged yet.</div>'; return; }
   box.innerHTML = currentVisits.map(v => {
+    const datePart = formatDateOnly(v.visited_at);
+    const timePart = formatTime12(v.visited_at);
+    const techName = getTechnicianName(v);
+
     if (v.editing) {
       return `
       <div class="activity-entry">
-        <span class="activity-date">${formatDate(v.visited_at).split(',')[0]}</span>
+        <div class="activity-date">
+          <div class="activity-date-day">${datePart}</div>
+          <div class="activity-date-time">${timePart}</div>
+        </div>
         <div class="activity-body">
           <textarea id="edit-visit-notes-${v.id}" style="margin-bottom:6px;">${escapeHtml(v.action_taken || '')}</textarea>
           <div class="row" style="gap:8px; margin-bottom:6px;">
@@ -592,9 +599,12 @@ function renderVisitsList() {
     }
     return `
     <div class="activity-entry">
-      <span class="activity-date">${formatDate(v.visited_at).split(',')[0]}</span>
+      <div class="activity-date">
+        <div class="activity-date-day">${datePart}</div>
+        <div class="activity-date-time">${timePart}</div>
+      </div>
       <div class="activity-body">
-        <p class="activity-title" style="color:var(--ov-text-muted); font-size:11px; margin:0 0 4px;">${v.visit_type.replace('_',' ')}${v.technician ? ' · <span style="color:var(--ov-text-primary);">' + escapeHtml(v.technician) + '</span>' : ''}
+        <p class="activity-title" style="color:var(--ov-text-muted); font-size:11px; margin:0 0 4px;">${v.visit_type.replace('_',' ')} · <span style="color:var(--ov-text-primary); font-weight:500;">${escapeHtml(techName)}</span>
           ${isPrivileged && (Date.now() - new Date(v.visited_at).getTime()) < EDIT_WINDOW_MS ? `<i data-lucide="pencil" style="width:11px; margin-left:6px; cursor:pointer; color:var(--ov-text-muted);" onclick="window.startEditVisit(${v.id})"></i>` : ''}
         </p>
         ${v.action_taken ? `<p class="ov-wo-log" style="color:var(--ov-text-primary); font-size:13.5px; margin:0 0 4px;">${escapeHtml(v.action_taken)}</p>` : ''}

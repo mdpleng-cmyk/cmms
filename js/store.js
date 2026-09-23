@@ -3,11 +3,12 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 // Capture recovery flag BEFORE createClient() — Supabase clears the hash/query
 // during token exchange, so this must happen first.
-const _hash = new URLSearchParams(window.location.hash.slice(1));
-const _search = new URLSearchParams(window.location.search);
+const _hash = typeof window !== 'undefined' ? new URLSearchParams(window.location.hash.slice(1)) : new URLSearchParams();
+const _search = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
 export const isRecoveryLink = _hash.get('type') === 'recovery' || _search.get('type') === 'recovery';
+export const urlHashType = _hash.get('type');
 
-export const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+export const sb = typeof supabase !== 'undefined' ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
 // Read-only link to the telemetry/meter-reading project — separate Supabase
 // project, anonymous access confirmed open on latest_meter_readings + meters.
@@ -21,6 +22,8 @@ export const sbTelemetry = supabase.createClient(
 export const state = {
   currentUser: null,
   currentRole: null,
+  currentUserFullName: '',
+  usersCache: {},
   assetsCache: [],
   schedulesCache: [],
   activeWorkOrders: [],
@@ -69,7 +72,42 @@ export function getLoaderHtml(text = 'Loading...') {
 export function formatDate(iso) {
   if (!iso) return '';
   const d = new Date(iso);
-  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  return d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
+}
+
+export function formatTime12(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', hour12: true });
+}
+
+export function formatDateOnly(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+export function formatLogDateTime(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const now = new Date();
+  const isToday = d.getFullYear() === now.getFullYear() &&
+                  d.getMonth() === now.getMonth() &&
+                  d.getDate() === now.getDate();
+  const timeStr = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', hour12: true });
+  if (isToday) return timeStr;
+  const dateStr = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  return `${dateStr}, ${timeStr}`;
+}
+
+export function getTechnicianName(v) {
+  if (!v) return 'unassigned';
+  if (v.technician && v.technician.trim()) return v.technician.trim();
+  if (v.logged_by && state.usersCache && state.usersCache[v.logged_by]) return state.usersCache[v.logged_by];
+  if (v.logged_by && state.currentUser && v.logged_by === state.currentUser.id) {
+    return state.currentUserFullName || state.currentUser.email || 'You';
+  }
+  return 'unassigned';
 }
 
 export function escapeHtml(str) {

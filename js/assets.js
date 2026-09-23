@@ -1,4 +1,4 @@
-import { sb, state, toast, setButtonLoading, getLoaderHtml, escapeHtml, formatDate } from './store.js';
+import { sb, state, toast, setButtonLoading, getLoaderHtml, escapeHtml, formatDate, formatDateOnly, formatTime12 } from './store.js';
 import { loadSchedules } from './schedules.js';
 import { getAssetStatus, getAllWatchItemsForAsset } from './assetDetailHelpers.js';
 import { getAssetSpecs } from './assetSpecs.js';
@@ -271,7 +271,10 @@ export async function openAssetHistoryModal(assetId, assetName, initialTab = 'op
 
     openContainer.innerHTML = open.length ? open.map(wo => `
       <div class="activity-entry" style="cursor:pointer;" onclick="window.closeAssetHistoryModal(); window.openWoDetailModal(${wo.id})">
-        <span class="activity-date">${formatDate(wo.opened_at).split(',')[0]}</span>
+        <div class="activity-date">
+          <div class="activity-date-day">${formatDateOnly(wo.opened_at)}</div>
+          <div class="activity-date-time">${formatTime12(wo.opened_at)}</div>
+        </div>
         <div class="activity-body">
           <p class="activity-title">#${wo.id} &middot; <span class="badge ${wo.type}" style="font-size:9px;">${wo.type}</span> <span class="badge ${wo.status}" style="font-size:9px;">${wo.status.replace('_',' ')}</span></p>
           <p class="activity-meta" style="overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;">${wo.description ? escapeHtml(wo.description) : 'No description provided'}</p>
@@ -281,7 +284,10 @@ export async function openAssetHistoryModal(assetId, assetName, initialTab = 'op
 
     historyContainer.innerHTML = closed.length ? closed.map(wo => `
       <div class="activity-entry" style="cursor:pointer;" onclick="window.closeAssetHistoryModal(); window.openWoDetailModal(${wo.id})">
-        <span class="activity-date">${formatDate(wo.closed_at).split(',')[0]}</span>
+        <div class="activity-date">
+          <div class="activity-date-day">${formatDateOnly(wo.closed_at)}</div>
+          <div class="activity-date-time">${formatTime12(wo.closed_at)}</div>
+        </div>
         <div class="activity-body">
           <p class="activity-title">#${wo.id} &middot; <span class="badge ${wo.type}" style="font-size:9px;">${wo.type}</span></p>
           <p class="activity-meta" style="overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;">${wo.description ? escapeHtml(wo.description) : 'No description provided'}</p>
