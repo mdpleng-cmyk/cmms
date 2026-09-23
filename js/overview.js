@@ -190,7 +190,7 @@ export async function loadOverview() {
     ? `<div class="ov-pm-snoozed">Snoozed: ${snoozedItems.map(s => `${escapeHtml(s.title)} (until ${formatDate(s.snoozed_until)})`).join(', ')}</div>`
     : '';
 
-  // ---- Recent activity (logbook layout for shift / daily reporting) ----
+  // ---- Recent activity (mobile-friendly logbook layout) ----
   const activityHtml = visits.length ? visits.map(v => {
     const assetName = v.work_orders
       ? (v.work_orders.asset_id == null ? 'General (No Asset)' : (v.work_orders.assets?.name || 'Unknown asset'))
@@ -198,7 +198,8 @@ export async function loadOverview() {
     const problemDesc = v.work_orders?.description || '';
     const updateText = v.action_taken || '';
     const techName = getTechnicianName(v);
-    const timeStr = formatDate(v.visited_at);
+    const timeStr = formatLogDateTime(v.visited_at);
+    const subTime = formatTime12(v.visited_at);
 
     // Current status badge
     const rawStatus = v.work_orders?.status || (v.visit_type === 'closed' ? 'closed' : 'open');
@@ -207,22 +208,19 @@ export async function loadOverview() {
 
     return `
       <div class="ov-activity-row" onclick="window.openWoDetailModal(${v.wo_id})">
-        <div style="min-width:0; flex:1;">
-          <div class="ov-activity-top">
-            <div class="ov-activity-heading">
-              <span class="ov-activity-time"><i data-lucide="clock" style="width:11px; height:11px; display:inline-block; vertical-align:-1px; margin-right:3px;"></i>${timeStr}</span>
-              <span class="ov-activity-asset">${escapeHtml(assetName)}</span>
-            </div>
-            <div class="ov-activity-tags">
-              <span class="badge ${statusCls}">${statusLabel}</span>
-              <span class="ov-wo-num">WO#${v.wo_id}</span>
-            </div>
-          </div>
-          ${problemDesc ? `<div class="ov-activity-problem"><span class="ov-activity-field-label">Problem:</span> ${escapeHtml(problemDesc)}</div>` : ''}
-          <div class="ov-activity-update">
-            ${updateText ? `<span class="ov-activity-field-label">Update:</span> ${escapeHtml(updateText)}` : `<span style="color:var(--ov-text-muted); font-style:italic;">${escapeHtml(v.visit_type.replace('_',' '))}</span>`}
-            <span class="ov-activity-tech">&mdash; ${escapeHtml(techName)} &middot; <span style="font-family:var(--ov-font-data); font-size:11px; color:var(--ov-text-muted);">${formatTime12(v.visited_at)}</span></span>
-          </div>
+        <div class="ov-activity-top">
+          <span class="ov-activity-time">${timeStr}</span>
+          <span class="ov-wo-num">WO#${v.wo_id}</span>
+        </div>
+        <div class="ov-activity-asset">${escapeHtml(assetName)}</div>
+        ${problemDesc ? `<div class="ov-activity-problem">${escapeHtml(problemDesc)}</div>` : ''}
+        <div class="ov-activity-bottom">
+          <span class="ov-activity-action">${escapeHtml(updateText || v.visit_type.replace('_',' '))}</span>
+          <span class="ov-activity-sep">&mdash;</span>
+          <span class="ov-activity-tech">${escapeHtml(techName)}</span>
+          <span class="ov-activity-sep">&middot;</span>
+          <span class="ov-activity-subtime">${subTime}</span>
+          <span class="badge ${statusCls} ov-activity-status">${statusLabel}</span>
         </div>
       </div>`;
   }).join('') : `<div class="ov-pm-list-row" style="color:var(--ov-text-muted); font-size:12px;">No recent activity.</div>`;
