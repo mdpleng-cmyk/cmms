@@ -209,17 +209,15 @@ export async function loadOverview() {
     return `
       <div class="ov-activity-row" onclick="window.openWoDetailModal(${v.wo_id})">
         <div class="ov-activity-top">
-          <span class="ov-activity-time">${timeStr}</span>
           <span class="ov-wo-num">WO#${v.wo_id}</span>
         </div>
         <div class="ov-activity-asset">${escapeHtml(assetName)}</div>
         ${problemDesc ? `<div class="ov-activity-problem">${escapeHtml(problemDesc)}</div>` : ''}
         <div class="ov-activity-bottom">
+          <span class="ov-activity-subtime">${timeStr}</span>
           <span class="ov-activity-action">${escapeHtml(updateText || v.visit_type.replace('_',' '))}</span>
           <span class="ov-activity-sep">&mdash;</span>
           <span class="ov-activity-tech">${escapeHtml(techName)}</span>
-          <span class="ov-activity-sep">&middot;</span>
-          <span class="ov-activity-subtime">${subTime}</span>
           <span class="badge ${statusCls} ov-activity-status">${statusLabel}</span>
         </div>
       </div>`;
