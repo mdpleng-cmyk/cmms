@@ -85,30 +85,41 @@ Overview's "Meter Readings" panel reads live from the **separate** telemetry/met
 ## Frontend structure
 ```
 /
-├── index.html      — SPA shell: header (logo, global "New WO" button, persistent date, sign-out), tab nav
-│                      (Overview / Work Orders / Assets / PMs / Manage), all modals
-├── style.css        — dark palette, all component styling, `.ov-*` = Overview-only desktop-dense classes
+├── index.html      — SPA shell: header (logo, global "New WO" button, persistent date, Change Password modal, sign-out),
+│                      tab nav (Overview / Telemetry / Work Orders / Assets / PMs / Manage), all modals,
+│                      login screen + forgot password form + recovery set-password screen
+├── style.css        — dark palette, all component styling, `.ov-*` = Overview desktop-dense classes,
+│                      logbook activity rows (`.ov-activity-*`), stacked timeline date/time (`.activity-date-*`),
+│                      PM mobile checklist runner (`.pm-runner-*`)
 └── js/
-    ├── store.js               — `sb` (CMMS) + `sbTelemetry` (telemetry, read-only) clients, shared `state`,
-    │                              toast/loading/format/escape utilities, `priorityMeta()`
-    ├── app.js                 — tab switching, global event binding, exposes functions on `window`,
-    │                              writes the persistent header date on load
-    ├── auth.js                 — signIn/signOut/onSignedIn (calls loadOverview() on login)
+    ├── store.js               — `sb` (CMMS) + `sbTelemetry` (telemetry, read-only) clients, shared `state`
+    │                              (incl. `usersCache`), `priorityMeta()`, `formatDate()` (12hr AM/PM),
+    │                              `formatTime12()`, `formatDateOnly()`, `formatLogDateTime()`, `getTechnicianName()`,
+    │                              and URL hash/query recovery link detection (`isRecoveryLink`)
+    ├── app.js                 — tab switching, global event binding, exposes all functions on `window`,
+    │                              initializes Lucide icons, writes persistent header date, recovery-aware session restore
+    ├── auth.js                 — signIn/signOut/onSignedIn, password recovery interception (`PASSWORD_RECOVERY`
+    │                              lockout preventing dashboard override until new password set), forgot password link,
+    │                              and in-app Change Password modal (`openChangePasswordModal`)
     ├── assets.js                — asset CRUD incl. class-selection flow on the New Asset form, Asset
-    │                              Profile modal (glyph/status/specs rail + Open WO/PM/History tabs),
+    │                              Profile modal (glyph/status/specs rail + Open WO/PM/History tabs with 12hr date/time),
     │                              asset search dropdown (red dot = has an open breakdown)
-    ├── workOrders.js            — WO create/list/filter, WO Detail modal (inline-editable description/
-    │                              priority via renderWoDetailHeader's edit mode), update flow + wo_visits
-    │                              timeline (inline-editable within 8h), checklist (check+reading),
-    │                              backdated close with full visit capture, planned-date toggle,
-    │                              asset-status cache
-    ├── schedules.js              — recurring schedule CRUD, checklist items, manual PM generation, and completion-anchored recurrence advancement
+    ├── workOrders.js            — WO create/list/filter, WO Detail modal (inline-editable description/priority,
+    │                              timeline with stacked date + 12hr time and logged-user fallback, editable within 8h),
+    │                              PM checklist (check, reading, and text condition items), mobile PM checklist runner
+    │                              (`openPmChecklistRunner`), backdated close with full visit capture, planned-date toggle
+    ├── schedules.js              — recurring schedule CRUD, checklist items, manual PM generation, drag reordering,
+    │                              and completion-anchored recurrence advancement
     ├── manage.js                 — Manage tab, two modes: Assets (name/location/department/criticality/
     │                              category/specs — NOT reachable from the Asset Profile modal, by design)
-    │                              and Equipment Types (create a class, define its PM template + checklist)
-    ├── overview.js               — default landing tab, "Today" briefing layout (NOT KPI tiles — see
-    │                              design decisions): Open Work Orders + PM Due (paired, primary row),
-    │                              Recent Activity + Meter Readings + Reminders (secondary row)
+    │                              and Equipment Types (create a class, define PM template + checklist items with
+    │                              type, unit, section, tools, text condition, and drag-and-drop reordering)
+    ├── overview.js               — default landing tab, "Today" briefing layout: Open Work Orders (status counts,
+    │                              WO# chips, P1/P2 badges, last-action excerpt with 12hr timestamp) + PM Due
+    │                              (paired primary row), Recent Activity (engineering logbook format: 12hr time badge,
+    │                              Asset, Problem description, Update with technician name/time, scrollable up to 20) + Reminders
+    ├── telemetry.js             — Telemetry tab: live meters read-only from separate telemetry Supabase project,
+    │                              consumption stats, 30-day average comparison, and range-based trend charts
     ├── assetSpecs.js             — CRUD helpers for asset_specs
     ├── assetGlyphs.js            — SVG glyph-per-category lookup
     └── assetDetailHelpers.js     — getAssetStatus(), getAllWatchItemsForAsset()
@@ -122,23 +133,18 @@ Overview's "Meter Readings" panel reads live from the **separate** telemetry/met
 - **Equipment-class templates are a one-time stamp, not a live link** — see schema section above.
 - **PM-type work orders cannot be created without a schedule selected.**
 - **Priority defaults to Normal (P3)** on the New WO form.
-- **Overview's KPI tiles were built, removed, rebuilt with a different set, then removed again** in favor of the current "Today" briefing layout (Open WO / PM Due / Recent Activity / Meter Readings / Reminders). This has flip-flopped enough times that it should NOT be treated as settled either way — check with the user before reintroducing or removing KPI tiles again.
-- **Reminders panel is freeform notes only** — schedule-based due-date reminders live in PM Due instead, specifically to avoid showing the same upcoming-PM information in two places at once.
+- **Overview layout**: "Today" briefing layout (Open WO / PM Due / Recent Activity / Reminders). Open WOs feature status subtab counters `Open (N)`, `WO#42` badges, and P1/P2 priority tags.
+- **Recent Activity format**: Styled like a plant shift logbook (`[🕒 Date/Time] Asset | [Status] WO# / Problem: ... / Update: ... — Tech`). Displays the last 20 entries in a scrollable panel (`max-height: 480px`).
+- **Timestamps**: All user-facing timestamps use 12-hour format with AM/PM (`formatDate`, `formatTime12`, `formatLogDateTime`).
+- **Technician Attribution**: If the technician name field is left blank during updates, the UI automatically falls back to the user's name from `logged_by` (resolved via `user_roles`).
+- **Reminders panel is freeform notes only** — schedule-based due-date reminders live in PM Due instead.
 - **PM snooze is shared, not per-user**, and never touches the real `next_due_at` — purely a display suppression with a visible "still snoozed" trace.
 - **Metadata edits (priority/description) are visit-log entries (`visit_type='edited'`), never status-history entries** — this preserves `wo_status_history` as a pure, trigger-only status audit trail.
-- **Every fix gets logged**, even same-day trivial ones. Backdated close times now capture full visit details (action/parts/technician), not just a timestamp.
-- **Multi-project split**: telemetry + meter-reading share one Supabase project; CMMS is separate; Overview reads telemetry read-only across projects.
+- **Every fix gets logged**, even same-day trivial ones. Backdated close times capture full visit details (action/parts/technician).
+- **Multi-project split**: telemetry + meter-reading share one Supabase project; CMMS is separate; Telemetry tab reads telemetry read-only across projects.
 
-## Not yet built
-- Automatic PM generation on `next_due_at` (manual only, via `generatePmWoNow()` or the New WO form).
-- Reminder delivery for `reminder_days_before` on schedules (distinct from the manual snooze feature, which is built).
-- Trend view for `wo_checklist_results.result_value` over time.
-- Retroactive class assignment / bulk-assign UI for equipment types (proposed, explicitly deferred).
-- Dedicated "all meter readings" / "all activity" pages (Overview only shows recent/latest slices of each).
-
-## Immediate next steps (pick up here)
-1. **Get fresh pastes of `index.html`, `js/overview.js`, `style.css`, and `js/app.js`** before further edits — see the sync-status note at the top; these have layered unconfirmed changes.
-2. Confirm the `waiting_parts` status constraint and the `assets.department` column are both actually live (never independently re-verified).
-3. Clean up the harmless duplicate `window.saveManageAssetField` binding in `app.js`.
-4. Decide + build automatic PM generation and `reminder_days_before` delivery.
-5. If meter icons look wrong, get real `meter_type` sample values from the telemetry project and tighten `meterVisual()`.
+## Not yet built / Deferred
+- Automatic PM generation on `next_due_at` via cron/webhook (currently manual via `generatePmWoNow()` or the New WO form).
+- Reminder delivery for `reminder_days_before` on schedules (distinct from manual snooze).
+- Dedicated "all activity" / history export page beyond the recent 20 entries in Overview.
+- Retroactive class assignment / bulk-assign UI for equipment types.

@@ -112,7 +112,6 @@ window.startEditTypeTemplateItem = startEditTypeTemplateItem;
 window.cancelEditTypeTemplateItem = cancelEditTypeTemplateItem;
 window.toggleEditTypeItemUnit = toggleEditTypeItemUnit;
 window.saveTypeTemplateItem = saveTypeTemplateItem;
-window.saveManageAssetField = saveManageAssetField;
 window.setManageAssetFilter = setManageAssetFilter;
 window.filterManageAssets = filterManageAssets;
 window.selectTypeTemplate = selectTypeTemplate;
@@ -178,3 +177,4 @@ if (!isRecoveryLink && !isInPasswordRecovery()) {
 }
 
 document.getElementById('header-date').textContent = new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
+if (window.lucide) lucide.createIcons();
