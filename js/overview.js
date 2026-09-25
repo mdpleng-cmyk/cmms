@@ -115,12 +115,13 @@ export async function loadOverview() {
   el.innerHTML = `<div class="readout-empty" style="padding-top:60px;">Loading overview...</div>`;
 
   const todayStart = new Date(); todayStart.setHours(0,0,0,0);
-  const [openRes, schedRes, visitsRes, notesRes, usersRes] = await Promise.all([
+  const [openRes, schedRes, visitsRes, notesRes, usersRes, recentWosRes] = await Promise.all([
     sb.from('work_orders').select('id, type, status, priority, description, opened_at, asset_id, planned_date, assets(name, criticality, category, equipment_types(name))').in('status', ['open','in_progress','waiting_parts']).order('opened_at', { ascending: true }),
     sb.from('recurring_schedules').select('id, title, next_due_at, active, asset_id, snoozed_until, assets(name, equipment_types(name))').eq('active', true).order('next_due_at', { ascending: true }),
-    sb.from('wo_visits').select('id, visit_type, action_taken, technician, logged_by, visited_at, wo_id, work_orders(id, asset_id, description, status, assets(name, equipment_types(name)))').order('visited_at', { ascending: false }).limit(20),
+    sb.from('wo_visits').select('id, visit_type, action_taken, technician, logged_by, visited_at, wo_id, work_orders(id, asset_id, description, status, opened_at, created_by, assets(name, equipment_types(name)))').order('visited_at', { ascending: false }).limit(30),
     sb.from('notes').select('id, text, done, created_at').order('created_at', { ascending: false }),
     sb.from('user_roles').select('user_id, full_name'),
+    sb.from('work_orders').select('id, type, status, description, opened_at, created_by, asset_id, assets(name, equipment_types(name))').order('opened_at', { ascending: false }).limit(20),
   ]);
 
   if (usersRes.data) {
@@ -131,6 +132,7 @@ export async function loadOverview() {
   const schedules = schedRes.data || [];
   const visits = visitsRes.data || [];
   const notes = notesRes.data || [];
+  const recentWOs = recentWosRes.data || [];
 
   // ---- latest visit per open WO, for the collapsed "issue + action + who" row ----
   cachedOpenWOs = openWOs;
@@ -190,32 +192,76 @@ export async function loadOverview() {
     ? `<div class="ov-pm-snoozed">Snoozed: ${snoozedItems.map(s => `${escapeHtml(s.title)} (until ${formatDate(s.snoozed_until)})`).join(', ')}</div>`
     : '';
 
-  // ---- Recent activity (mobile-friendly logbook layout) ----
-  const activityHtml = visits.length ? visits.map(v => {
-    const assetName = v.work_orders
-      ? (v.work_orders.asset_id == null ? 'General (No Asset)' : (getAssetDisplayName(v.work_orders.assets, v.work_orders.asset_id) || 'Unknown asset'))
-      : 'WO #' + v.wo_id;
-    const problemDesc = v.work_orders?.description || '';
-    const updateText = v.action_taken || '';
-    const techName = getTechnicianName(v);
-    const timeStr = formatLogDateTime(v.visited_at);
-    const subTime = formatTime12(v.visited_at);
+  // ---- Recent activity (combining updates and work order openings) ----
+  const combinedActivities = [];
+
+  // 1. Visit updates
+  visits.forEach(v => {
+    combinedActivities.push({
+      wo_id: v.wo_id,
+      opened_at: v.work_orders?.opened_at || v.visited_at,
+      activity_time: v.visited_at,
+      asset_name: v.work_orders
+        ? (v.work_orders.asset_id == null ? 'General (No Asset)' : (getAssetDisplayName(v.work_orders.assets, v.work_orders.asset_id) || 'Unknown asset'))
+        : 'WO #' + v.wo_id,
+      problem_desc: v.work_orders?.description || '',
+      action_text: v.action_taken || v.visit_type.replace('_', ' '),
+      tech_name: getTechnicianName(v),
+      raw_status: v.work_orders?.status || (v.visit_type === 'closed' ? 'closed' : 'open'),
+      is_wo_opening: false
+    });
+  });
+
+  // 2. Work order openings
+  recentWOs.forEach(wo => {
+    // If this WO was closed on creation (closeNow), a 'closed' visit already exists with resolution details
+    const hasImmediateCloseVisit = visits.some(v => v.wo_id === wo.id && v.visit_type === 'closed' && Math.abs(new Date(v.visited_at) - new Date(wo.opened_at)) < 3000);
+    if (hasImmediateCloseVisit) return;
+
+    const creatorName = (wo.created_by && state.usersCache && state.usersCache[wo.created_by])
+      || (state.currentUser && wo.created_by === state.currentUser.id ? (state.currentUserFullName || state.currentUser.email || 'You') : 'unassigned');
+    const actionText = wo.type === 'breakdown' ? 'Breakdown reported' : wo.type === 'pm' ? 'PM work order generated' : 'Work order opened';
+
+    combinedActivities.push({
+      wo_id: wo.id,
+      opened_at: wo.opened_at,
+      activity_time: wo.opened_at,
+      asset_name: wo.asset_id == null ? 'General (No Asset)' : (getAssetDisplayName(wo.assets, wo.asset_id) || 'Unknown asset'),
+      problem_desc: wo.description || '',
+      action_text: actionText,
+      tech_name: creatorName,
+      raw_status: wo.status || 'open',
+      is_wo_opening: true
+    });
+  });
+
+  // Sort by activity_time descending
+  combinedActivities.sort((a, b) => new Date(b.activity_time) - new Date(a.activity_time));
+  const recentActivities = combinedActivities.slice(0, 20);
+
+  const activityHtml = recentActivities.length ? recentActivities.map(act => {
+    const assetName = act.asset_name;
+    const problemDesc = act.problem_desc;
+    const updateText = act.action_text;
+    const techName = act.tech_name;
+    const timeStr = formatLogDateTime(act.opened_at);
+    const subTime = formatTime12(act.activity_time);
 
     // Current status badge
-    const rawStatus = v.work_orders?.status || (v.visit_type === 'closed' ? 'closed' : 'open');
+    const rawStatus = act.raw_status;
     const statusCls = rawStatus === 'closed' ? 'closed' : rawStatus === 'waiting_parts' ? 'waiting_parts' : rawStatus === 'in_progress' ? 'in_progress' : 'open';
     const statusLabel = rawStatus.replace('_', ' ');
 
     return `
-      <div class="ov-activity-row" onclick="window.openWoDetailModal(${v.wo_id})">
+      <div class="ov-activity-row" onclick="window.openWoDetailModal(${act.wo_id})">
         <div class="ov-activity-top">
           <span class="ov-activity-time">${timeStr}</span>
-          <span class="ov-wo-num">WO#${v.wo_id}</span>
+          <span class="ov-wo-num">WO#${act.wo_id}</span>
         </div>
         <div class="ov-activity-asset">${escapeHtml(assetName)}</div>
         ${problemDesc ? `<div class="ov-activity-problem">${escapeHtml(problemDesc)}</div>` : ''}
         <div class="ov-activity-bottom">
-          <span class="ov-activity-action">${escapeHtml(updateText || v.visit_type.replace('_',' '))}</span>
+          <span class="ov-activity-action">${escapeHtml(updateText)}</span>
           <span class="ov-activity-sep">&mdash;</span>
           <span class="ov-activity-tech">${escapeHtml(techName)}</span>
           <span class="ov-activity-subtime">&middot; ${subTime}</span>
@@ -265,7 +311,7 @@ export async function loadOverview() {
       <div class="ov-panel">
         <div class="ov-panel-head">
           <div class="ov-panel-title-row"><div class="ov-icon-badge green"><i data-lucide="activity"></i></div><div class="ov-panel-title">Recent Activity</div></div>
-          <span style="font-size:11px; color:var(--ov-text-muted); font-family:var(--ov-font-data);">Last ${visits.length} updates</span>
+          <span style="font-size:11px; color:var(--ov-text-muted); font-family:var(--ov-font-data);">Last ${recentActivities.length} updates</span>
         </div>
         <div class="ov-activity-scroll">${activityHtml}</div>
       </div>
